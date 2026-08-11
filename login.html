@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đăng nhập · LisDictation</title>
+<link rel="stylesheet" href="ld-theme.css">
+</head>
+<body>
+<div class="ld-auth-wrap">
+  <div class="ld-auth-card">
+    <div class="ld-brand">Language <em>Hub</em></div>
+    <div class="ld-auth-title">🎧 LisDictation</div>
+    <p class="ld-auth-sub">Đăng nhập để tiếp tục luyện nghe — chép chính tả.</p>
+
+    <form id="form" autocomplete="on">
+      <div class="ld-field">
+        <label class="ld-label">Mã sinh viên hoặc Email</label>
+        <input class="ld-input" id="idInput" placeholder="1234567 hoặc ban@example.com" autocomplete="username">
+      </div>
+      <div class="ld-field">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <label class="ld-label" for="pw" style="margin-bottom:0">Mật khẩu</label>
+          <button type="button" id="pwToggle" style="background:none;border:none;color:var(--red);font-size:11px;font-weight:700;cursor:pointer">Hiện</button>
+        </div>
+        <input class="ld-input" id="pw" type="password" placeholder="••••••••" autocomplete="current-password" style="margin-top:6px">
+      </div>
+      <button class="ld-btn ld-btn-primary" id="submit" type="submit" style="margin-top:6px">Đăng nhập</button>
+    </form>
+
+    <div style="text-align:right;margin-top:10px">
+      <a href="#" id="forgot" style="font-size:12.5px;color:var(--red);text-decoration:none">Quên mật khẩu?</a>
+    </div>
+
+    <div class="ld-hr"></div>
+    <button class="ld-btn ld-btn-ghost" id="teacherAccess">🎓 Đăng nhập Giảng viên</button>
+
+    <p class="ld-alt">Chưa có tài khoản? <a href="signup.html">Đăng ký</a></p>
+  </div>
+</div>
+
+<!-- Teacher login modal -->
+<div class="ld-modal-bg" id="teacherModal">
+  <div class="ld-auth-card" style="max-width:380px">
+    <div class="ld-auth-title" style="font-size:1.2rem">Giảng viên</div>
+    <p class="ld-auth-sub">Đăng nhập bằng email GV.</p>
+    <div class="ld-field"><label class="ld-label">Email</label><input class="ld-input" id="tEmail" type="email" placeholder="you@dnu.edu.vn"></div>
+    <div class="ld-field"><label class="ld-label">Mật khẩu</label><input class="ld-input" id="tPw" type="password" placeholder="••••••••"></div>
+    <button class="ld-btn ld-btn-primary" id="tSubmit">Đăng nhập GV</button>
+    <div style="text-align:center;margin-top:12px">
+      <a href="#" id="tClose" style="font-size:12.5px;color:var(--grey-600);text-decoration:none">Huỷ</a>
+    </div>
+  </div>
+</div>
+
+<script src="ld-common.js"></script>
+<script>
+if (typeof LD === 'undefined') {
+  document.body.innerHTML = '<div style="max-width:560px;margin:80px auto;padding:30px;border:2px solid #C8102E;border-radius:14px;font-family:sans-serif"><h2>⚠️ Không tải được ld-common.js</h2><p>File <b>ld-common.js</b> và <b>ld-theme.css</b> phải nằm cùng thư mục với file HTML này trên GitHub Pages.</p></div>';
+  throw new Error('ld-common.js not loaded');
+}
+
+// đã đăng nhập rồi thì vào thẳng
+(function () {
+  var s = LD.session.get();
+  if (s && s.user && s.user.role) location.href = s.user.role === 'Teacher' ? LD.TEACHER_HOME : LD.STUDENT_HOME;
+})();
+
+function togglePw(input, btn) {
+  btn.onclick = function () {
+    var showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    btn.textContent = showing ? 'Hiện' : 'Ẩn';
+  };
+}
+togglePw(document.getElementById('pw'), document.getElementById('pwToggle'));
+
+var submitBtn = document.getElementById('submit');
+document.getElementById('form').onsubmit = function (e) {
+  e.preventDefault();
+  var id = document.getElementById('idInput').value.trim();
+  var pass = document.getElementById('pw').value;
+  if (!id || !pass) { LD.toast('Nhập đầy đủ thông tin.', 'err'); return; }
+  submitBtn.disabled = true; var orig = submitBtn.textContent; submitBtn.innerHTML = '<span class="ld-spin"></span>';
+  LD.api('auth.login', { studentId: id, password: pass }).then(function (res) {
+    if (res && res.success) {
+      LD.session.set(res.sessionToken, res.user);
+      location.href = res.user.role === 'Teacher' ? LD.TEACHER_HOME : LD.STUDENT_HOME;
+    } else {
+      LD.toast((res && res.error) || 'Đăng nhập thất bại', 'err');
+      submitBtn.disabled = false; submitBtn.textContent = orig;
+    }
+  }).catch(function () {
+    LD.toast('Không kết nối được máy chủ.', 'err');
+    submitBtn.disabled = false; submitBtn.textContent = orig;
+  });
+};
+
+// teacher modal
+var tm = document.getElementById('teacherModal');
+document.getElementById('teacherAccess').onclick = function () { tm.classList.add('show'); };
+document.getElementById('tClose').onclick = function (e) { e.preventDefault(); tm.classList.remove('show'); };
+var tSubmit = document.getElementById('tSubmit');
+tSubmit.onclick = function () {
+  var email = document.getElementById('tEmail').value.trim();
+  var pass = document.getElementById('tPw').value;
+  if (!email || !pass) { LD.toast('Nhập email và mật khẩu.', 'err'); return; }
+  tSubmit.disabled = true; var orig = tSubmit.textContent; tSubmit.innerHTML = '<span class="ld-spin"></span>';
+  LD.api('auth.teacherLogin', { email: email, password: pass }).then(function (res) {
+    if (res && res.success) { LD.session.set(res.sessionToken, res.user); location.href = LD.TEACHER_HOME; }
+    else { LD.toast((res && res.error) || 'Đăng nhập thất bại', 'err'); tSubmit.disabled = false; tSubmit.textContent = orig; }
+  }).catch(function () { LD.toast('Không kết nối được máy chủ.', 'err'); tSubmit.disabled = false; tSubmit.textContent = orig; });
+};
+
+// forgot password
+document.getElementById('forgot').onclick = function (e) {
+  e.preventDefault();
+  var email = prompt('Nhập email đã đăng ký để nhận mã khôi phục:');
+  if (!email) return;
+  LD.toast('Đang gửi mã…');
+  LD.api('auth.forgotPassword', { email: email.trim() }).then(function (res) {
+    if (!res || !res.success) { LD.toast((res && res.error) || 'Không gửi được.', 'err', 4000); return; }
+    var code = prompt('Nhập mã 6 số vừa nhận (email hoặc GV cấp):');
+    if (!code) return;
+    var newPass = prompt('Nhập mật khẩu mới:');
+    if (!newPass) return;
+    LD.api('auth.resetPassword', { email: email.trim(), code: code.trim(), newPassword: newPass }).then(function (r2) {
+      if (r2 && r2.success) LD.toast('Đổi mật khẩu thành công — đăng nhập lại nhé.', 'ok', 4000);
+      else LD.toast((r2 && r2.error) || 'Không đổi được mật khẩu.', 'err', 4000);
+    });
+  });
+};
+</script>
+</body>
+</html>

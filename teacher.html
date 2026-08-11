@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GV Dashboard · LisDictation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ld-theme.css">
+<style>
+.topbar{background:linear-gradient(90deg,var(--black) 0%,var(--navy2) 45%,var(--red-dark) 100%);min-height:56px;display:flex;align-items:center;padding:8px 20px;gap:12px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--gold);flex-wrap:wrap}
+.topbar-brand{font-family:var(--font-display);color:var(--white);font-size:1rem;white-space:nowrap}
+.topbar-brand em{color:var(--red-mid);font-style:normal}
+.topbar-app{font-size:13px;color:rgba(255,255,255,.55)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.topbar-user{font-size:12.5px;color:var(--gold-light);font-weight:600}
+.topbar-btn{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,.85);font-size:12.5px;cursor:pointer;font-family:var(--font-body);font-weight:600}
+.topbar-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+.wrap{width:100%;max-width:1280px;margin:0 auto;padding:22px 20px 60px}
+.tab-strip{display:flex;gap:4px;background:var(--grey-100);border-radius:12px;padding:4px;margin-bottom:18px;max-width:420px}
+.tab-strip-btn{flex:1;padding:9px;border:none;background:transparent;border-radius:9px;font-family:var(--font-body);font-size:13px;font-weight:700;color:var(--grey-600);cursor:pointer}
+.tab-strip-btn.active{background:#fff;color:var(--red);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.card{background:var(--white);border-radius:var(--radius-lg);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--grey-200);margin-bottom:16px}
+.card-title{font-family:var(--font-display);font-size:1.05rem;color:var(--black);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer}
+.btn-primary{background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff}
+.btn-secondary{background:var(--grey-100);color:var(--grey-800);border:1.5px solid var(--grey-200)}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.form-input,.form-select{padding:9px 12px;border:1.5px solid var(--grey-200);border-radius:var(--radius);font-family:var(--font-body);font-size:13.5px;outline:none}
+.form-input:focus,.form-select:focus{border-color:var(--red)}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--grey-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+table.ld-table{width:100%;border-collapse:collapse;font-size:13px}
+table.ld-table th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--grey-600);letter-spacing:.05em;text-transform:uppercase;border-bottom:1.5px solid var(--grey-200);cursor:pointer;white-space:nowrap;user-select:none}
+table.ld-table th:hover{color:var(--red)}
+table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font-size:13px;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-grey{background:var(--grey-100);color:var(--grey-600)}
+.badge-gold{background:#fff3cc;color:#7a5800;font-family:var(--font-mono)}
+.class-card{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--grey-100)}
+.class-card:last-child{border-bottom:none}
+.hidden{display:none!important}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-brand">Language <em>Hub</em></div>
+  <div class="topbar-app">🎓 GV Dashboard · LisDictation</div>
+  <div class="topbar-right">
+    <span class="topbar-user" id="tb-user"></span>
+    <button class="topbar-btn" onclick="LD.session.logout()">Đăng xuất</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tab-strip">
+    <button class="tab-strip-btn active" id="tab-btn-classes" onclick="switchTab('classes')">🏫 Lớp học</button>
+    <button class="tab-strip-btn" id="tab-btn-sessions" onclick="switchTab('sessions')">📊 Sessions</button>
+  </div>
+
+  <!-- ═══ CLASSES ═══ -->
+  <div id="tab-classes">
+    <div class="card">
+      <div class="card-title">➕ Tạo lớp mới</div>
+      <div class="form-row">
+        <div><label class="form-label">Tên lớp</label><input class="form-input" id="new-class-name" placeholder="vd: DH21NA1"></div>
+        <div><label class="form-label">Năm học</label><input class="form-input" id="new-class-year" placeholder="2025-2026" style="width:110px"></div>
+        <div><label class="form-label">Học kỳ</label><input class="form-input" id="new-class-semester" placeholder="HK1" style="width:80px"></div>
+        <button class="btn btn-primary" onclick="createClass()">Tạo lớp</button>
+      </div>
+      <div id="new-class-result" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏫 Danh sách lớp <button class="btn btn-secondary btn-sm" onclick="loadClasses()">🔄 Làm mới</button></div>
+      <div id="classes-list">Đang tải…</div>
+    </div>
+
+    <div class="card hidden" id="roster-card">
+      <div class="card-title"><span id="roster-title">Sinh viên trong lớp</span><button class="btn btn-secondary btn-sm" onclick="document.getElementById('roster-card').classList.add('hidden')">✕ Đóng</button></div>
+      <div style="overflow:auto">
+        <table class="ld-table"><thead><tr><th>Mã SV</th><th>Họ tên</th><th>Email</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody id="roster-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SESSIONS DASHBOARD ═══ -->
+  <div id="tab-sessions" class="hidden">
+    <div class="card">
+      <div class="toolbar">
+        <select class="form-select" id="sess-filter-class" onchange="loadSessions()"><option value="">Tất cả lớp</option></select>
+        <input type="date" class="form-input" id="sess-filter-from" onchange="loadSessions()">
+        <span style="font-size:12.5px;color:var(--grey-600)">đến</span>
+        <input type="date" class="form-input" id="sess-filter-to" onchange="loadSessions()">
+        <input class="form-input" id="sess-search" placeholder="🔍 Tìm tên bài / tên SV…" style="width:200px" oninput="renderSessionsTable()">
+        <div style="flex:1"></div>
+        <button class="btn btn-secondary btn-sm" onclick="loadSessions()">🔄 Làm mới</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Xuất CSV</button>
+      </div>
+      <div style="overflow:auto">
+        <table class="ld-table">
+          <thead><tr>
+            <th onclick="sessSort('bookTestPart')">Tên bài</th>
+            <th onclick="sessSort('studentName')">Tên SV</th>
+            <th onclick="sessSort('className')">Lớp</th>
+            <th onclick="sessSort('startTime')">Ngày làm</th>
+            <th onclick="sessSort('durationMin')">Duration</th>
+            <th onclick="sessSort('quizScore')">Quiz</th>
+            <th onclick="sessSort('gapFillScore')">Gap-fill</th>
+            <th onclick="sessSort('dictationAccuracy')">Dictation</th>
+            <th onclick="sessSort('totalScore')">Tổng điểm</th>
+          </tr></thead>
+          <tbody id="sessions-tbody"></tbody>
+        </table>
+      </div>
+      <div id="sess-count" style="font-size:12px;color:var(--grey-400);margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
+<script src="ld-common.js"></script>
+<script>
+var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1 };
+
+(function init() {
+  var s = LD.session.require('Teacher');
+  if (!s) return;
+  document.getElementById('tb-user').textContent = '👤 ' + s.user.fullName;
+  loadClasses();
+})();
+
+function switchTab(tab) {
+  document.getElementById('tab-classes').classList.toggle('hidden', tab !== 'classes');
+  document.getElementById('tab-sessions').classList.toggle('hidden', tab !== 'sessions');
+  document.getElementById('tab-btn-classes').classList.toggle('active', tab === 'classes');
+  document.getElementById('tab-btn-sessions').classList.toggle('active', tab === 'sessions');
+  if (tab === 'sessions' && !App.sessions.length) loadSessions();
+}
+
+// ── CLASSES ──
+async function createClass() {
+  var name = document.getElementById('new-class-name').value.trim();
+  if (!name) { LD.toast('Nhập tên lớp.', 'err'); return; }
+  var r = await LD.api('teacher.createClass', {
+    className: name, academicYear: document.getElementById('new-class-year').value.trim(), semester: document.getElementById('new-class-semester').value.trim()
+  });
+  if (!r.success) { LD.toast(r.error || 'Không tạo được lớp', 'err'); return; }
+  document.getElementById('new-class-result').innerHTML = '✅ Đã tạo lớp <b>' + LD.esc(r.className) + '</b> — mã lớp: <span class="badge badge-gold">' + r.classId + '</span> (gửi mã này cho sinh viên để đăng ký)';
+  document.getElementById('new-class-name').value = ''; document.getElementById('new-class-year').value = ''; document.getElementById('new-class-semester').value = '';
+  loadClasses();
+}
+async function loadClasses() {
+  var el = document.getElementById('classes-list');
+  el.innerHTML = '<span class="spinner"></span> Đang tải…';
+  var r = await LD.api('teacher.getClasses', {});
+  if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Lỗi: ' + LD.esc(r.error) + '</span>'; return; }
+  App.classes = r.data;
+  var filterSel = document.getElementById('sess-filter-class');
+  filterSel.innerHTML = '<option value="">Tất cả lớp</option>' + r.data.map(function (c) { return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>'; }).join('');
+  el.innerHTML = r.data.length ? r.data.map(function (c) {
+    return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-gold">' + c.ClassID + '</span> ' +
+      '<span class="badge ' + (c.Status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + c.Status + '</span>' +
+      '<div style="font-size:11.5px;color:var(--grey-600);margin-top:2px">' + (c.AcademicYear || '') + ' ' + (c.Semester || '') + ' · ' + c.StudentCount + ' SV</div></div>' +
+      '<div style="display:flex;gap:6px">' +
+      '<button class="btn btn-secondary btn-sm" onclick="viewRoster(\'' + c.ClassID + '\',\'' + LD.esc(c.ClassName).replace(/'/g, "\\'") + '\')">👥 Roster</button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="toggleClassStatus(\'' + c.ClassID + '\',\'' + c.Status + '\')">' + (c.Status === 'Active' ? '🔒 Khoá' : '🔓 Mở lại') + '</button>' +
+      '</div></div>';
+  }).join('') : '<p style="color:var(--grey-600);font-size:13px">Chưa có lớp nào.</p>';
+}
+async function toggleClassStatus(classId, curStatus) {
+  var newStatus = curStatus === 'Active' ? 'Archived' : 'Active';
+  var r = await LD.api('teacher.setClassStatus', { classId: classId, status: newStatus });
+  if (r.success) loadClasses(); else LD.toast(r.error || 'Lỗi', 'err');
+}
+async function viewRoster(classId, className) {
+  document.getElementById('roster-title').textContent = '👥 Sinh viên lớp ' + className;
+  document.getElementById('roster-card').classList.remove('hidden');
+  document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5">Đang tải…</td></tr>';
+  var r = await LD.api('teacher.getRoster', { classId: classId });
+  if (!r.success) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--red)">Lỗi</td></tr>'; return; }
+  document.getElementById('roster-tbody').innerHTML = r.data.length ? r.data.map(function (s) {
+    return '<tr><td>' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td><td>' + LD.esc(s.email) + '</td>' +
+      '<td><span class="badge ' + (s.status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + s.status + '</span></td>' +
+      '<td><button class="btn btn-secondary btn-sm" onclick="toggleStudentStatus(\'' + s.studentId + '\',\'' + s.status + '\')">' + (s.status === 'Active' ? 'Khoá' : 'Mở lại') + '</button></td></tr>';
+  }).join('') : '<tr><td colspan="5" style="color:var(--grey-600)">Lớp chưa có SV nào.</td></tr>';
+}
+async function toggleStudentStatus(studentId, curStatus) {
+  var r = await LD.api('teacher.archiveStudent', { studentId: studentId, archived: curStatus === 'Active' });
+  if (r.success) { LD.toast('Đã cập nhật', 'ok'); loadClasses(); } else LD.toast(r.error || 'Lỗi', 'err');
+}
+
+// ── SESSIONS DASHBOARD ──
+async function loadSessions() {
+  var tbody = document.getElementById('sessions-tbody');
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--grey-400)">Đang tải…</td></tr>';
+  var p = {
+    classId: document.getElementById('sess-filter-class').value,
+    fromDate: document.getElementById('sess-filter-from').value,
+    toDate: document.getElementById('sess-filter-to').value
+  };
+  var r = await LD.api('teacher.getAllSessions', p);
+  if (!r.success) { tbody.innerHTML = '<tr><td colspan="9" style="color:var(--red)">Lỗi: ' + LD.esc(r.error) + '</td></tr>'; return; }
+  App.sessions = r.data;
+  renderSessionsTable();
+}
+function renderSessionsTable() {
+  var q = (document.getElementById('sess-search').value || '').toLowerCase();
+  var rows = App.sessions.filter(function (r) {
+    return !q || String(r.bookTestPart || '').toLowerCase().indexOf(q) >= 0 || String(r.studentName || '').toLowerCase().indexOf(q) >= 0;
+  });
+  rows.sort(function (a, b) { var x = a[App.sessSortKey], y = b[App.sessSortKey]; return x > y ? App.sessSortDir : x < y ? -App.sessSortDir : 0; });
+  document.getElementById('sessions-tbody').innerHTML = rows.length ? rows.map(function (r) {
+    return '<tr><td>' + LD.esc(r.bookTestPart || '—') + '</td><td>' + LD.esc(r.studentName) + '</td><td>' + LD.esc(r.className) + '</td>' +
+      '<td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
+      '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
+      '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td></tr>';
+  }).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--grey-400)">Không có session nào.</td></tr>';
+  document.getElementById('sess-count').textContent = rows.length + ' session';
+}
+function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSortDir : -1; App.sessSortKey = key; renderSessionsTable(); }
+async function exportCsv() {
+  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value };
+  var r = await LD.api('teacher.exportSessions', p);
+  if (!r.success) { LD.toast(r.error || 'Lỗi xuất CSV', 'err'); return; }
+  var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
+}
+</script>
+</body>
+</html>

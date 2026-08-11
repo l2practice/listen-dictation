@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LisDictation — Language Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ld-theme.css">
+<!-- ⚠️ cefr-dict.js: COPY NGUYÊN VĂN từ omni-practice repo (ReadWise) sang đây, không đổi tên.
+     File này cung cấp hàm global cefrOf(word) → {level, pos, lemma}. Không có file này,
+     % CEFR ở màn Analysis sẽ hiển thị "Unknown" cho mọi từ (app vẫn chạy được, không crash). -->
+<script src="cefr-dict.js" onerror="console.warn('cefr-dict.js chưa có — % CEFR sẽ không chính xác')"></script>
+<style>
+.screen{display:none;flex-direction:column;min-height:100vh}
+.screen.active{display:flex}
+.topbar{background:linear-gradient(90deg,var(--black) 0%,var(--navy2) 45%,var(--red-dark) 100%);min-height:56px;display:flex;align-items:center;padding:8px 20px;gap:12px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--gold);flex-wrap:wrap}
+.topbar-brand{font-family:var(--font-display);color:var(--white);font-size:1rem;white-space:nowrap}
+.topbar-brand em{color:var(--red-mid);font-style:normal}
+.topbar-app{font-size:13px;color:rgba(255,255,255,.55)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.topbar-user{font-size:12.5px;color:var(--gold-light);font-weight:600}
+.topbar-class{font-size:11.5px;color:rgba(255,255,255,.55)}
+.topbar-btn{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,.85);font-size:12.5px;cursor:pointer;font-family:var(--font-body);font-weight:600}
+.topbar-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+.wrap{width:100%;max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+.card{background:var(--white);border-radius:var(--radius-lg);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--grey-200);margin-bottom:16px}
+.card-title{font-family:var(--font-display);font-size:1.05rem;color:var(--black);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer;transition:var(--transition);white-space:nowrap}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+.btn-primary{background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff}
+.btn-secondary{background:var(--grey-100);color:var(--grey-800);border:1.5px solid var(--grey-200)}
+.btn-teal{background:linear-gradient(135deg,var(--teal),#0a6357);color:#fff}
+.btn-gold{background:linear-gradient(135deg,var(--gold),#8a6d10);color:#fff}
+.btn-green{background:linear-gradient(135deg,var(--green),#0a6357);color:#fff}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn-full{width:100%}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--grey-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.form-input,.form-select,.form-textarea{width:100%;padding:10px 13px;border:1.5px solid var(--grey-200);border-radius:var(--radius);font-family:var(--font-body);font-size:14px;color:var(--black);background:var(--white);outline:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,16,46,.08)}
+.form-row-3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+.form-group{margin-bottom:16px}
+@media(max-width:640px){.form-row-3{grid-template-columns:1fr}}
+.setup-grid{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+@media(max-width:960px){.setup-grid{grid-template-columns:1fr}}
+.split-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;margin-top:10px}
+.split-item{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:8px;background:var(--grey-100);font-size:13px;line-height:1.5}
+.split-item .sno{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.pct-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.pct-bar-outer{flex:1;height:10px;background:var(--grey-100);border-radius:999px;overflow:hidden}
+.pct-bar-fill{height:100%;border-radius:999px}
+.lv-A1{background:#0EA5E9}.lv-A2{background:#10B981}.lv-B1{background:#3B82F6}.lv-B2{background:#8B5CF6}.lv-C1{background:#EC4899}.lv-C2{background:#DC2626}
+.colloc-card{border-left:3px solid var(--gold);background:var(--grey-100);border-radius:8px;padding:9px 13px;margin-bottom:8px}
+.colloc-en{font-weight:700;color:var(--navy2);font-size:13.5px}
+.colloc-vi{font-size:12.5px;color:var(--grey-600);margin-top:2px}
+.q-card{background:var(--white);border:1.5px solid var(--grey-200);border-radius:12px;padding:16px;margin-bottom:12px}
+.q-card.answered{border-color:var(--green)}
+.q-tag{display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 9px;border-radius:100px;margin-bottom:8px}
+.q-tag.content{background:var(--red-light);color:var(--red)}
+.q-tag.vocab{background:#E0F2EF;color:var(--teal)}
+.opt-label{display:block;padding:9px 12px;border:1.5px solid var(--grey-200);border-radius:9px;margin-bottom:6px;cursor:pointer;font-size:13.5px}
+.opt-label:hover{border-color:var(--red)}
+.opt-label.sel{border-color:var(--red);background:var(--red-light);font-weight:700}
+.opt-label input{margin-right:8px}
+.gap-sentence{background:var(--white);border-radius:12px;padding:14px 18px;margin-bottom:10px;border-left:4px solid var(--blue);font-size:14.5px;line-height:2}
+.gap-blank{display:inline-block;min-width:90px;padding:2px 8px;border:none;border-bottom:2px solid var(--red);background:var(--red-light);border-radius:4px;font-family:var(--font-mono);font-size:13.5px;text-align:center;margin:0 2px}
+.sentence-block{background:#fff;border-radius:13px;padding:16px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(26,35,126,.07);border-left:4px solid #c8d4ee}
+.sentence-block.active-block{border-left-color:var(--gold);box-shadow:0 4px 18px rgba(197,160,40,.2)}
+.sentence-block.completed{border-left-color:var(--green)}
+.sb-label{font-size:11px;font-weight:700;color:#9aaac8;letter-spacing:.5px;margin-bottom:7px;text-transform:uppercase}
+.sb-result{min-height:22px;line-height:2.1;word-spacing:3px;margin-bottom:7px}
+.sb-result .w-correct{color:var(--green);font-weight:700}
+.sb-result .w-wrong{color:var(--red);text-decoration:line-through;font-weight:700}
+.sb-result .w-missing{color:#e67e22;font-weight:800}
+.sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:14px}
+.sb-input:focus{border-color:var(--blue)}
+.sb-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.progress-outer{flex:1;max-width:340px;background:var(--grey-200);border-radius:999px;height:8px}
+.progress-fill{height:8px;background:linear-gradient(90deg,var(--teal),var(--green));border-radius:999px;transition:width .4s}
+.result-card{background:#fff;border-radius:var(--radius-lg);padding:36px;max-width:520px;width:100%;box-shadow:var(--shadow-md);text-align:center;border-top:5px solid var(--gold);margin:0 auto}
+.big-score{font-size:3.4rem;font-weight:900;background:linear-gradient(135deg,var(--red),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:10px 0;font-family:var(--font-display)}
+.result-stats div{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--grey-200);font-size:14px}
+table.ld-table{width:100%;border-collapse:collapse;font-size:13px}
+table.ld-table th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--grey-600);letter-spacing:.05em;text-transform:uppercase;border-bottom:1.5px solid var(--grey-200);cursor:pointer;white-space:nowrap}
+table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font-size:13px}
+.hist-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
+.badge-gold{background:#fff3cc;color:#7a5800}
+.hidden{display:none!important}
+.spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ SETUP ═══════════ -->
+<div id="screen-setup" class="screen active">
+  <div class="topbar">
+    <div class="topbar-brand">Language <em>Hub</em></div>
+    <div class="topbar-app">🎧 LisDictation</div>
+    <div class="topbar-right">
+      <span class="topbar-user" id="tb-user-setup"></span>
+      <span class="topbar-class" id="tb-class-setup"></span>
+      <button class="topbar-btn" onclick="goHistory()">📊 Lịch sử</button>
+      <button class="topbar-btn" onclick="LD.session.logout()">Đăng xuất</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="card" style="background:linear-gradient(90deg,var(--black) 0%,var(--navy2) 50%,var(--red-dark) 100%);border:none">
+      <h1 style="font-family:var(--font-display);color:#fff;font-size:1.4rem">🎧 Lis<em style="color:var(--red-mid);font-style:normal">Dictation</em></h1>
+      <p style="color:rgba(255,255,255,.55);font-size:12.5px;margin-top:4px">Listen · Analyze · Study · Quiz · Gap-fill · Dictation</p>
+    </div>
+
+    <div class="setup-grid">
+      <div>
+        <div class="card">
+          <div class="card-title">📂 File âm thanh</div>
+          <input type="file" id="audio-file-input" accept="audio/*" class="form-input" onchange="handleAudioFile(event)">
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+            <input type="text" class="form-input" id="drive-file-id" placeholder="Hoặc dán Google Drive File ID" style="font-size:12px;font-family:var(--font-mono)">
+            <button class="btn btn-secondary btn-sm" onclick="loadDriveAudio()">Tải</button>
+          </div>
+          <div id="audio-status" style="font-size:12px;color:var(--grey-600);margin-top:6px"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span>📝 Script Listening</span><span style="font-size:11px;color:var(--grey-400);font-weight:400">app tự tách câu — không dùng AI</span></div>
+          <textarea id="raw-script-input" class="form-textarea" rows="10" style="min-height:280px;line-height:1.7" placeholder="Dán script đầy đủ vào đây…" oninput="onScriptInput()"></textarea>
+          <div id="script-word-count" style="font-size:12px;color:var(--grey-600);margin-top:6px"></div>
+          <button class="btn btn-secondary" id="btn-split" onclick="doSplit()" style="margin-top:10px" disabled>✂️ Tách câu</button>
+          <div id="split-preview" class="hidden">
+            <div class="split-list" id="split-list"></div>
+          </div>
+        </div>
+
+        <div class="card" id="analyze-card" style="display:none">
+          <div class="card-title">🤖 Phân tích script <span class="badge badge-gold">Bắt buộc</span></div>
+          <p style="font-size:12.5px;color:var(--grey-600);margin-bottom:10px">Sửa lỗi chính tả + trích collocation hay. Đây là 1 trong 2 chỗ duy nhất app dùng AI.</p>
+          <div id="ld-key-widget" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:10px 13px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:.72rem;font-weight:700;color:#555;white-space:nowrap">🔑 Gemini Key</span>
+              <input type="password" id="ld-gemini-key" style="flex:1;padding:6px 10px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:.82rem;font-family:monospace;outline:none" placeholder="AIza… (free key từ aistudio.google.com)" oninput="onLdKeyInput(this.value)">
+              <span id="ld-key-status" style="font-size:.68rem;font-weight:700;white-space:nowrap;color:#888">chưa có key</span>
+              <a href="https://aistudio.google.com/apikey" target="_blank" style="font-size:.68rem;color:#1a3a8c;font-weight:700;white-space:nowrap">Lấy key →</a>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-analyze" onclick="runAnalyzeScript()">🤖 Phân tích script</button>
+          <div id="analyze-status" style="font-size:12.5px;color:var(--grey-600);margin-top:8px"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-title">⚙️ Thông tin bài</div>
+          <div class="form-group">
+            <label class="form-label">📚 Sách · 🔢 Test · 🎯 Part</label>
+            <div class="form-row-3">
+              <input class="form-input" id="book-input" placeholder="Sách (vd Cam18)">
+              <input class="form-input" id="test-input" placeholder="Test">
+              <input class="form-input" id="part-input" placeholder="Part">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Số lần replay tối đa / câu</label>
+            <select class="form-select" id="max-replays">
+              <option value="1">1 lần</option><option value="2" selected>2 lần</option>
+              <option value="3">3 lần</option><option value="999">Không giới hạn</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" id="btn-start-session" onclick="startSession()" style="padding:14px;font-size:15px;margin-bottom:16px" disabled>
+          🚀 Bắt đầu (cần phân tích script trước)
+        </button>
+        <div class="card" style="cursor:pointer" onclick="goHistory()">
+          <div class="card-title"><span>📊 Lịch sử của tôi</span><span style="font-size:11px;color:var(--red);font-weight:700">Xem tất cả →</span></div>
+          <div id="setup-inprogress-hint" style="font-size:12.5px;color:var(--grey-600)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ANALYSIS ═══════════ -->
+<div id="screen-analysis" class="screen">
+  <div class="topbar">
+    <div class="topbar-brand">Language <em>Hub</em></div>
+    <div class="topbar-app">📊 Phân tích CEFR & Collocation</div>
+    <div class="topbar-right"><span class="topbar-user" id="tb-user-analysis"></span></div>
+  </div>
+  <div class="wrap">
+    <div class="setup-grid">
+      <div class="card">
+        <div class="card-title">📊 Phân bố CEFR <span style="font-size:11px;color:var(--grey-400);font-weight:400">rule-based, 0 AI</span></div>
+        <div id="cefr-dist"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔗 Collocation hay trong bài</div>
+        <div id="colloc-list"></div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="goStudy()" style="padding:14px;font-size:15px">Tiếp tục → Học script</button>
+  </div>
+</div>
+
+<!-- ═══════════ STUDY ═══════════ -->
+<div id="screen-study" class="screen">
+  <div class="topbar">
+    <div class="topbar-brand">Language <em>Hub</em></div>
+    <div class="topbar-app">📖 Học script</div>
+    <div class="topbar-right"><span class="topbar-user" id="tb-user-study"></span>
+      <button class="btn btn-primary btn-sm" onclick="goQuiz()">Tiếp tục → Quiz</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <div class="card-title">📄 Script gốc (đã sửa chính tả)</div>
+      <div id="study-script" style="line-height:1.9;color:#3a3a50;white-space:pre-wrap"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">✍️ Tự dịch (luyện tập cá nhân, không chấm điểm)</div>
+      <textarea class="form-textarea" id="study-translate" rows="6" placeholder="Viết bản dịch tiếng Việt của bạn ở đây để tự luyện — không gửi lên server, không AI chấm."></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ QUIZ ═══════════ -->
+<div id="screen-quiz" class="screen">
+  <div class="topbar">
+    <div class="topbar-brand">Language <em>Hub</em></div>
+    <div class="topbar-app">📝 Quiz 15 câu</div>
+    <div class="topbar-right"><span id="quiz-progress" style="color:#fff;font-size:12.5px"></span></div>
+  </div>
+  <div class="wrap">
+    <div id="quiz-loading" class="card" style="text-align:center;padding:40px"><span class="spinner"></span> Đang tạo quiz bằng AI…</div>
+    <div id="quiz-body"></div>
+    <div style="position:sticky;bottom:0;background:var(--off-white);padding:14px 0;text-align:center">
+      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Thoát giữa chừng sẽ mất trắng tiến độ Quiz — phải làm đủ 15/15 câu mới lưu được.</div>
+      <button class="btn btn-primary" id="btn-submit-quiz" onclick="submitQuiz()" disabled style="padding:12px 30px">✅ Nộp Quiz</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ GAP-FILL ═══════════ -->
+<div id="screen-gapfill" class="screen">
+  <div class="topbar">
+    <div class="topbar-brand">Language <em>Hub</em></div>
+    <div class="topbar-app">🧩 Gap-fill</div>
+  </div>
+  <div class="wrap">
+    <div id="gapfill-body"></div>
+    <div style="text-align:center;padding:14px 0">
+      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Thoát giữa chừng sẽ mất trắng tiến độ — phải điền hết mới lưu được.</div>
+      <button class="btn btn-primary" id="btn-submit-gapfill" onclick="submitGapFill()" disabled style="padding:12px 30px">✅ Nộp Gap-fill</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ DICTATION ═══════════ -->
+<div id="screen-dictation" class="screen">
+  <div class="topbar">
+    <div class="topbar-brand">Language <em>Hub</em></div>
+    <div class="topbar-app">🎧 Dictation</div>
+    <div class="topbar-right">
+      <div class="progress-outer"><div class="progress-fill" id="dict-progress-fill" style="width:0%"></div></div>
+      <span id="dict-progress-label" style="color:#fff;font-size:12px"></span>
+      <button class="btn btn-secondary btn-sm" onclick="saveDictationAndExit()">💾 Lưu & thoát</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <div style="margin-bottom:12px" id="dict-audio-row">
+      <audio id="dict-audio" controls style="width:100%"></audio>
+    </div>
+    <div id="dictation-sentences"></div>
+    <button class="btn btn-primary btn-full" id="btn-finish-dictation" onclick="finishDictation()" style="padding:14px;font-size:15px;display:none">🏁 Nộp bài</button>
+  </div>
+</div>
+
+<!-- ═══════════ RESULT ═══════════ -->
+<div id="screen-result" class="screen" style="align-items:center;justify-content:flex-start;padding-top:40px">
+  <div class="result-card">
+    <h2 style="font-family:var(--font-display);color:var(--navy2)">🎉 Hoàn thành!</h2>
+    <div class="big-score" id="result-total">—</div>
+    <div class="result-stats">
+      <div><span>Quiz</span><span id="result-quiz">—</span></div>
+      <div><span>Gap-fill</span><span id="result-gapfill">—</span></div>
+      <div><span>Dictation accuracy</span><span id="result-dictation">—</span></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
+      <button class="btn btn-secondary" onclick="goHistory()">📊 Lịch sử</button>
+      <button class="btn btn-primary" onclick="location.href='student.html'">🏠 Bài mới</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ HISTORY ═══════════ -->
+<div id="screen-history" class="screen">
+  <div class="topbar">
+    <div class="topbar-brand">Language <em>Hub</em></div>
+    <div class="topbar-app">📊 Lịch sử của tôi</div>
+    <div class="topbar-right"><button class="topbar-btn" onclick="showScreen('screen-setup')">← Bài mới</button></div>
+  </div>
+  <div class="wrap">
+    <div class="card" id="inprogress-card" style="display:none">
+      <div class="card-title">📌 Đang dang dở <span style="font-size:11px;color:var(--grey-400);font-weight:400">chỉ Dictation mới lưu được dở dang</span></div>
+      <div id="inprogress-list"></div>
+    </div>
+    <div class="card">
+      <div class="hist-toolbar">
+        <strong style="font-size:15px;color:var(--navy)">✅ Đã hoàn thành</strong>
+        <div style="flex:1"></div>
+        <input id="hist-search" oninput="renderHistoryTable()" placeholder="🔍 Tìm tên bài…" class="form-input" style="width:180px;padding:6px 10px">
+        <button class="btn btn-secondary btn-sm" onclick="loadHistory()">🔄 Làm mới</button>
+      </div>
+      <div style="overflow:auto">
+        <table class="ld-table">
+          <thead><tr>
+            <th onclick="histSort('bookTestPart')">Tên bài</th>
+            <th onclick="histSort('startTime')">Ngày làm</th>
+            <th onclick="histSort('durationMin')">Thời gian</th>
+            <th onclick="histSort('quizScore')">Quiz</th>
+            <th onclick="histSort('gapFillScore')">Gap-fill</th>
+            <th onclick="histSort('dictationAccuracy')">Dictation</th>
+            <th onclick="histSort('totalScore')">Tổng điểm</th>
+          </tr></thead>
+          <tbody id="history-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="ld-common.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+var LD_GEMINI_KEY = 'ld_gemini_key';
+var App = {
+  session: null, sessionId: null,
+  bookTestPart: '', maxReplays: 2,
+  rawScript: '', sentences: [], correctedSentences: [],
+  cefr: null, collocations: [],
+  audioBlobUrl: null,
+  quiz: [], quizAnswers: [],
+  gapfill: [], gapfillAnswers: [],
+  dictationIdx: 0, dictationAnswers: [], dictationReplaysUsed: [],
+  histRows: [], histSortKey: 'startTime', histSortDir: -1
+};
+
+(function init() {
+  var s = LD.session.require();
+  if (!s) return;
+  App.session = s;
+  ['tb-user-setup', 'tb-user-analysis', 'tb-user-study'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.textContent = '👤 ' + s.user.fullName;
+  });
+  var cls = document.getElementById('tb-class-setup'); if (cls) cls.textContent = '· ' + (s.user.className || '');
+  var k = localStorage.getItem(LD_GEMINI_KEY);
+  if (k) document.getElementById('ld-gemini-key').value = k;
+  updateLdKeyStatus();
+  checkInProgressHint();
+
+  // Resume từ History (?resume=SESSIONID) — chỉ Dictation mới resumable
+  var params = new URLSearchParams(location.search);
+  var resumeId = params.get('resume');
+  if (resumeId) resumeSession(resumeId);
+})();
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function (s) { s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+function goHistory() { showScreen('screen-history'); loadHistory(); loadInProgress(); }
+
+// ═══════════════════════════════════════════════════════════
+// GEMINI KEY
+// ═══════════════════════════════════════════════════════════
+function onLdKeyInput(v) { v = v.trim(); v ? localStorage.setItem(LD_GEMINI_KEY, v) : localStorage.removeItem(LD_GEMINI_KEY); updateLdKeyStatus(); }
+function getLdKey() { return (document.getElementById('ld-gemini-key') && document.getElementById('ld-gemini-key').value.trim()) || localStorage.getItem(LD_GEMINI_KEY) || ''; }
+function updateLdKeyStatus() {
+  var el = document.getElementById('ld-key-status'); if (!el) return;
+  var k = getLdKey();
+  el.textContent = k ? '✅ đã lưu' : 'chưa có key';
+  el.style.color = k ? '#1a7a4a' : '#c00';
+}
+async function callGemini(prompt, maxTokens) {
+  var key = getLdKey();
+  if (!key) throw new Error('Cần nhập Gemini key (miễn phí tại aistudio.google.com)');
+  var models = ['gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+  var lastErr = null;
+  for (var i = 0; i < models.length; i++) {
+    try {
+      var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + key, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: .3, maxOutputTokens: Math.max(maxTokens || 2048, 256), responseMimeType: 'application/json' } })
+      });
+      if (resp.status === 429) { lastErr = new Error('Hết lượt dùng key (' + models[i] + ')'); continue; }
+      if (!resp.ok) { var j = await resp.json().catch(function () { return {}; }); lastErr = new Error((j.error && j.error.message) || ('HTTP ' + resp.status)); continue; }
+      var data = await resp.json();
+      var raw = (data.candidates && data.candidates[0] && data.candidates[0].content.parts[0].text) || '';
+      if (!raw) { lastErr = new Error('AI trả về rỗng'); continue; }
+      var s = raw.indexOf('{'), e = raw.lastIndexOf('}') + 1;
+      return JSON.parse(raw.slice(s, e));
+    } catch (err) { lastErr = err; }
+  }
+  throw lastErr || new Error('Tất cả model AI đều lỗi');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SETUP — rule-based sentence split (KHÔNG AI)
+// ═══════════════════════════════════════════════════════════
+function onScriptInput() {
+  App.rawScript = document.getElementById('raw-script-input').value;
+  var n = (App.rawScript.match(/\b[\w'-]+\b/g) || []).length;
+  document.getElementById('script-word-count').textContent = n + ' từ';
+  document.getElementById('btn-split').disabled = n < 10;
+}
+var ABBR = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sr', 'Jr', 'St', 'Mt', 'vs', 'etc', 'approx', 'No', 'pp', 'Fig', 'Co', 'Corp', 'Inc', 'Ltd', 'a.m', 'p.m', 'e.g', 'i.e'];
+function splitSentences(text) {
+  text = text.replace(/\r\n?/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!text) return [];
+  var work = text;
+  ABBR.forEach(function (a, idx) {
+    var re = new RegExp('\\b' + a.replace('.', '\\.') + '\\.', 'g');
+    work = work.replace(re, a.replace('.', '') + '§' + idx + '§');
+  });
+  var parts = work.match(/[^.!?]+[.!?]+(?=\s+[A-Z"“]|\s*$)|[^.!?]+$/g) || [work];
+  return parts.map(function (s) {
+    ABBR.forEach(function (a, idx) { s = s.split(a + '§' + idx + '§').join(a + '.'); });
+    return s.trim();
+  }).filter(Boolean);
+}
+function doSplit() {
+  App.sentences = splitSentences(App.rawScript);
+  if (!App.sentences.length) { LD.toast('Không tách được câu nào — kiểm tra lại script.', 'err'); return; }
+  var list = document.getElementById('split-list');
+  list.innerHTML = App.sentences.map(function (s, i) {
+    return '<div class="split-item"><span class="sno">' + (i + 1) + '</span><span>' + LD.esc(s) + '</span></div>';
+  }).join('');
+  document.getElementById('split-preview').classList.remove('hidden');
+  document.getElementById('analyze-card').style.display = 'block';
+}
+
+// audio
+function handleAudioFile(e) {
+  var f = e.target.files[0]; if (!f) return;
+  App.audioBlobUrl = URL.createObjectURL(f);
+  document.getElementById('audio-status').textContent = '✅ ' + f.name;
+}
+function loadDriveAudio() {
+  var id = document.getElementById('drive-file-id').value.trim();
+  if (!id) return;
+  App.audioBlobUrl = 'https://drive.google.com/uc?export=download&id=' + id;
+  document.getElementById('audio-status').textContent = '✅ Google Drive: ' + id;
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI CALL #1 — Phân tích script (spellcheck + collocation) — BẮT BUỘC
+// ═══════════════════════════════════════════════════════════
+async function runAnalyzeScript() {
+  if (!App.sentences.length) { LD.toast('Tách câu trước đã.', 'err'); return; }
+  var btn = document.getElementById('btn-analyze');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Đang phân tích…';
+  document.getElementById('analyze-status').textContent = '';
+  try {
+    var numbered = App.sentences.map(function (s, i) { return i + '. ' + s; }).join('\n');
+    var prompt = 'Script IELTS Listening đã tách sẵn thành từng câu (đánh số 0..' + (App.sentences.length - 1) + '). ' +
+      'Với MỖI câu: sửa lỗi chính tả nếu có, GIỮ NGUYÊN nội dung/ý nghĩa, không diễn giải lại, không thêm bớt câu. ' +
+      'Đồng thời trích 8-14 collocation/cụm từ hay đáng học trong toàn bài (nguyên văn từ bài) kèm nghĩa tiếng Việt.\n\n' +
+      'CÁC CÂU:\n' + numbered + '\n\n' +
+      'Trả về DUY NHẤT JSON: {"corrected":["câu 0 đã sửa","câu 1 đã sửa",...],"collocations":[["cụm từ","nghĩa tiếng Việt"]]}';
+    var res = await callGemini(prompt, 4096);
+    App.correctedSentences = (res.corrected && res.corrected.length === App.sentences.length) ? res.corrected : App.sentences.slice();
+    App.collocations = (res.collocations || []).map(function (c) { return { en: c[0] || '', vi: c[1] || '' }; }).filter(function (c) { return c.en; });
+    App.cefr = computeCEFR(App.correctedSentences.join(' '));
+    document.getElementById('analyze-status').innerHTML = '✅ Đã sửa chính tả + tìm ' + App.collocations.length + ' collocation.';
+    document.getElementById('btn-start-session').disabled = false;
+    document.getElementById('btn-start-session').textContent = '🚀 Bắt đầu Practice Session';
+  } catch (err) {
+    document.getElementById('analyze-status').innerHTML = '<span style="color:var(--red)">Lỗi: ' + LD.esc(err.message) + '</span>';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '🤖 Phân tích lại (nếu cần)';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// CEFR — rule-based, dùng cefrOf() từ cefr-dict.js (ReadWise)
+// ═══════════════════════════════════════════════════════════
+var LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+function safeCefrOf(word) {
+  if (typeof cefrOf === 'function') { try { return cefrOf(word); } catch (e) { return null; } }
+  return null;
+}
+function computeCEFR(text) {
+  var words = text.match(/\b[A-Za-z][A-Za-z'-]*\b/g) || [];
+  var counts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0, Unknown: 0 };
+  var byLevel = { A1: [], A2: [], B1: [], B2: [], C1: [], C2: [] };
+  words.forEach(function (w) {
+    var info = safeCefrOf(w.toLowerCase());
+    var lv = info && info.level;
+    if (lv && counts[lv] != null) { counts[lv]++; if (byLevel[lv].indexOf(w.toLowerCase()) < 0) byLevel[lv].push(w.toLowerCase()); }
+    else counts.Unknown++;
+  });
+  return { total: words.length, counts: counts, byLevel: byLevel };
+}
+function renderCefrDist() {
+  var el = document.getElementById('cefr-dist');
+  if (!App.cefr) { el.innerHTML = '<p style="color:var(--grey-600);font-size:13px">Chưa có dữ liệu.</p>'; return; }
+  var tot = App.cefr.total || 1;
+  var html = LEVELS.map(function (lv) {
+    var c = App.cefr.counts[lv] || 0, pct = Math.round(c / tot * 100);
+    return '<div class="pct-bar-row"><span class="badge" style="min-width:34px;text-align:center;background:var(--grey-100)">' + lv + '</span>' +
+      '<div class="pct-bar-outer"><div class="pct-bar-fill lv-' + lv + '" style="width:' + pct + '%"></div></div>' +
+      '<span style="font-size:12px;font-weight:700;color:var(--grey-600);min-width:56px;text-align:right">' + c + ' · ' + pct + '%</span></div>';
+  }).join('');
+  if (App.cefr.counts.Unknown) html += '<div style="font-size:11px;color:var(--grey-400);margin-top:6px">Unknown (ngoài từ điển hoặc thiếu cefr-dict.js): ' + App.cefr.counts.Unknown + '</div>';
+  el.innerHTML = html;
+}
+function renderCollocations() {
+  var el = document.getElementById('colloc-list');
+  el.innerHTML = App.collocations.length
+    ? App.collocations.map(function (c) { return '<div class="colloc-card"><div class="colloc-en">' + LD.esc(c.en) + '</div><div class="colloc-vi">' + LD.esc(c.vi) + '</div></div>'; }).join('')
+    : '<p style="color:var(--grey-600);font-size:13px">Chưa có collocation.</p>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// START SESSION
+// ═══════════════════════════════════════════════════════════
+async function startSession() {
+  App.bookTestPart = [document.getElementById('book-input').value, document.getElementById('test-input').value, document.getElementById('part-input').value].filter(Boolean).join(' · Test ');
+  App.maxReplays = Number(document.getElementById('max-replays').value) || 2;
+  var btn = document.getElementById('btn-start-session');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Đang tạo session…';
+  try {
+    var r = await LD.api('session.start', { bookTestPart: App.bookTestPart });
+    if (!r.success) throw new Error(r.error || 'Không tạo được session');
+    App.sessionId = r.sessionId;
+    await LD.api('session.saveAnalysis', {
+      sessionId: App.sessionId, scriptText: App.rawScript,
+      correctedSentences: App.correctedSentences, cefr: App.cefr, collocations: App.collocations
+    });
+    renderCefrDist(); renderCollocations();
+    showScreen('screen-analysis');
+  } catch (err) {
+    LD.toast('Lỗi: ' + err.message, 'err');
+    btn.disabled = false; btn.textContent = '🚀 Bắt đầu Practice Session';
+  }
+}
+function goStudy() {
+  document.getElementById('study-script').textContent = App.correctedSentences.join(' ');
+  showScreen('screen-study');
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI CALL #2 — Sinh Quiz 15 câu (5 nội dung + 10 từ vựng)
+// ═══════════════════════════════════════════════════════════
+async function goQuiz() {
+  showScreen('screen-quiz');
+  if (App.quiz.length) { renderQuiz(); return; } // đã sinh rồi, khỏi gọi AI lại nếu quay lại màn này
+  document.getElementById('quiz-loading').classList.remove('hidden');
+  document.getElementById('quiz-body').innerHTML = '';
+  try {
+    var hardWords = [];
+    ['B2', 'C1', 'C2'].forEach(function (lv) { (App.cefr && App.cefr.byLevel[lv] || []).forEach(function (w) { hardWords.push(w); }); });
+    var prompt = 'Dựa vào script IELTS Listening sau (đã sửa chính tả) và danh sách từ khó / collocation, ' +
+      'tạo ĐÚNG 15 câu hỏi trắc nghiệm 4 đáp án cho sinh viên Việt Nam: 5 câu VỀ NỘI DUNG (ý chính/chi tiết/suy luận từ script), ' +
+      '10 câu VỀ TỪ VỰNG (nghĩa/cách dùng của từ khó hoặc collocation bên dưới). Câu hỏi và giải thích viết tiếng Việt.\n\n' +
+      'SCRIPT:\n"""' + App.correctedSentences.join(' ') + '"""\n\n' +
+      'TỪ KHÓ (B2+): ' + hardWords.slice(0, 40).join(', ') + '\n' +
+      'COLLOCATION: ' + App.collocations.map(function (c) { return c.en; }).join(', ') + '\n\n' +
+      'Trả về DUY NHẤT JSON: {"questions":[{"type":"content|vocab","q":"câu hỏi","o":["A","B","C","D"],"a":0,"e":"giải thích ngắn"}]} — mảng "questions" phải có đúng 15 phần tử, đúng 5 phần tử type=content và đúng 10 phần tử type=vocab.';
+    var res = await callGemini(prompt, 6144);
+    App.quiz = (res.questions || []).slice(0, 15);
+    App.quizAnswers = new Array(App.quiz.length).fill(-1);
+    document.getElementById('quiz-loading').classList.add('hidden');
+    renderQuiz();
+  } catch (err) {
+    document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--red)">Lỗi tạo quiz: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Thử lại</button>';
+  }
+}
+function renderQuiz() {
+  document.getElementById('quiz-body').innerHTML = App.quiz.map(function (q, i) {
+    return '<div class="q-card' + (App.quizAnswers[i] >= 0 ? ' answered' : '') + '">' +
+      '<span class="q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Nội dung' : 'Từ vựng') + '</span>' +
+      '<div style="font-weight:700;font-size:14px;margin-bottom:10px">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
+      (q.o || []).map(function (o, j) {
+        return '<label class="opt-label' + (App.quizAnswers[i] === j ? ' sel' : '') + '"><input type="radio" name="q' + i + '" ' + (App.quizAnswers[i] === j ? 'checked' : '') + ' onchange="setQuizAnswer(' + i + ',' + j + ')"> ' + LD.esc(o) + '</label>';
+      }).join('') + '</div>';
+  }).join('');
+  updateQuizProgress();
+}
+function setQuizAnswer(i, j) { App.quizAnswers[i] = j; renderQuiz(); }
+function updateQuizProgress() {
+  var answered = App.quizAnswers.filter(function (a) { return a >= 0; }).length;
+  document.getElementById('quiz-progress').textContent = 'Đã trả lời ' + answered + '/' + App.quiz.length;
+  document.getElementById('btn-submit-quiz').disabled = answered < App.quiz.length || App.quiz.length !== 15;
+}
+async function submitQuiz() {
+  var correct = App.quiz.reduce(function (a, q, i) { return a + (App.quizAnswers[i] === q.a ? 1 : 0); }, 0);
+  var score = Math.round(correct / App.quiz.length * 100);
+  try {
+    var r = await LD.api('session.saveQuiz', { sessionId: App.sessionId, answers: App.quizAnswers, correct: correct, score: score });
+    if (!r.success) { LD.toast(r.error || 'Không lưu được quiz', 'err'); return; }
+    LD.toast('Quiz: ' + correct + '/15 (' + score + '%)', 'ok');
+    goGapFill();
+  } catch (e) { LD.toast('Lỗi mạng: ' + e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// GAP-FILL — rule-based blank selection (KHÔNG AI)
+// ═══════════════════════════════════════════════════════════
+function goGapFill() {
+  buildGapFill();
+  showScreen('screen-gapfill');
+  renderGapFill();
+}
+function buildGapFill() {
+  App.gapfill = [];
+  App.correctedSentences.forEach(function (sent, si) {
+    var words = sent.split(/(\s+)/); // giữ khoảng trắng để ráp lại nguyên câu
+    var candidates = [];
+    words.forEach(function (w, wi) {
+      var clean = w.replace(/[^A-Za-z'-]/g, '');
+      if (!clean || clean.length < 4) return;
+      var info = safeCefrOf(clean.toLowerCase());
+      var isCollocHead = App.collocations.some(function (c) { return c.en.toLowerCase().split(/\s+/)[0] === clean.toLowerCase(); });
+      if (isCollocHead || (info && ['B2', 'C1', 'C2'].indexOf(info.level) >= 0)) candidates.push(wi);
+    });
+    // Blank tối đa 2 từ/câu để không quá khó
+    var picks = candidates.slice(0, 2);
+    if (picks.length) {
+      App.gapfill.push({ sentenceIdx: si, parts: words, blankWordIdx: picks });
+    }
+  });
+  App.gapfillAnswers = App.gapfill.map(function (g) { return g.blankWordIdx.map(function () { return ''; }); });
+}
+function renderGapFill() {
+  document.getElementById('gapfill-body').innerHTML = App.gapfill.map(function (g, gi) {
+    var out = g.parts.map(function (w, wi) {
+      var bi = g.blankWordIdx.indexOf(wi);
+      if (bi < 0) return LD.esc(w);
+      return '<input class="gap-blank" data-gi="' + gi + '" data-bi="' + bi + '" oninput="setGapAnswer(' + gi + ',' + bi + ',this.value)" placeholder="…">';
+    }).join('');
+    return '<div class="gap-sentence"><span class="sb-label">Câu ' + (g.sentenceIdx + 1) + '</span><div>' + out + '</div></div>';
+  }).join('');
+  updateGapProgress();
+}
+function setGapAnswer(gi, bi, v) { App.gapfillAnswers[gi][bi] = v; updateGapProgress(); }
+function updateGapProgress() {
+  var total = 0, filled = 0;
+  App.gapfillAnswers.forEach(function (arr) { arr.forEach(function (v) { total++; if (v.trim()) filled++; }); });
+  document.getElementById('btn-submit-gapfill').disabled = total === 0 || filled < total;
+}
+async function submitGapFill() {
+  var total = 0, correct = 0, flatAnswers = [];
+  App.gapfill.forEach(function (g, gi) {
+    g.blankWordIdx.forEach(function (wi, bi) {
+      total++;
+      var given = (App.gapfillAnswers[gi][bi] || '').trim().toLowerCase();
+      var actual = g.parts[wi].replace(/[^A-Za-z'-]/g, '').toLowerCase();
+      if (given === actual) correct++;
+      flatAnswers.push({ sentenceIdx: g.sentenceIdx, wordIdx: wi, given: given, actual: actual });
+    });
+  });
+  var score = total ? Math.round(correct / total * 100) : 0;
+  try {
+    var r = await LD.api('session.saveGapFill', { sessionId: App.sessionId, answers: flatAnswers, total: total, correct: correct, score: score });
+    if (!r.success) { LD.toast(r.error || 'Không lưu được gap-fill', 'err'); return; }
+    LD.toast('Gap-fill: ' + correct + '/' + total + ' (' + score + '%)', 'ok');
+    goDictation();
+  } catch (e) { LD.toast('Lỗi mạng: ' + e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// DICTATION — DUY NHẤT resumable
+// ═══════════════════════════════════════════════════════════
+function goDictation() {
+  App.dictationIdx = 0;
+  App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false, replaysUsed: 0 }; });
+  showScreen('screen-dictation');
+  var audio = document.getElementById('dict-audio');
+  if (App.audioBlobUrl) audio.src = App.audioBlobUrl; else document.getElementById('dict-audio-row').style.display = 'none';
+  renderDictation();
+}
+function renderDictation() {
+  var html = App.correctedSentences.map(function (s, i) {
+    var st = App.dictationAnswers[i];
+    var cls = 'sentence-block' + (i === App.dictationIdx ? ' active-block' : '') + (st.checked ? ' completed' : '');
+    return '<div class="' + cls + '" data-idx="' + i + '">' +
+      '<div class="sb-label">Câu ' + (i + 1) + '</div>' +
+      '<div class="sb-result" id="sb-result-' + i + '"></div>' +
+      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Gõ những gì bạn nghe được…" value="' + LD.esc(st.typed) + '" ' + (st.checked ? 'disabled' : '') + ' oninput="App.dictationAnswers[' + i + '].typed=this.value">' +
+      '<div class="sb-controls">' +
+      '<button class="btn btn-secondary btn-sm" onclick="checkSentence(' + i + ')" ' + (st.checked ? 'disabled' : '') + '>✓ Kiểm tra</button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="jumpTo(' + i + ')">▶ Đến câu này</button>' +
+      '</div></div>';
+  }).join('');
+  document.getElementById('dictation-sentences').innerHTML = html;
+  var done = App.dictationAnswers.filter(function (a) { return a.checked; }).length;
+  var pct = Math.round(done / App.correctedSentences.length * 100);
+  document.getElementById('dict-progress-fill').style.width = pct + '%';
+  document.getElementById('dict-progress-label').textContent = done + '/' + App.correctedSentences.length;
+  document.getElementById('btn-finish-dictation').style.display = done === App.correctedSentences.length ? 'block' : 'none';
+}
+function jumpTo(i) { App.dictationIdx = i; renderDictation(); document.getElementById('sb-input-' + i).focus(); }
+function checkSentence(i) {
+  var typed = (document.getElementById('sb-input-' + i).value || '').trim();
+  App.dictationAnswers[i].typed = typed;
+  App.dictationAnswers[i].checked = true;
+  var actualWords = App.correctedSentences[i].replace(/[.,!?;:"]/g, '').split(/\s+/);
+  var typedWords = typed.replace(/[.,!?;:"]/g, '').split(/\s+/);
+  var html = actualWords.map(function (w, wi) {
+    var tw = (typedWords[wi] || '').toLowerCase();
+    var ok = tw === w.toLowerCase();
+    return '<span class="' + (ok ? 'w-correct' : (tw ? 'w-wrong' : 'w-missing')) + '">' + LD.esc(w) + '</span>';
+  }).join(' ');
+  document.getElementById('sb-result-' + i).innerHTML = html;
+  if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
+  renderDictation();
+}
+async function saveDictationAndExit() {
+  try {
+    var r = await LD.api('session.saveDictationProgress', {
+      sessionId: App.sessionId, currentSentenceIdx: App.dictationIdx, answers: App.dictationAnswers
+    });
+    if (r.success) { LD.toast('Đã lưu — mở lại ở "Lịch sử → Đang dang dở".', 'ok', 3500); goHistory(); }
+    else LD.toast(r.error || 'Không lưu được', 'err');
+  } catch (e) { LD.toast('Lỗi mạng: ' + e.message, 'err'); }
+}
+async function finishDictation() {
+  var totalWords = 0, correctWords = 0;
+  App.correctedSentences.forEach(function (s, i) {
+    var actual = s.replace(/[.,!?;:"]/g, '').split(/\s+/);
+    var typed = (App.dictationAnswers[i].typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/);
+    actual.forEach(function (w, wi) { totalWords++; if ((typed[wi] || '').toLowerCase() === w.toLowerCase()) correctWords++; });
+  });
+  var accuracy = totalWords ? Math.round(correctWords / totalWords * 100) : 0;
+  try {
+    var r = await LD.api('session.finishDictation', { sessionId: App.sessionId, answers: App.dictationAnswers, accuracy: accuracy });
+    if (!r.success) { LD.toast(r.error || 'Không nộp được bài', 'err'); return; }
+    document.getElementById('result-total').textContent = r.totalScore + '%';
+    loadFinalScoresIntoResult();
+    showScreen('screen-result');
+  } catch (e) { LD.toast('Lỗi mạng: ' + e.message, 'err'); }
+}
+function loadFinalScoresIntoResult() {
+  var qCorrect = App.quiz.reduce(function (a, q, i) { return a + (App.quizAnswers[i] === q.a ? 1 : 0); }, 0);
+  document.getElementById('result-quiz').textContent = qCorrect + '/15';
+  var gTotal = 0, gCorrect = 0;
+  App.gapfill.forEach(function (g, gi) { g.blankWordIdx.forEach(function (wi, bi) { gTotal++; var given = (App.gapfillAnswers[gi][bi] || '').trim().toLowerCase(); var actual = g.parts[wi].replace(/[^A-Za-z'-]/g, '').toLowerCase(); if (given === actual) gCorrect++; }); });
+  document.getElementById('result-gapfill').textContent = gTotal ? (gCorrect + '/' + gTotal) : '—';
+  var totalWords = 0, correctWords = 0;
+  App.correctedSentences.forEach(function (s, i) { var actual = s.replace(/[.,!?;:"]/g, '').split(/\s+/); var typed = (App.dictationAnswers[i].typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/); actual.forEach(function (w, wi) { totalWords++; if ((typed[wi] || '').toLowerCase() === w.toLowerCase()) correctWords++; }); });
+  document.getElementById('result-dictation').textContent = totalWords ? Math.round(correctWords / totalWords * 100) + '%' : '—';
+}
+
+// ═══════════════════════════════════════════════════════════
+// RESUME (chỉ Dictation) — StudentID + SessionID
+// ═══════════════════════════════════════════════════════════
+async function resumeSession(sessionId) {
+  try {
+    var r = await LD.api('student.resumeSession', { sessionId: sessionId });
+    if (!r.success) { LD.toast(r.error || 'Không mở được session', 'err'); return; }
+    var d = r.data;
+    App.sessionId = d.SessionID;
+    App.correctedSentences = d.CorrectedScriptJSON || [];
+    App.cefr = d.CEFRJSON || null;
+    App.collocations = d.CollocationJSON || [];
+    var dj = d.DictationJSON || { currentSentenceIdx: 0, answers: [] };
+    App.dictationAnswers = App.correctedSentences.map(function (s, i) { return (dj.answers && dj.answers[i]) || { typed: '', checked: false }; });
+    App.dictationIdx = dj.currentSentenceIdx || 0;
+    showScreen('screen-dictation');
+    var audio = document.getElementById('dict-audio');
+    document.getElementById('dict-audio-row').style.display = App.audioBlobUrl ? 'block' : 'none';
+    renderDictation();
+    LD.toast('Đã mở lại bài dở dang.', 'ok');
+  } catch (e) { LD.toast('Lỗi mạng: ' + e.message, 'err'); }
+}
+async function checkInProgressHint() {
+  try {
+    var r = await LD.api('student.getInProgress', {});
+    if (r.success && r.data.length) document.getElementById('setup-inprogress-hint').innerHTML = '📌 Bạn có <b>' + r.data.length + '</b> bài đang dang dở ở Dictation.';
+    else document.getElementById('setup-inprogress-hint').textContent = 'Chưa có bài nào đang dang dở.';
+  } catch (e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// HISTORY — Đang dang dở + Đã hoàn thành
+// ═══════════════════════════════════════════════════════════
+async function loadInProgress() {
+  var card = document.getElementById('inprogress-card'), list = document.getElementById('inprogress-list');
+  try {
+    var r = await LD.api('student.getInProgress', {});
+    if (!r.success || !r.data.length) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    list.innerHTML = r.data.map(function (d) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--grey-100)">' +
+        '<div><div style="font-weight:700;font-size:13.5px">' + LD.esc(d.bookTestPart || 'Bài chưa đặt tên') + '</div>' +
+        '<div style="font-size:11.5px;color:var(--grey-600)">Câu ' + ((d.currentSentenceIdx || 0) + 1) + ' · Lưu lúc ' + LD.fmtDate(d.savedAt) + '</div></div>' +
+        '<button class="btn btn-primary btn-sm" onclick="location.href=\'student.html?resume=' + d.sessionId + '\'">▶ Tiếp tục</button></div>';
+    }).join('');
+  } catch (e) {}
+}
+async function loadHistory() {
+  var tbody = document.getElementById('history-tbody');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--grey-400)">Đang tải…</td></tr>';
+  try {
+    var r = await LD.api('student.getHistory', {});
+    App.histRows = (r.success && r.data) || [];
+    renderHistoryTable();
+  } catch (e) { tbody.innerHTML = '<tr><td colspan="7" style="color:var(--red)">Lỗi tải lịch sử</td></tr>'; }
+}
+function renderHistoryTable() {
+  var q = (document.getElementById('hist-search').value || '').toLowerCase();
+  var rows = App.histRows.filter(function (r) { return !q || String(r.bookTestPart || '').toLowerCase().indexOf(q) >= 0; });
+  rows.sort(function (a, b) { var x = a[App.histSortKey], y = b[App.histSortKey]; return x > y ? App.histSortDir : x < y ? -App.histSortDir : 0; });
+  document.getElementById('history-tbody').innerHTML = rows.length ? rows.map(function (r) {
+    return '<tr><td>' + LD.esc(r.bookTestPart || '—') + '</td><td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
+      '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
+      '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td></tr>';
+  }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--grey-400)">Chưa có bài nào hoàn thành.</td></tr>';
+}
+function histSort(key) {
+  App.histSortDir = App.histSortKey === key ? -App.histSortDir : -1;
+  App.histSortKey = key;
+  renderHistoryTable();
+}
+</script>
+</body>
+</html>
