@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,10 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="ld-theme.css">
-<!-- ⚠️ cefr-dict.js: COPY NGUYÊN VĂN từ omni-practice repo (ReadWise) sang đây, không đổi tên.
-     File này cung cấp hàm global cefrOf(word) → {level, pos, lemma}. Không có file này,
-     % CEFR ở màn Analysis sẽ hiển thị "Unknown" cho mọi từ (app vẫn chạy được, không crash). -->
-<script src="cefr-dict.js" onerror="console.warn('cefr-dict.js chưa có — % CEFR sẽ không chính xác')"></script>
+<!-- cefr-dict.js: copy this file as-is from the omni-practice repo (ReadWise), same filename.
+     It provides the global function cefrOf(word) → {level, pos, lemma}. Without it, the
+     CEFR% on the Study screen will show every word as "Unknown" (app still runs fine). -->
+<script src="cefr-dict.js" onerror="console.warn('cefr-dict.js missing — CEFR% will be inaccurate')"></script>
 <style>
 .screen{display:none;flex-direction:column;min-height:100vh}
 .screen.active{display:flex}
@@ -90,6 +90,21 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .hidden{display:none!important}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* Study screen: ReadWise-style leveled reading */
+.study-word{border-radius:3px;padding:0 1px;cursor:pointer;transition:background .1s}
+.study-word:hover{background:rgba(200,16,46,.08)}
+.study-word.hi{background:#FEE2E2}
+.gl{font-family:var(--font-body);font-size:.72em;font-style:italic;color:var(--red);white-space:nowrap;margin-left:2px;font-weight:600}
+.pos-n{color:#2563EB}.pos-v{color:#DC2626}.pos-j{color:#059669}.pos-r{color:#D97706}
+.lv-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;cursor:pointer;user-select:none}
+.lv-chip input{cursor:pointer;margin:0}
+.lv-chip.lv-A1{background:rgba(14,165,233,.14);color:#0EA5E9}
+.lv-chip.lv-A2{background:rgba(16,185,129,.14);color:#10B981}
+.lv-chip.lv-B1{background:rgba(59,130,246,.14);color:#3B82F6}
+.lv-chip.lv-B2{background:rgba(139,92,246,.14);color:#8B5CF6}
+.lv-chip.lv-C1{background:rgba(236,72,153,.14);color:#EC4899}
+.lv-chip.lv-C2{background:rgba(220,38,38,.14);color:#DC2626}
+.btn-secondary.active{background:var(--red);color:#fff;border-color:var(--red)}
 </style>
 </head>
 <body>
@@ -102,8 +117,8 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div class="topbar-right">
       <span class="topbar-user" id="tb-user-setup"></span>
       <span class="topbar-class" id="tb-class-setup"></span>
-      <button class="topbar-btn" onclick="goHistory()">📊 Lịch sử</button>
-      <button class="topbar-btn" onclick="LD.session.logout()">Đăng xuất</button>
+      <button class="topbar-btn" onclick="goHistory()">📊 History</button>
+      <button class="topbar-btn" onclick="LD.session.logout()">Logout</button>
     </div>
   </div>
   <div class="wrap">
@@ -115,65 +130,73 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div class="setup-grid">
       <div>
         <div class="card">
-          <div class="card-title">📂 File âm thanh</div>
+          <div class="card-title">📂 Audio File</div>
           <input type="file" id="audio-file-input" accept="audio/*" class="form-input" onchange="handleAudioFile(event)">
           <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-            <input type="text" class="form-input" id="drive-file-id" placeholder="Hoặc dán Google Drive File ID" style="font-size:12px;font-family:var(--font-mono)">
-            <button class="btn btn-secondary btn-sm" onclick="loadDriveAudio()">Tải</button>
+            <input type="text" class="form-input" id="drive-file-id" placeholder="Or paste a Google Drive File ID" style="font-size:12px;font-family:var(--font-mono)">
+            <button class="btn btn-secondary btn-sm" onclick="loadDriveAudio()">Load</button>
           </div>
           <div id="audio-status" style="font-size:12px;color:var(--grey-600);margin-top:6px"></div>
         </div>
 
         <div class="card">
-          <div class="card-title"><span>📝 Script Listening</span><span style="font-size:11px;color:var(--grey-400);font-weight:400">app tự tách câu — không dùng AI</span></div>
-          <textarea id="raw-script-input" class="form-textarea" rows="10" style="min-height:280px;line-height:1.7" placeholder="Dán script đầy đủ vào đây…" oninput="onScriptInput()"></textarea>
+          <div class="card-title"><span>📝 Listening Script</span><span style="font-size:11px;color:var(--grey-400);font-weight:400">the app splits sentences automatically — no AI</span></div>
+          <textarea id="raw-script-input" class="form-textarea" rows="10" style="min-height:280px;line-height:1.7" placeholder="Paste the full script here…" oninput="onScriptInput()"></textarea>
           <div id="script-word-count" style="font-size:12px;color:var(--grey-600);margin-top:6px"></div>
-          <button class="btn btn-secondary" id="btn-split" onclick="doSplit()" style="margin-top:10px" disabled>✂️ Tách câu</button>
+          <button class="btn btn-secondary" id="btn-split" onclick="doSplit()" style="margin-top:10px" disabled>✂️ Split Sentences</button>
           <div id="split-preview" class="hidden">
             <div class="split-list" id="split-list"></div>
           </div>
         </div>
 
         <div class="card" id="analyze-card" style="display:none">
-          <div class="card-title">🤖 Phân tích script <span class="badge badge-gold">Bắt buộc</span></div>
-          <p style="font-size:12.5px;color:var(--grey-600);margin-bottom:10px">Sửa lỗi chính tả + trích collocation hay. Đây là 1 trong 2 chỗ duy nhất app dùng AI.</p>
+          <div class="card-title">🤖 Analyze Script <span class="badge badge-gold">Required</span></div>
+          <p style="font-size:12.5px;color:var(--grey-600);margin-bottom:10px">Fixes spelling + extracts useful collocations. This is 1 of only 2 places the app uses AI.</p>
           <div id="ld-key-widget" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:10px 13px">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:.72rem;font-weight:700;color:#555;white-space:nowrap">🔑 Gemini Key</span>
-              <input type="password" id="ld-gemini-key" style="flex:1;padding:6px 10px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:.82rem;font-family:monospace;outline:none" placeholder="AIza… (free key từ aistudio.google.com)" oninput="onLdKeyInput(this.value)">
-              <span id="ld-key-status" style="font-size:.68rem;font-weight:700;white-space:nowrap;color:#888">chưa có key</span>
-              <a href="https://aistudio.google.com/apikey" target="_blank" style="font-size:.68rem;color:#1a3a8c;font-weight:700;white-space:nowrap">Lấy key →</a>
+              <input type="password" id="ld-gemini-key" style="flex:1;padding:6px 10px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:.82rem;font-family:monospace;outline:none" placeholder="AIza… (free key from aistudio.google.com)" oninput="onLdKeyInput(this.value)">
+              <span id="ld-key-status" style="font-size:.68rem;font-weight:700;white-space:nowrap;color:#888">no key</span>
+              <a href="https://aistudio.google.com/apikey" target="_blank" style="font-size:.68rem;color:#1a3a8c;font-weight:700;white-space:nowrap">Get key →</a>
             </div>
           </div>
-          <button class="btn btn-primary btn-full" id="btn-analyze" onclick="runAnalyzeScript()">🤖 Phân tích script</button>
+          <button class="btn btn-primary btn-full" id="btn-analyze" onclick="runAnalyzeScript()">🤖 Analyze Script</button>
           <div id="analyze-status" style="font-size:12.5px;color:var(--grey-600);margin-top:8px"></div>
         </div>
       </div>
 
       <div>
         <div class="card">
-          <div class="card-title">⚙️ Thông tin bài</div>
-          <div class="form-group">
-            <label class="form-label">📚 Sách · 🔢 Test · 🎯 Part</label>
-            <div class="form-row-3">
-              <input class="form-input" id="book-input" placeholder="Sách (vd Cam18)">
-              <input class="form-input" id="test-input" placeholder="Test">
-              <input class="form-input" id="part-input" placeholder="Part">
-            </div>
-          </div>
+          <div class="card-title">⚙️ Book Info</div>
           <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Số lần replay tối đa / câu</label>
-            <select class="form-select" id="max-replays">
-              <option value="1">1 lần</option><option value="2" selected>2 lần</option>
-              <option value="3">3 lần</option><option value="999">Không giới hạn</option>
-            </select>
+            <label class="form-label">📚 Book · 🔢 Test · 🎯 Part</label>
+            <div class="form-row-3">
+              <select class="form-select" id="book-input" onchange="onBookSelectChange()">
+                <option value="">— Select book —</option>
+                <option>Cam11</option><option>Cam12</option><option>Cam13</option><option>Cam14</option>
+                <option>Cam15</option><option>Cam16</option><option>Cam17</option><option>Cam18</option>
+                <option>Cam19</option><option>Cam20</option><option>Cam21</option>
+                <option value="__custom__">+ Add book…</option>
+              </select>
+              <select class="form-select" id="test-input">
+                <option value="">Test</option>
+                <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+                <option>11</option><option>12</option><option>13</option><option>14</option><option>15</option>
+              </select>
+              <select class="form-select" id="part-input">
+                <option value="">Part</option>
+                <option>1</option><option>2</option><option>3</option><option>4</option>
+                <option>5</option><option>6</option><option>7</option><option>8</option>
+              </select>
+            </div>
           </div>
         </div>
         <button class="btn btn-primary btn-full" id="btn-start-session" onclick="startSession()" style="padding:14px;font-size:15px;margin-bottom:16px" disabled>
-          🚀 Bắt đầu (cần phân tích script trước)
+          🚀 Start (analyze script first)
         </button>
         <div class="card" style="cursor:pointer" onclick="goHistory()">
-          <div class="card-title"><span>📊 Lịch sử của tôi</span><span style="font-size:11px;color:var(--red);font-weight:700">Xem tất cả →</span></div>
+          <div class="card-title"><span>📊 My History</span><span style="font-size:11px;color:var(--red);font-weight:700">View all →</span></div>
           <div id="setup-inprogress-hint" style="font-size:12.5px;color:var(--grey-600)"></div>
         </div>
       </div>
@@ -181,45 +204,35 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   </div>
 </div>
 
-<!-- ═══════════ ANALYSIS ═══════════ -->
-<div id="screen-analysis" class="screen">
-  <div class="topbar">
-    <div class="topbar-brand">Language <em>Hub</em></div>
-    <div class="topbar-app">📊 Phân tích CEFR & Collocation</div>
-    <div class="topbar-right"><span class="topbar-user" id="tb-user-analysis"></span></div>
-  </div>
-  <div class="wrap">
-    <div class="setup-grid">
-      <div class="card">
-        <div class="card-title">📊 Phân bố CEFR <span style="font-size:11px;color:var(--grey-400);font-weight:400">rule-based, 0 AI</span></div>
-        <div id="cefr-dist"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">🔗 Collocation hay trong bài</div>
-        <div id="colloc-list"></div>
-      </div>
-    </div>
-    <button class="btn btn-primary btn-full" onclick="goStudy()" style="padding:14px;font-size:15px">Tiếp tục → Học script</button>
-  </div>
-</div>
-
-<!-- ═══════════ STUDY ═══════════ -->
+<!-- ═══════════ STUDY (ReadWise-style: CEFR levels + collocations) ═══════════ -->
 <div id="screen-study" class="screen">
   <div class="topbar">
     <div class="topbar-brand">Language <em>Hub</em></div>
-    <div class="topbar-app">📖 Học script</div>
+    <div class="topbar-app">📖 Study Script</div>
     <div class="topbar-right"><span class="topbar-user" id="tb-user-study"></span>
-      <button class="btn btn-primary btn-sm" onclick="goQuiz()">Tiếp tục → Quiz</button>
+      <button class="btn btn-primary btn-sm" onclick="goQuiz()">Continue → Quiz</button>
     </div>
   </div>
   <div class="wrap">
-    <div class="card">
-      <div class="card-title">📄 Script gốc (đã sửa chính tả)</div>
-      <div id="study-script" style="line-height:1.9;color:#3a3a50;white-space:pre-wrap"></div>
+    <div class="card" id="study-toolbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:11px;font-weight:700;color:var(--grey-600)">CEFR:</span>
+      <span id="level-chips"></span>
+      <span style="width:1px;height:20px;background:var(--grey-200)"></span>
+      <button class="btn btn-secondary btn-sm" id="btn-pos-toggle" onclick="togglePosColor()">🎨 Color by part of speech</button>
+      <button class="btn btn-secondary btn-sm" id="btn-listen-toggle" onclick="toggleListenMode()">🔊 Listen</button>
     </div>
-    <div class="card">
-      <div class="card-title">✍️ Tự dịch (luyện tập cá nhân, không chấm điểm)</div>
-      <textarea class="form-textarea" id="study-translate" rows="6" placeholder="Viết bản dịch tiếng Việt của bạn ở đây để tự luyện — không gửi lên server, không AI chấm."></textarea>
+    <div class="setup-grid">
+      <div class="card"><div id="study-passage" style="font-size:16px;line-height:2.1"></div></div>
+      <div>
+        <div class="card">
+          <div class="card-title">🔗 Phrases &amp; Collocations</div>
+          <div id="colloc-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📊 CEFR Distribution <span style="font-size:11px;color:var(--grey-400);font-weight:400">rule-based, 0 AI calls</span></div>
+          <div id="cefr-dist"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -228,15 +241,15 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 <div id="screen-quiz" class="screen">
   <div class="topbar">
     <div class="topbar-brand">Language <em>Hub</em></div>
-    <div class="topbar-app">📝 Quiz 15 câu</div>
+    <div class="topbar-app">📝 15-Question Quiz</div>
     <div class="topbar-right"><span id="quiz-progress" style="color:#fff;font-size:12.5px"></span></div>
   </div>
   <div class="wrap">
-    <div id="quiz-loading" class="card" style="text-align:center;padding:40px"><span class="spinner"></span> Đang tạo quiz bằng AI…</div>
+    <div id="quiz-loading" class="card" style="text-align:center;padding:40px"><span class="spinner"></span> Generating quiz with AI…</div>
     <div id="quiz-body"></div>
     <div style="position:sticky;bottom:0;background:var(--off-white);padding:14px 0;text-align:center">
-      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Thoát giữa chừng sẽ mất trắng tiến độ Quiz — phải làm đủ 15/15 câu mới lưu được.</div>
-      <button class="btn btn-primary" id="btn-submit-quiz" onclick="submitQuiz()" disabled style="padding:12px 30px">✅ Nộp Quiz</button>
+      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-quiz loses all progress — you must answer all 15/15 questions before it can be saved.</div>
+      <button class="btn btn-primary" id="btn-submit-quiz" onclick="submitQuiz()" disabled style="padding:12px 30px">✅ Submit Quiz</button>
     </div>
   </div>
 </div>
@@ -250,8 +263,8 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <div class="wrap">
     <div id="gapfill-body"></div>
     <div style="text-align:center;padding:14px 0">
-      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Thoát giữa chừng sẽ mất trắng tiến độ — phải điền hết mới lưu được.</div>
-      <button class="btn btn-primary" id="btn-submit-gapfill" onclick="submitGapFill()" disabled style="padding:12px 30px">✅ Nộp Gap-fill</button>
+      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-way loses all progress — you must fill every blank before it can be saved.</div>
+      <button class="btn btn-primary" id="btn-submit-gapfill" onclick="submitGapFill()" disabled style="padding:12px 30px">✅ Submit Gap-fill</button>
     </div>
   </div>
 </div>
@@ -264,7 +277,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div class="topbar-right">
       <div class="progress-outer"><div class="progress-fill" id="dict-progress-fill" style="width:0%"></div></div>
       <span id="dict-progress-label" style="color:#fff;font-size:12px"></span>
-      <button class="btn btn-secondary btn-sm" onclick="saveDictationAndExit()">💾 Lưu & thoát</button>
+      <button class="btn btn-secondary btn-sm" onclick="saveDictationAndExit()">💾 Save &amp; Exit</button>
     </div>
   </div>
   <div class="wrap">
@@ -272,14 +285,14 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <audio id="dict-audio" controls style="width:100%"></audio>
     </div>
     <div id="dictation-sentences"></div>
-    <button class="btn btn-primary btn-full" id="btn-finish-dictation" onclick="finishDictation()" style="padding:14px;font-size:15px;display:none">🏁 Nộp bài</button>
+    <button class="btn btn-primary btn-full" id="btn-finish-dictation" onclick="finishDictation()" style="padding:14px;font-size:15px;display:none">🏁 Submit</button>
   </div>
 </div>
 
 <!-- ═══════════ RESULT ═══════════ -->
 <div id="screen-result" class="screen" style="align-items:center;justify-content:flex-start;padding-top:40px">
   <div class="result-card">
-    <h2 style="font-family:var(--font-display);color:var(--navy2)">🎉 Hoàn thành!</h2>
+    <h2 style="font-family:var(--font-display);color:var(--navy2)">🎉 Complete!</h2>
     <div class="big-score" id="result-total">—</div>
     <div class="result-stats">
       <div><span>Quiz</span><span id="result-quiz">—</span></div>
@@ -287,8 +300,8 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <div><span>Dictation accuracy</span><span id="result-dictation">—</span></div>
     </div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
-      <button class="btn btn-secondary" onclick="goHistory()">📊 Lịch sử</button>
-      <button class="btn btn-primary" onclick="location.href='student.html'">🏠 Bài mới</button>
+      <button class="btn btn-secondary" onclick="goHistory()">📊 History</button>
+      <button class="btn btn-primary" onclick="location.href='student.html'">🏠 New Session</button>
     </div>
   </div>
 </div>
@@ -297,31 +310,31 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 <div id="screen-history" class="screen">
   <div class="topbar">
     <div class="topbar-brand">Language <em>Hub</em></div>
-    <div class="topbar-app">📊 Lịch sử của tôi</div>
-    <div class="topbar-right"><button class="topbar-btn" onclick="showScreen('screen-setup')">← Bài mới</button></div>
+    <div class="topbar-app">📊 My History</div>
+    <div class="topbar-right"><button class="topbar-btn" onclick="showScreen('screen-setup')">← New Session</button></div>
   </div>
   <div class="wrap">
     <div class="card" id="inprogress-card" style="display:none">
-      <div class="card-title">📌 Đang dang dở <span style="font-size:11px;color:var(--grey-400);font-weight:400">chỉ Dictation mới lưu được dở dang</span></div>
+      <div class="card-title">📌 In Progress <span style="font-size:11px;color:var(--grey-400);font-weight:400">only Dictation can be saved mid-way</span></div>
       <div id="inprogress-list"></div>
     </div>
     <div class="card">
       <div class="hist-toolbar">
-        <strong style="font-size:15px;color:var(--navy)">✅ Đã hoàn thành</strong>
+        <strong style="font-size:15px;color:var(--navy)">✅ Completed</strong>
         <div style="flex:1"></div>
-        <input id="hist-search" oninput="renderHistoryTable()" placeholder="🔍 Tìm tên bài…" class="form-input" style="width:180px;padding:6px 10px">
-        <button class="btn btn-secondary btn-sm" onclick="loadHistory()">🔄 Làm mới</button>
+        <input id="hist-search" oninput="renderHistoryTable()" placeholder="🔍 Search by book name…" class="form-input" style="width:180px;padding:6px 10px">
+        <button class="btn btn-secondary btn-sm" onclick="loadHistory()">🔄 Refresh</button>
       </div>
       <div style="overflow:auto">
         <table class="ld-table">
           <thead><tr>
-            <th onclick="histSort('bookTestPart')">Tên bài</th>
-            <th onclick="histSort('startTime')">Ngày làm</th>
-            <th onclick="histSort('durationMin')">Thời gian</th>
+            <th onclick="histSort('bookTestPart')">Book/Test/Part</th>
+            <th onclick="histSort('startTime')">Date</th>
+            <th onclick="histSort('durationMin')">Duration</th>
             <th onclick="histSort('quizScore')">Quiz</th>
             <th onclick="histSort('gapFillScore')">Gap-fill</th>
             <th onclick="histSort('dictationAccuracy')">Dictation</th>
-            <th onclick="histSort('totalScore')">Tổng điểm</th>
+            <th onclick="histSort('totalScore')">Total Score</th>
           </tr></thead>
           <tbody id="history-tbody"></tbody>
         </table>
@@ -340,7 +353,9 @@ var App = {
   session: null, sessionId: null,
   bookTestPart: '', maxReplays: 2,
   rawScript: '', sentences: [], correctedSentences: [],
-  cefr: null, collocations: [],
+  cefr: null, collocations: [], gloss: {},
+  showLevels: { A1: false, A2: false, B1: false, B2: true, C1: true, C2: true },
+  posColor: false, listenMode: false,
   audioBlobUrl: null,
   quiz: [], quizAnswers: [],
   gapfill: [], gapfillAnswers: [],
@@ -352,7 +367,7 @@ var App = {
   var s = LD.session.require();
   if (!s) return;
   App.session = s;
-  ['tb-user-setup', 'tb-user-analysis', 'tb-user-study'].forEach(function (id) {
+  ['tb-user-setup', 'tb-user-study'].forEach(function (id) {
     var el = document.getElementById(id); if (el) el.textContent = '👤 ' + s.user.fullName;
   });
   var cls = document.getElementById('tb-class-setup'); if (cls) cls.textContent = '· ' + (s.user.className || '');
@@ -361,7 +376,7 @@ var App = {
   updateLdKeyStatus();
   checkInProgressHint();
 
-  // Resume từ History (?resume=SESSIONID) — chỉ Dictation mới resumable
+  // Resume from History (?resume=SESSIONID) — only Dictation is resumable
   var params = new URLSearchParams(location.search);
   var resumeId = params.get('resume');
   if (resumeId) resumeSession(resumeId);
@@ -382,12 +397,12 @@ function getLdKey() { return (document.getElementById('ld-gemini-key') && docume
 function updateLdKeyStatus() {
   var el = document.getElementById('ld-key-status'); if (!el) return;
   var k = getLdKey();
-  el.textContent = k ? '✅ đã lưu' : 'chưa có key';
+  el.textContent = k ? '✅ saved' : 'no key';
   el.style.color = k ? '#1a7a4a' : '#c00';
 }
 async function callGemini(prompt, maxTokens) {
   var key = getLdKey();
-  if (!key) throw new Error('Cần nhập Gemini key (miễn phí tại aistudio.google.com)');
+  if (!key) throw new Error('Gemini key required (free at aistudio.google.com)');
   var models = ['gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
   var lastErr = null;
   for (var i = 0; i < models.length; i++) {
@@ -396,25 +411,25 @@ async function callGemini(prompt, maxTokens) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: .3, maxOutputTokens: Math.max(maxTokens || 2048, 256), responseMimeType: 'application/json' } })
       });
-      if (resp.status === 429) { lastErr = new Error('Hết lượt dùng key (' + models[i] + ')'); continue; }
+      if (resp.status === 429) { lastErr = new Error('Key quota exceeded (' + models[i] + ')'); continue; }
       if (!resp.ok) { var j = await resp.json().catch(function () { return {}; }); lastErr = new Error((j.error && j.error.message) || ('HTTP ' + resp.status)); continue; }
       var data = await resp.json();
       var raw = (data.candidates && data.candidates[0] && data.candidates[0].content.parts[0].text) || '';
-      if (!raw) { lastErr = new Error('AI trả về rỗng'); continue; }
+      if (!raw) { lastErr = new Error('AI returned an empty response'); continue; }
       var s = raw.indexOf('{'), e = raw.lastIndexOf('}') + 1;
       return JSON.parse(raw.slice(s, e));
     } catch (err) { lastErr = err; }
   }
-  throw lastErr || new Error('Tất cả model AI đều lỗi');
+  throw lastErr || new Error('All AI models failed');
 }
 
 // ═══════════════════════════════════════════════════════════
-// SETUP — rule-based sentence split (KHÔNG AI)
+// SETUP — rule-based sentence split (no AI)
 // ═══════════════════════════════════════════════════════════
 function onScriptInput() {
   App.rawScript = document.getElementById('raw-script-input').value;
   var n = (App.rawScript.match(/\b[\w'-]+\b/g) || []).length;
-  document.getElementById('script-word-count').textContent = n + ' từ';
+  document.getElementById('script-word-count').textContent = n + ' words';
   document.getElementById('btn-split').disabled = n < 10;
 }
 var ABBR = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sr', 'Jr', 'St', 'Mt', 'vs', 'etc', 'approx', 'No', 'pp', 'Fig', 'Co', 'Corp', 'Inc', 'Ltd', 'a.m', 'p.m', 'e.g', 'i.e'];
@@ -432,9 +447,19 @@ function splitSentences(text) {
     return s.trim();
   }).filter(Boolean);
 }
+function onBookSelectChange() {
+  var sel = document.getElementById('book-input');
+  if (sel.value !== '__custom__') return;
+  var name = prompt('Enter book name:');
+  if (name && name.trim()) {
+    var opt = document.createElement('option');
+    opt.value = name.trim(); opt.textContent = name.trim(); opt.selected = true;
+    sel.insertBefore(opt, sel.lastElementChild);
+  } else { sel.value = ''; }
+}
 function doSplit() {
   App.sentences = splitSentences(App.rawScript);
-  if (!App.sentences.length) { LD.toast('Không tách được câu nào — kiểm tra lại script.', 'err'); return; }
+  if (!App.sentences.length) { LD.toast('Could not split any sentences — check your script.', 'err'); return; }
   var list = document.getElementById('split-list');
   list.innerHTML = App.sentences.map(function (s, i) {
     return '<div class="split-item"><span class="sno">' + (i + 1) + '</span><span>' + LD.esc(s) + '</span></div>';
@@ -457,36 +482,46 @@ function loadDriveAudio() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// AI CALL #1 — Phân tích script (spellcheck + collocation) — BẮT BUỘC
+// AI CALL #1 — Analyze script (spellcheck + collocations + gloss) — REQUIRED
 // ═══════════════════════════════════════════════════════════
 async function runAnalyzeScript() {
-  if (!App.sentences.length) { LD.toast('Tách câu trước đã.', 'err'); return; }
+  if (!App.sentences.length) { LD.toast('Split the sentences first.', 'err'); return; }
   var btn = document.getElementById('btn-analyze');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Đang phân tích…';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Analyzing…';
   document.getElementById('analyze-status').textContent = '';
   try {
+    // First rule-based pass (0 AI) to find which words are hard (B2+) — only send those
+    // to the AI for translation instead of the whole passage (same trick ReadWise uses).
+    var preCefr = computeCEFR(App.sentences.join(' '));
+    var hardWords = [];
+    ['B2', 'C1', 'C2'].forEach(function (lv) { (preCefr.byLevel[lv] || []).forEach(function (w) { if (hardWords.indexOf(w) < 0) hardWords.push(w); }); });
+
     var numbered = App.sentences.map(function (s, i) { return i + '. ' + s; }).join('\n');
-    var prompt = 'Script IELTS Listening đã tách sẵn thành từng câu (đánh số 0..' + (App.sentences.length - 1) + '). ' +
-      'Với MỖI câu: sửa lỗi chính tả nếu có, GIỮ NGUYÊN nội dung/ý nghĩa, không diễn giải lại, không thêm bớt câu. ' +
-      'Đồng thời trích 8-14 collocation/cụm từ hay đáng học trong toàn bài (nguyên văn từ bài) kèm nghĩa tiếng Việt.\n\n' +
-      'CÁC CÂU:\n' + numbered + '\n\n' +
-      'Trả về DUY NHẤT JSON: {"corrected":["câu 0 đã sửa","câu 1 đã sửa",...],"collocations":[["cụm từ","nghĩa tiếng Việt"]]}';
-    var res = await callGemini(prompt, 4096);
+    var prompt = 'This is an IELTS Listening script already split into sentences (numbered 0..' + (App.sentences.length - 1) + '). ' +
+      'For EACH sentence: fix spelling mistakes if any, KEEP the meaning exactly the same, do not paraphrase, do not add or remove sentences. ' +
+      'Also: (1) extract 8-14 useful collocations/phrases from the whole passage (verbatim from the text) with their Vietnamese meaning; ' +
+      '(2) give a short, context-appropriate Vietnamese translation + British IPA for each difficult word listed below.\n\n' +
+      'SENTENCES:\n' + numbered + '\n\n' +
+      'WORDS TO TRANSLATE (' + hardWords.length + ' words, already filtered by CEFR level): ' + hardWords.join(', ') + '\n\n' +
+      'Return ONLY this JSON: {"corrected":["sentence 0 fixed",...],"collocations":[["phrase","Vietnamese meaning"]],"gloss":[["word","Vietnamese meaning","/ipa/"]]}';
+    var res = await callGemini(prompt, 6144);
     App.correctedSentences = (res.corrected && res.corrected.length === App.sentences.length) ? res.corrected : App.sentences.slice();
     App.collocations = (res.collocations || []).map(function (c) { return { en: c[0] || '', vi: c[1] || '' }; }).filter(function (c) { return c.en; });
-    App.cefr = computeCEFR(App.correctedSentences.join(' '));
-    document.getElementById('analyze-status').innerHTML = '✅ Đã sửa chính tả + tìm ' + App.collocations.length + ' collocation.';
+    App.gloss = {};
+    (res.gloss || []).forEach(function (g) { if (g && g[0]) App.gloss[String(g[0]).toLowerCase()] = { vi: g[1] || '', ipa: g[2] || '' }; });
+    App.cefr = computeCEFR(App.correctedSentences.join(' ')); // final recompute on the corrected script
+    document.getElementById('analyze-status').innerHTML = '✅ Spelling fixed + found ' + App.collocations.length + ' collocations + translated ' + Object.keys(App.gloss).length + ' difficult words.';
     document.getElementById('btn-start-session').disabled = false;
-    document.getElementById('btn-start-session').textContent = '🚀 Bắt đầu Practice Session';
+    document.getElementById('btn-start-session').textContent = '🚀 Start Practice Session';
   } catch (err) {
-    document.getElementById('analyze-status').innerHTML = '<span style="color:var(--red)">Lỗi: ' + LD.esc(err.message) + '</span>';
+    document.getElementById('analyze-status').innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(err.message) + '</span>';
   } finally {
-    btn.disabled = false; btn.innerHTML = '🤖 Phân tích lại (nếu cần)';
+    btn.disabled = false; btn.innerHTML = '🤖 Re-analyze (if needed)';
   }
 }
 
 // ═══════════════════════════════════════════════════════════
-// CEFR — rule-based, dùng cefrOf() từ cefr-dict.js (ReadWise)
+// CEFR — rule-based, uses cefrOf() from cefr-dict.js (ReadWise)
 // ═══════════════════════════════════════════════════════════
 var LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 function safeCefrOf(word) {
@@ -507,7 +542,7 @@ function computeCEFR(text) {
 }
 function renderCefrDist() {
   var el = document.getElementById('cefr-dist');
-  if (!App.cefr) { el.innerHTML = '<p style="color:var(--grey-600);font-size:13px">Chưa có dữ liệu.</p>'; return; }
+  if (!App.cefr) { el.innerHTML = '<p style="color:var(--grey-600);font-size:13px">No data yet.</p>'; return; }
   var tot = App.cefr.total || 1;
   var html = LEVELS.map(function (lv) {
     var c = App.cefr.counts[lv] || 0, pct = Math.round(c / tot * 100);
@@ -515,75 +550,124 @@ function renderCefrDist() {
       '<div class="pct-bar-outer"><div class="pct-bar-fill lv-' + lv + '" style="width:' + pct + '%"></div></div>' +
       '<span style="font-size:12px;font-weight:700;color:var(--grey-600);min-width:56px;text-align:right">' + c + ' · ' + pct + '%</span></div>';
   }).join('');
-  if (App.cefr.counts.Unknown) html += '<div style="font-size:11px;color:var(--grey-400);margin-top:6px">Unknown (ngoài từ điển hoặc thiếu cefr-dict.js): ' + App.cefr.counts.Unknown + '</div>';
+  if (App.cefr.counts.Unknown) html += '<div style="font-size:11px;color:var(--grey-400);margin-top:6px">Unknown (outside the wordlist, or cefr-dict.js is missing): ' + App.cefr.counts.Unknown + '</div>';
   el.innerHTML = html;
 }
 function renderCollocations() {
   var el = document.getElementById('colloc-list');
   el.innerHTML = App.collocations.length
     ? App.collocations.map(function (c) { return '<div class="colloc-card"><div class="colloc-en">' + LD.esc(c.en) + '</div><div class="colloc-vi">' + LD.esc(c.vi) + '</div></div>'; }).join('')
-    : '<p style="color:var(--grey-600);font-size:13px">Chưa có collocation.</p>';
+    : '<p style="color:var(--grey-600);font-size:13px">No collocations yet.</p>';
 }
 
 // ═══════════════════════════════════════════════════════════
 // START SESSION
 // ═══════════════════════════════════════════════════════════
 async function startSession() {
-  App.bookTestPart = [document.getElementById('book-input').value, document.getElementById('test-input').value, document.getElementById('part-input').value].filter(Boolean).join(' · Test ');
-  App.maxReplays = Number(document.getElementById('max-replays').value) || 2;
+  var book = document.getElementById('book-input').value;
+  var test = document.getElementById('test-input').value;
+  var part = document.getElementById('part-input').value;
+  App.bookTestPart = [book, test ? ('Test ' + test) : '', part ? ('Part ' + part) : ''].filter(Boolean).join(' · ');
+  App.maxReplays = 999; // unlimited (UI selector removed per request)
   var btn = document.getElementById('btn-start-session');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Đang tạo session…';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating session…';
   try {
     var r = await LD.api('session.start', { bookTestPart: App.bookTestPart });
-    if (!r.success) throw new Error(r.error || 'Không tạo được session');
+    if (!r.success) throw new Error(r.error || 'Could not create session');
     App.sessionId = r.sessionId;
     await LD.api('session.saveAnalysis', {
       sessionId: App.sessionId, scriptText: App.rawScript,
       correctedSentences: App.correctedSentences, cefr: App.cefr, collocations: App.collocations
     });
-    renderCefrDist(); renderCollocations();
-    showScreen('screen-analysis');
+    goStudy();
   } catch (err) {
-    LD.toast('Lỗi: ' + err.message, 'err');
-    btn.disabled = false; btn.textContent = '🚀 Bắt đầu Practice Session';
+    LD.toast('Error: ' + err.message, 'err');
+    btn.disabled = false; btn.textContent = '🚀 Start Practice Session';
   }
 }
 function goStudy() {
-  document.getElementById('study-script').textContent = App.correctedSentences.join(' ');
+  renderLevelChips(); renderStudyPassage(); renderCefrDist(); renderCollocations();
   showScreen('screen-study');
 }
 
+// ── ReadWise-style leveled reading ──
+function tokenizeForStudy(text) {
+  var out = [];
+  var re = /([A-Za-z][A-Za-z'-]*)|(\n\n+)|([^A-Za-z]+)/g;
+  var m;
+  while ((m = re.exec(text)) !== null) {
+    if (m[1]) {
+      var info = safeCefrOf(m[1].toLowerCase());
+      out.push({ t: 'w', w: m[1], lv: info && info.level, pos: info && info.pos });
+    } else if (m[2]) out.push({ t: 'br' });
+    else out.push({ t: 's', w: m[3] });
+  }
+  return out;
+}
+function renderStudyPassage() {
+  var tokens = tokenizeForStudy(App.correctedSentences.join(' '));
+  var posMap = { noun: 'n', verb: 'v', adj: 'j', adv: 'r' };
+  var html = tokens.map(function (tk) {
+    if (tk.t === 'br') return '<br><br>';
+    if (tk.t === 's') return LD.esc(tk.w);
+    var show = tk.lv && App.showLevels[tk.lv];
+    var g = App.gloss[tk.w.toLowerCase()];
+    var posCls = App.posColor && tk.pos && posMap[tk.pos] ? ' pos-' + posMap[tk.pos] : '';
+    var span = '<span class="study-word' + (show ? ' hi' : '') + posCls + '" onclick="onStudyWordClick(\'' + tk.w.replace(/'/g, "\\'") + '\')">' + LD.esc(tk.w) + '</span>';
+    if (show && g && g.vi) span += '<span class="gl">(' + LD.esc(g.vi) + ')</span>';
+    return span;
+  }).join('');
+  document.getElementById('study-passage').innerHTML = html;
+}
+function renderLevelChips() {
+  var counts = (App.cefr && App.cefr.counts) || {};
+  document.getElementById('level-chips').innerHTML = LEVELS.map(function (lv) {
+    return '<label class="lv-chip lv-' + lv + '"><input type="checkbox" ' + (App.showLevels[lv] ? 'checked' : '') + ' onchange="App.showLevels[\'' + lv + '\']=this.checked;renderStudyPassage()"> ' + lv + ' <b>' + (counts[lv] || 0) + '</b></label>';
+  }).join(' ');
+}
+function togglePosColor() { App.posColor = !App.posColor; document.getElementById('btn-pos-toggle').classList.toggle('active', App.posColor); renderStudyPassage(); }
+function toggleListenMode() {
+  App.listenMode = !App.listenMode;
+  document.getElementById('btn-listen-toggle').classList.toggle('active', App.listenMode);
+  if (App.listenMode) LD.toast('Click any word in the passage to hear it.', 'ok');
+}
+function onStudyWordClick(w) {
+  if (!App.listenMode) return;
+  try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(w); u.lang = 'en-GB'; u.rate = .9; speechSynthesis.speak(u); } catch (e) {}
+}
+
 // ═══════════════════════════════════════════════════════════
-// AI CALL #2 — Sinh Quiz 15 câu (5 nội dung + 10 từ vựng)
+// AI CALL #2 — Generate the 15-question quiz (5 content + 10 vocab), all in English
 // ═══════════════════════════════════════════════════════════
 async function goQuiz() {
   showScreen('screen-quiz');
-  if (App.quiz.length) { renderQuiz(); return; } // đã sinh rồi, khỏi gọi AI lại nếu quay lại màn này
+  if (App.quiz.length) { renderQuiz(); return; } // already generated — don't call AI again if the student comes back here
   document.getElementById('quiz-loading').classList.remove('hidden');
   document.getElementById('quiz-body').innerHTML = '';
   try {
     var hardWords = [];
     ['B2', 'C1', 'C2'].forEach(function (lv) { (App.cefr && App.cefr.byLevel[lv] || []).forEach(function (w) { hardWords.push(w); }); });
-    var prompt = 'Dựa vào script IELTS Listening sau (đã sửa chính tả) và danh sách từ khó / collocation, ' +
-      'tạo ĐÚNG 15 câu hỏi trắc nghiệm 4 đáp án cho sinh viên Việt Nam: 5 câu VỀ NỘI DUNG (ý chính/chi tiết/suy luận từ script), ' +
-      '10 câu VỀ TỪ VỰNG (nghĩa/cách dùng của từ khó hoặc collocation bên dưới). Câu hỏi và giải thích viết tiếng Việt.\n\n' +
+    var prompt = 'Based on the following IELTS Listening script (already spell-checked) and the list of difficult words / collocations, ' +
+      'write EXACTLY 15 multiple-choice questions (4 options each) IN ENGLISH for a Vietnamese IELTS student: 5 CONTENT questions ' +
+      '(main idea/detail/inference from the script), 10 VOCABULARY questions (meaning/usage of the difficult words or collocations below). ' +
+      'Write every question, option and explanation in English — do not use Vietnamese anywhere in the output.\n\n' +
       'SCRIPT:\n"""' + App.correctedSentences.join(' ') + '"""\n\n' +
-      'TỪ KHÓ (B2+): ' + hardWords.slice(0, 40).join(', ') + '\n' +
-      'COLLOCATION: ' + App.collocations.map(function (c) { return c.en; }).join(', ') + '\n\n' +
-      'Trả về DUY NHẤT JSON: {"questions":[{"type":"content|vocab","q":"câu hỏi","o":["A","B","C","D"],"a":0,"e":"giải thích ngắn"}]} — mảng "questions" phải có đúng 15 phần tử, đúng 5 phần tử type=content và đúng 10 phần tử type=vocab.';
+      'DIFFICULT WORDS (B2+): ' + hardWords.slice(0, 40).join(', ') + '\n' +
+      'COLLOCATIONS: ' + App.collocations.map(function (c) { return c.en; }).join(', ') + '\n\n' +
+      'Return ONLY this JSON: {"questions":[{"type":"content|vocab","q":"question text","o":["A","B","C","D"],"a":0,"e":"short explanation"}]} — the "questions" array must have exactly 15 items, exactly 5 with type=content and exactly 10 with type=vocab. Everything in English.';
     var res = await callGemini(prompt, 6144);
     App.quiz = (res.questions || []).slice(0, 15);
     App.quizAnswers = new Array(App.quiz.length).fill(-1);
     document.getElementById('quiz-loading').classList.add('hidden');
     renderQuiz();
   } catch (err) {
-    document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--red)">Lỗi tạo quiz: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Thử lại</button>';
+    document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--red)">Quiz generation error: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button>';
   }
 }
 function renderQuiz() {
   document.getElementById('quiz-body').innerHTML = App.quiz.map(function (q, i) {
     return '<div class="q-card' + (App.quizAnswers[i] >= 0 ? ' answered' : '') + '">' +
-      '<span class="q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Nội dung' : 'Từ vựng') + '</span>' +
+      '<span class="q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Content' : 'Vocabulary') + '</span>' +
       '<div style="font-weight:700;font-size:14px;margin-bottom:10px">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
       (q.o || []).map(function (o, j) {
         return '<label class="opt-label' + (App.quizAnswers[i] === j ? ' sel' : '') + '"><input type="radio" name="q' + i + '" ' + (App.quizAnswers[i] === j ? 'checked' : '') + ' onchange="setQuizAnswer(' + i + ',' + j + ')"> ' + LD.esc(o) + '</label>';
@@ -594,22 +678,22 @@ function renderQuiz() {
 function setQuizAnswer(i, j) { App.quizAnswers[i] = j; renderQuiz(); }
 function updateQuizProgress() {
   var answered = App.quizAnswers.filter(function (a) { return a >= 0; }).length;
-  document.getElementById('quiz-progress').textContent = 'Đã trả lời ' + answered + '/' + App.quiz.length;
+  document.getElementById('quiz-progress').textContent = 'Answered ' + answered + '/' + App.quiz.length;
   document.getElementById('btn-submit-quiz').disabled = answered < App.quiz.length || App.quiz.length !== 15;
 }
 async function submitQuiz() {
   var correct = App.quiz.reduce(function (a, q, i) { return a + (App.quizAnswers[i] === q.a ? 1 : 0); }, 0);
   var score = Math.round(correct / App.quiz.length * 100);
   try {
-    var r = await LD.api('session.saveQuiz', { sessionId: App.sessionId, answers: App.quizAnswers, correct: correct, score: score });
-    if (!r.success) { LD.toast(r.error || 'Không lưu được quiz', 'err'); return; }
+    var r = await LD.api('session.saveQuiz', { sessionId: App.sessionId, questions: App.quiz, answers: App.quizAnswers, correct: correct, score: score });
+    if (!r.success) { LD.toast(r.error || 'Could not save the quiz', 'err'); return; }
     LD.toast('Quiz: ' + correct + '/15 (' + score + '%)', 'ok');
     goGapFill();
-  } catch (e) { LD.toast('Lỗi mạng: ' + e.message, 'err'); }
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// GAP-FILL — rule-based blank selection (KHÔNG AI)
+// GAP-FILL — rule-based blank selection (no AI)
 // ═══════════════════════════════════════════════════════════
 function goGapFill() {
   buildGapFill();
@@ -619,7 +703,7 @@ function goGapFill() {
 function buildGapFill() {
   App.gapfill = [];
   App.correctedSentences.forEach(function (sent, si) {
-    var words = sent.split(/(\s+)/); // giữ khoảng trắng để ráp lại nguyên câu
+    var words = sent.split(/(\s+)/); // keep whitespace so the sentence can be reassembled exactly
     var candidates = [];
     words.forEach(function (w, wi) {
       var clean = w.replace(/[^A-Za-z'-]/g, '');
@@ -628,7 +712,7 @@ function buildGapFill() {
       var isCollocHead = App.collocations.some(function (c) { return c.en.toLowerCase().split(/\s+/)[0] === clean.toLowerCase(); });
       if (isCollocHead || (info && ['B2', 'C1', 'C2'].indexOf(info.level) >= 0)) candidates.push(wi);
     });
-    // Blank tối đa 2 từ/câu để không quá khó
+    // Blank at most 2 words/sentence so it doesn't get too hard
     var picks = candidates.slice(0, 2);
     if (picks.length) {
       App.gapfill.push({ sentenceIdx: si, parts: words, blankWordIdx: picks });
@@ -643,7 +727,7 @@ function renderGapFill() {
       if (bi < 0) return LD.esc(w);
       return '<input class="gap-blank" data-gi="' + gi + '" data-bi="' + bi + '" oninput="setGapAnswer(' + gi + ',' + bi + ',this.value)" placeholder="…">';
     }).join('');
-    return '<div class="gap-sentence"><span class="sb-label">Câu ' + (g.sentenceIdx + 1) + '</span><div>' + out + '</div></div>';
+    return '<div class="gap-sentence"><span class="sb-label">Sentence ' + (g.sentenceIdx + 1) + '</span><div>' + out + '</div></div>';
   }).join('');
   updateGapProgress();
 }
@@ -667,14 +751,14 @@ async function submitGapFill() {
   var score = total ? Math.round(correct / total * 100) : 0;
   try {
     var r = await LD.api('session.saveGapFill', { sessionId: App.sessionId, answers: flatAnswers, total: total, correct: correct, score: score });
-    if (!r.success) { LD.toast(r.error || 'Không lưu được gap-fill', 'err'); return; }
+    if (!r.success) { LD.toast(r.error || 'Could not save gap-fill', 'err'); return; }
     LD.toast('Gap-fill: ' + correct + '/' + total + ' (' + score + '%)', 'ok');
     goDictation();
-  } catch (e) { LD.toast('Lỗi mạng: ' + e.message, 'err'); }
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// DICTATION — DUY NHẤT resumable
+// DICTATION — the ONLY resumable step
 // ═══════════════════════════════════════════════════════════
 function goDictation() {
   App.dictationIdx = 0;
@@ -689,12 +773,12 @@ function renderDictation() {
     var st = App.dictationAnswers[i];
     var cls = 'sentence-block' + (i === App.dictationIdx ? ' active-block' : '') + (st.checked ? ' completed' : '');
     return '<div class="' + cls + '" data-idx="' + i + '">' +
-      '<div class="sb-label">Câu ' + (i + 1) + '</div>' +
+      '<div class="sb-label">Sentence ' + (i + 1) + '</div>' +
       '<div class="sb-result" id="sb-result-' + i + '"></div>' +
-      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Gõ những gì bạn nghe được…" value="' + LD.esc(st.typed) + '" ' + (st.checked ? 'disabled' : '') + ' oninput="App.dictationAnswers[' + i + '].typed=this.value">' +
+      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '" ' + (st.checked ? 'disabled' : '') + ' oninput="App.dictationAnswers[' + i + '].typed=this.value">' +
       '<div class="sb-controls">' +
-      '<button class="btn btn-secondary btn-sm" onclick="checkSentence(' + i + ')" ' + (st.checked ? 'disabled' : '') + '>✓ Kiểm tra</button>' +
-      '<button class="btn btn-secondary btn-sm" onclick="jumpTo(' + i + ')">▶ Đến câu này</button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="checkSentence(' + i + ')" ' + (st.checked ? 'disabled' : '') + '>✓ Check</button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="jumpTo(' + i + ')">▶ Jump here</button>' +
       '</div></div>';
   }).join('');
   document.getElementById('dictation-sentences').innerHTML = html;
@@ -725,9 +809,9 @@ async function saveDictationAndExit() {
     var r = await LD.api('session.saveDictationProgress', {
       sessionId: App.sessionId, currentSentenceIdx: App.dictationIdx, answers: App.dictationAnswers
     });
-    if (r.success) { LD.toast('Đã lưu — mở lại ở "Lịch sử → Đang dang dở".', 'ok', 3500); goHistory(); }
-    else LD.toast(r.error || 'Không lưu được', 'err');
-  } catch (e) { LD.toast('Lỗi mạng: ' + e.message, 'err'); }
+    if (r.success) { LD.toast('Saved — resume it from "History → In Progress".', 'ok', 3500); goHistory(); }
+    else LD.toast(r.error || 'Could not save', 'err');
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
 }
 async function finishDictation() {
   var totalWords = 0, correctWords = 0;
@@ -739,11 +823,11 @@ async function finishDictation() {
   var accuracy = totalWords ? Math.round(correctWords / totalWords * 100) : 0;
   try {
     var r = await LD.api('session.finishDictation', { sessionId: App.sessionId, answers: App.dictationAnswers, accuracy: accuracy });
-    if (!r.success) { LD.toast(r.error || 'Không nộp được bài', 'err'); return; }
+    if (!r.success) { LD.toast(r.error || 'Could not submit', 'err'); return; }
     document.getElementById('result-total').textContent = r.totalScore + '%';
     loadFinalScoresIntoResult();
     showScreen('screen-result');
-  } catch (e) { LD.toast('Lỗi mạng: ' + e.message, 'err'); }
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
 }
 function loadFinalScoresIntoResult() {
   var qCorrect = App.quiz.reduce(function (a, q, i) { return a + (App.quizAnswers[i] === q.a ? 1 : 0); }, 0);
@@ -757,12 +841,12 @@ function loadFinalScoresIntoResult() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// RESUME (chỉ Dictation) — StudentID + SessionID
+// RESUME (Dictation only) — StudentID + SessionID
 // ═══════════════════════════════════════════════════════════
 async function resumeSession(sessionId) {
   try {
     var r = await LD.api('student.resumeSession', { sessionId: sessionId });
-    if (!r.success) { LD.toast(r.error || 'Không mở được session', 'err'); return; }
+    if (!r.success) { LD.toast(r.error || 'Could not open this session', 'err'); return; }
     var d = r.data;
     App.sessionId = d.SessionID;
     App.correctedSentences = d.CorrectedScriptJSON || [];
@@ -775,19 +859,19 @@ async function resumeSession(sessionId) {
     var audio = document.getElementById('dict-audio');
     document.getElementById('dict-audio-row').style.display = App.audioBlobUrl ? 'block' : 'none';
     renderDictation();
-    LD.toast('Đã mở lại bài dở dang.', 'ok');
-  } catch (e) { LD.toast('Lỗi mạng: ' + e.message, 'err'); }
+    LD.toast('Resumed your in-progress session.', 'ok');
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
 }
 async function checkInProgressHint() {
   try {
     var r = await LD.api('student.getInProgress', {});
-    if (r.success && r.data.length) document.getElementById('setup-inprogress-hint').innerHTML = '📌 Bạn có <b>' + r.data.length + '</b> bài đang dang dở ở Dictation.';
-    else document.getElementById('setup-inprogress-hint').textContent = 'Chưa có bài nào đang dang dở.';
+    if (r.success && r.data.length) document.getElementById('setup-inprogress-hint').innerHTML = '📌 You have <b>' + r.data.length + '</b> session(s) in progress at Dictation.';
+    else document.getElementById('setup-inprogress-hint').textContent = 'No sessions in progress.';
   } catch (e) {}
 }
 
 // ═══════════════════════════════════════════════════════════
-// HISTORY — Đang dang dở + Đã hoàn thành
+// HISTORY — In Progress + Completed
 // ═══════════════════════════════════════════════════════════
 async function loadInProgress() {
   var card = document.getElementById('inprogress-card'), list = document.getElementById('inprogress-list');
@@ -797,20 +881,20 @@ async function loadInProgress() {
     card.style.display = 'block';
     list.innerHTML = r.data.map(function (d) {
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--grey-100)">' +
-        '<div><div style="font-weight:700;font-size:13.5px">' + LD.esc(d.bookTestPart || 'Bài chưa đặt tên') + '</div>' +
-        '<div style="font-size:11.5px;color:var(--grey-600)">Câu ' + ((d.currentSentenceIdx || 0) + 1) + ' · Lưu lúc ' + LD.fmtDate(d.savedAt) + '</div></div>' +
-        '<button class="btn btn-primary btn-sm" onclick="location.href=\'student.html?resume=' + d.sessionId + '\'">▶ Tiếp tục</button></div>';
+        '<div><div style="font-weight:700;font-size:13.5px">' + LD.esc(d.bookTestPart || 'Untitled session') + '</div>' +
+        '<div style="font-size:11.5px;color:var(--grey-600)">Sentence ' + ((d.currentSentenceIdx || 0) + 1) + ' · Saved at ' + LD.fmtDate(d.savedAt) + '</div></div>' +
+        '<button class="btn btn-primary btn-sm" onclick="location.href=\'student.html?resume=' + d.sessionId + '\'">▶ Continue</button></div>';
     }).join('');
   } catch (e) {}
 }
 async function loadHistory() {
   var tbody = document.getElementById('history-tbody');
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--grey-400)">Đang tải…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
   try {
     var r = await LD.api('student.getHistory', {});
     App.histRows = (r.success && r.data) || [];
     renderHistoryTable();
-  } catch (e) { tbody.innerHTML = '<tr><td colspan="7" style="color:var(--red)">Lỗi tải lịch sử</td></tr>'; }
+  } catch (e) { tbody.innerHTML = '<tr><td colspan="7" style="color:var(--red)">Error loading history</td></tr>'; }
 }
 function renderHistoryTable() {
   var q = (document.getElementById('hist-search').value || '').toLowerCase();
@@ -820,7 +904,7 @@ function renderHistoryTable() {
     return '<tr><td>' + LD.esc(r.bookTestPart || '—') + '</td><td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
       '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
       '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td></tr>';
-  }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--grey-400)">Chưa có bài nào hoàn thành.</td></tr>';
+  }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--grey-400)">No completed sessions yet.</td></tr>';
 }
 function histSort(key) {
   App.histSortDir = App.histSortKey === key ? -App.histSortDir : -1;
