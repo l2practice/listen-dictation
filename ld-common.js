@@ -7,8 +7,7 @@
 (function (global) {
   'use strict';
 
-  // ⚠️ Đổi URL này sau khi deploy Code.gs (Apps Script ▸ Deploy ▸ Web app ▸ copy /exec)
-  var GAS = 'PASTE_APPS_SCRIPT_EXEC_URL_VAO_DAY';
+  var GAS = 'https://script.google.com/macros/s/AKfycbzByaIjPqA1nKLEFtyGIsDTUiGaE4HA0rb0TEiA5oXj6LqANjc4Wa2EZHO3gOyNZXyH/exec';
 
   var LD = {
     GAS: GAS,
