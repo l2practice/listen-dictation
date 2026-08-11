@@ -63,6 +63,12 @@
 .opt-label:hover{border-color:var(--red)}
 .opt-label.sel{border-color:var(--red);background:var(--red-light);font-weight:700}
 .opt-label input{margin-right:8px}
+.q-card.qc-correct{border-color:var(--green);background:#f6fffa}
+.q-card.qc-wrong{border-color:var(--red)}
+.opt-label.locked{cursor:default}
+.opt-label.correct-answer{border-color:var(--green);background:#e9f7ef;color:var(--green);font-weight:700}
+.opt-label.wrong-pick{border-color:var(--red);background:#fdecec;color:var(--red)}
+.q-explain{margin-top:8px;padding:8px 12px;background:#f0f4ff;border-left:3px solid var(--blue);border-radius:0 8px 8px 0;font-size:12.5px;color:var(--grey-800);line-height:1.6}
 .gap-sentence{background:var(--white);border-radius:12px;padding:14px 18px;margin-bottom:10px;border-left:4px solid var(--blue);font-size:14.5px;line-height:2;transition:opacity .3s}
 .gap-sentence.gs-future{opacity:.45}
 .gap-sentence.gs-done{border-left-color:var(--green)}
@@ -259,9 +265,10 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <div class="wrap">
     <div id="quiz-loading" class="card" style="text-align:center;padding:40px"><span class="spinner"></span> Generating quiz with AI…</div>
     <div id="quiz-body"></div>
+    <div id="quiz-hint" class="gap-seg-hint" style="display:none"></div>
     <div style="position:sticky;bottom:0;background:var(--off-white);padding:14px 0;text-align:center">
-      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-quiz loses all progress — you must answer all 15/15 questions before it can be saved.</div>
-      <button class="btn btn-primary" id="btn-submit-quiz" onclick="submitQuiz()" disabled style="padding:12px 30px">✅ Submit Quiz</button>
+      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-quiz loses all progress. You must get all 15/15 correct to continue — wrong answers stay unlocked so you can try again (no extra AI calls).</div>
+      <button class="btn btn-primary" id="btn-submit-quiz" disabled style="padding:12px 30px">✅ Check Answers</button>
     </div>
   </div>
 </div>
@@ -271,11 +278,18 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <div class="topbar">
     <div class="topbar-brand">Language <em>Hub</em></div>
     <div class="topbar-app">🧩 Gap-fill</div>
-    <div class="topbar-right"><span id="gapfill-seg-label" style="color:#fff;font-size:12px"></span></div>
+    <div class="topbar-right">
+      <span id="gapfill-seg-label" style="color:#fff;font-size:12px"></span>
+      <button class="btn btn-secondary btn-sm" id="btn-toggle-gap-shortcuts" onclick="toggleGapShortcutsBanner()">⌨️ Shortcuts</button>
+    </div>
   </div>
   <div class="wrap">
     <div class="card" style="padding:12px 16px;margin-bottom:14px">
       <audio id="gapfill-audio" controls style="width:100%"></audio>
+    </div>
+    <div id="gapfill-shortcuts-banner" class="dict-banner">
+      <span>⌨️ <b>Enter</b> = Check the current pair &nbsp;·&nbsp; <b>Tab</b> = Jump to the next blank &nbsp;·&nbsp; Correct blanks lock automatically — only fix the ones marked wrong.</span>
+      <button class="dict-banner-close" onclick="toggleGapShortcutsBanner(false)">✕</button>
     </div>
     <div class="card" style="font-size:12.5px;color:var(--grey-600);margin-bottom:14px">
       🎧 Listen and fill in the blanks <b>two sentences at a time</b>. Fill every blank in the current pair, then press <b>Enter</b> (or the Check button) — the app grades it instantly and marks each blank ✓ correct / ✗ wrong. If anything is wrong, fix it and press <b>Enter</b> again — your progress on earlier sentences is kept. Once the pair is fully correct, it automatically moves on to the next two sentences.
@@ -389,7 +403,7 @@ var App = {
   showLevels: { A1: false, A2: false, B1: false, B2: true, C1: true, C2: true },
   posColor: false, listenMode: false,
   audioBlobUrl: null,
-  quiz: [], quizAnswers: [],
+  quiz: [], quizAnswers: [], quizPool: [], quizBatchIdx: 0, quizPhase: 'answering', quizAttempts: [], _quizPromise: null,
   gapfill: [], gapfillAnswers: [], gapBlankState: [], gapSegments: [], gapSegIdx: 0,
   dictationIdx: 0, dictationAnswers: [], dictationReplaysUsed: [],
   dictMode: 'auto', pausePoints: [], _pausedForCurrentIdx: false,
@@ -621,6 +635,7 @@ async function startSession() {
 function goStudy() {
   renderLevelChips(); renderStudyPassage(); renderCefrDist(); renderCollocations();
   showScreen('screen-study');
+  prefetchQuiz(); // generate the quiz in the background while the student is still studying, so Quiz opens instantly
 }
 
 // ── ReadWise-style leveled reading ──
@@ -670,57 +685,131 @@ function onStudyWordClick(w) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// AI CALL #2 — Generate the 15-question quiz (5 content + 10 vocab), all in English
+// AI CALL #2 — Generate a POOL of 30 questions (10 content + 20 vocab) in ONE call,
+// prefetched during Study. Quiz is taken in batches of 15 from this pool. Must score
+// 15/15 to proceed to Gap-fill — a wrong answer means: see the explanation, then
+// restart with a DIFFERENT 15-question batch from the same pool (no new AI call).
+// The pool only tops up with another AI call if a student exhausts all 30 questions
+// (i.e. fails two full batches in a row) — a rare edge case.
 // ═══════════════════════════════════════════════════════════
+function prefetchQuiz() {
+  if (App.quizPool.length || App._quizPromise) return;
+  App._quizPromise = generateQuizPool().then(function () { loadQuizBatch(); }).catch(function (e) { App._quizPromise = null; console.warn('Quiz prefetch failed — will retry when the student opens Quiz:', e); });
+}
+async function generateQuizPool() {
+  var hardWords = [];
+  ['B2', 'C1', 'C2'].forEach(function (lv) { (App.cefr && App.cefr.byLevel[lv] || []).forEach(function (w) { hardWords.push(w); }); });
+  var prompt = 'Based on the following IELTS Listening script (already spell-checked) and the list of difficult words / collocations, ' +
+    'write EXACTLY 30 multiple-choice questions (4 options each) IN ENGLISH for a Vietnamese IELTS student: 10 CONTENT questions ' +
+    '(main idea/detail/inference from the script), 20 VOCABULARY questions (meaning/usage of the difficult words or collocations below). ' +
+    'Vary the phrasing and angle across questions on the same topic/word so they do not feel repetitive — they may be shown to the student in ' +
+    'two separate 15-question batches. Also include a short "e" explanation field for each question (why the correct answer is correct). ' +
+    'Write every question, option and explanation in English — do not use Vietnamese anywhere in the output.\n\n' +
+    'SCRIPT:\n"""' + App.correctedSentences.join(' ') + '"""\n\n' +
+    'DIFFICULT WORDS (B2+): ' + hardWords.slice(0, 60).join(', ') + '\n' +
+    'COLLOCATIONS: ' + App.collocations.map(function (c) { return c.en; }).join(', ') + '\n\n' +
+    'Return ONLY this JSON: {"questions":[{"type":"content|vocab","q":"question text","o":["A","B","C","D"],"a":0,"e":"short explanation"}]} — the "questions" array must have exactly 30 items, exactly 10 with type=content and exactly 20 with type=vocab. Everything in English.';
+  var res = await callGemini(prompt, 12000);
+  var newQs = (res.questions || []).slice(0, 30);
+  if (!newQs.length) throw new Error('AI returned no questions');
+  App.quizPool = App.quizPool.concat(newQs);
+}
+function loadQuizBatch() {
+  var start = App.quizBatchIdx * 15;
+  App.quiz = App.quizPool.slice(start, start + 15);
+  App.quizAnswers = new Array(App.quiz.length).fill(-1);
+  App.quizPhase = 'answering';
+}
 async function goQuiz() {
   showScreen('screen-quiz');
-  if (App.quiz.length) { renderQuiz(); return; } // already generated — don't call AI again if the student comes back here
+  document.getElementById('quiz-hint').style.display = 'none';
+  if (App.quiz.length) { renderQuiz(); return; } // prefetched during Study — usually already ready, no wait
   document.getElementById('quiz-loading').classList.remove('hidden');
   document.getElementById('quiz-body').innerHTML = '';
   try {
-    var hardWords = [];
-    ['B2', 'C1', 'C2'].forEach(function (lv) { (App.cefr && App.cefr.byLevel[lv] || []).forEach(function (w) { hardWords.push(w); }); });
-    var prompt = 'Based on the following IELTS Listening script (already spell-checked) and the list of difficult words / collocations, ' +
-      'write EXACTLY 15 multiple-choice questions (4 options each) IN ENGLISH for a Vietnamese IELTS student: 5 CONTENT questions ' +
-      '(main idea/detail/inference from the script), 10 VOCABULARY questions (meaning/usage of the difficult words or collocations below). ' +
-      'Write every question, option and explanation in English — do not use Vietnamese anywhere in the output.\n\n' +
-      'SCRIPT:\n"""' + App.correctedSentences.join(' ') + '"""\n\n' +
-      'DIFFICULT WORDS (B2+): ' + hardWords.slice(0, 40).join(', ') + '\n' +
-      'COLLOCATIONS: ' + App.collocations.map(function (c) { return c.en; }).join(', ') + '\n\n' +
-      'Return ONLY this JSON: {"questions":[{"type":"content|vocab","q":"question text","o":["A","B","C","D"],"a":0,"e":"short explanation"}]} — the "questions" array must have exactly 15 items, exactly 5 with type=content and exactly 10 with type=vocab. Everything in English.';
-    var res = await callGemini(prompt, 6144);
-    App.quiz = (res.questions || []).slice(0, 15);
-    App.quizAnswers = new Array(App.quiz.length).fill(-1);
+    if (!App._quizPromise) App._quizPromise = generateQuizPool().then(function () { loadQuizBatch(); });
+    await App._quizPromise;
     document.getElementById('quiz-loading').classList.add('hidden');
     renderQuiz();
   } catch (err) {
-    document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--red)">Quiz generation error: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button>';
+    App._quizPromise = null;
+    document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--red)">Quiz generation error: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App._quizPromise=null;goQuiz()">Retry</button>';
   }
 }
 function renderQuiz() {
+  var reviewing = App.quizPhase === 'reviewed';
   document.getElementById('quiz-body').innerHTML = App.quiz.map(function (q, i) {
-    return '<div class="q-card' + (App.quizAnswers[i] >= 0 ? ' answered' : '') + '">' +
+    var chosen = App.quizAnswers[i];
+    var ok = chosen === q.a;
+    var cardCls = reviewing ? (ok ? ' qc-correct' : ' qc-wrong') : (chosen >= 0 ? ' answered' : '');
+    var opts = (q.o || []).map(function (o, j) {
+      var cls = 'opt-label';
+      if (reviewing) {
+        cls += ' locked';
+        if (j === q.a) cls += ' correct-answer';
+        else if (j === chosen && !ok) cls += ' wrong-pick';
+      } else if (chosen === j) cls += ' sel';
+      return '<label class="' + cls + '"><input type="radio" name="q' + i + '" ' + (chosen === j ? 'checked' : '') + ' ' + (reviewing ? 'disabled' : '') +
+        ' onchange="setQuizAnswer(' + i + ',' + j + ')"> ' + LD.esc(o) + '</label>';
+    }).join('');
+    var explain = (reviewing && !ok && q.e) ? '<div class="q-explain">💡 ' + LD.esc(q.e) + '</div>' : '';
+    return '<div class="q-card' + cardCls + '">' +
       '<span class="q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Content' : 'Vocabulary') + '</span>' +
-      '<div style="font-weight:700;font-size:14px;margin-bottom:10px">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
-      (q.o || []).map(function (o, j) {
-        return '<label class="opt-label' + (App.quizAnswers[i] === j ? ' sel' : '') + '"><input type="radio" name="q' + i + '" ' + (App.quizAnswers[i] === j ? 'checked' : '') + ' onchange="setQuizAnswer(' + i + ',' + j + ')"> ' + LD.esc(o) + '</label>';
-      }).join('') + '</div>';
+      (reviewing ? (ok ? ' <b style="color:var(--green);font-size:12px">✓ Correct</b>' : ' <b style="color:var(--red);font-size:12px">✗ Wrong</b>') : '') +
+      '<div style="font-weight:700;font-size:14px;margin:6px 0 10px">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
+      opts + explain + '</div>';
   }).join('');
   updateQuizProgress();
 }
-function setQuizAnswer(i, j) { App.quizAnswers[i] = j; renderQuiz(); }
+function setQuizAnswer(i, j) { if (App.quizPhase !== 'answering') return; App.quizAnswers[i] = j; renderQuiz(); }
 function updateQuizProgress() {
   var answered = App.quizAnswers.filter(function (a) { return a >= 0; }).length;
-  document.getElementById('quiz-progress').textContent = 'Answered ' + answered + '/' + App.quiz.length;
-  document.getElementById('btn-submit-quiz').disabled = answered < App.quiz.length || App.quiz.length !== 15;
+  var btn = document.getElementById('btn-submit-quiz');
+  if (App.quizPhase === 'answering') {
+    document.getElementById('quiz-progress').textContent = 'Answered ' + answered + '/' + App.quiz.length + (App.quizAttempts.length ? ' · attempt ' + (App.quizAttempts.length + 1) : '');
+    btn.style.display = 'inline-flex'; btn.textContent = '✅ Check Answers'; btn.onclick = submitQuiz;
+    btn.disabled = App.quiz.length !== 15 || answered < App.quiz.length;
+  } else {
+    var correctCount = App.quiz.filter(function (q, i) { return App.quizAnswers[i] === q.a; }).length;
+    document.getElementById('quiz-progress').textContent = correctCount + '/15 correct';
+    btn.style.display = 'inline-flex'; btn.disabled = false;
+    if (correctCount === 15) { btn.textContent = '➡️ Continue → Gap-fill'; btn.onclick = finalizeQuizPass; }
+    else { btn.textContent = '🔁 Try Again (15 new questions)'; btn.onclick = retryQuiz; }
+  }
 }
-async function submitQuiz() {
-  var correct = App.quiz.reduce(function (a, q, i) { return a + (App.quizAnswers[i] === q.a ? 1 : 0); }, 0);
-  var score = Math.round(correct / App.quiz.length * 100);
+function submitQuiz() {
+  var correctCount = App.quiz.filter(function (q, i) { return App.quizAnswers[i] === q.a; }).length;
+  App.quizAttempts.push({ questions: App.quiz, answers: App.quizAnswers.slice(), correct: correctCount, total: App.quiz.length });
+  App.quizPhase = 'reviewed';
+  renderQuiz();
+  var hint = document.getElementById('quiz-hint');
+  if (correctCount < 15) {
+    hint.style.display = 'block'; hint.className = 'gap-seg-hint bad';
+    hint.textContent = '✗ ' + correctCount + '/15 correct — read the explanations above, then try again with a fresh set of questions.';
+  } else {
+    hint.style.display = 'block'; hint.className = 'gap-seg-hint ok'; hint.textContent = '🎉 15/15 correct!';
+  }
+}
+async function retryQuiz() {
+  App.quizBatchIdx++;
+  var start = App.quizBatchIdx * 15;
+  if (start + 15 > App.quizPool.length) {
+    // pool exhausted (failed 2 batches in a row) — top up with one more AI call
+    document.getElementById('quiz-body').innerHTML = '';
+    document.getElementById('quiz-hint').style.display = 'none';
+    document.getElementById('quiz-loading').classList.remove('hidden');
+    document.getElementById('quiz-loading').innerHTML = '<span class="spinner"></span> Generating more questions…';
+    try { await generateQuizPool(); } catch (e) { LD.toast('Could not generate more questions: ' + e.message, 'err'); document.getElementById('quiz-loading').classList.add('hidden'); return; }
+    document.getElementById('quiz-loading').classList.add('hidden');
+  }
+  loadQuizBatch();
+  renderQuiz();
+}
+async function finalizeQuizPass() {
   try {
-    var r = await LD.api('session.saveQuiz', { sessionId: App.sessionId, questions: App.quiz, answers: App.quizAnswers, correct: correct, score: score });
+    var r = await LD.api('session.saveQuiz', { sessionId: App.sessionId, attempts: App.quizAttempts, attemptsCount: App.quizAttempts.length, correct: 15, total: 15, score: 100 });
     if (!r.success) { LD.toast(r.error || 'Could not save the quiz', 'err'); return; }
-    LD.toast('Quiz: ' + correct + '/15 (' + score + '%)', 'ok');
+    LD.toast(App.quizAttempts.length > 1 ? ('Quiz passed on attempt ' + App.quizAttempts.length + '!') : 'Quiz: 15/15 on the first try!', 'ok');
     goGapFill();
   } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
 }
@@ -736,7 +825,15 @@ function goGapFill() {
   showScreen('screen-gapfill');
   var audio = document.getElementById('gapfill-audio');
   if (App.audioBlobUrl) audio.src = App.audioBlobUrl;
+  toggleGapShortcutsBanner(localStorage.getItem('ld_gap_shortcuts_hidden') !== '1');
   renderGapFill();
+}
+function toggleGapShortcutsBanner(show) {
+  var banner = document.getElementById('gapfill-shortcuts-banner');
+  if (!banner) return;
+  var willShow = typeof show === 'boolean' ? show : banner.classList.contains('hidden');
+  banner.classList.toggle('hidden', !willShow);
+  localStorage.setItem('ld_gap_shortcuts_hidden', willShow ? '0' : '1');
 }
 function buildGapFill() {
   App.gapfill = [];
@@ -1029,8 +1126,8 @@ async function finishDictation() {
   } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
 }
 function loadFinalScoresIntoResult() {
-  var qCorrect = App.quiz.reduce(function (a, q, i) { return a + (App.quizAnswers[i] === q.a ? 1 : 0); }, 0);
-  document.getElementById('result-quiz').textContent = qCorrect + '/15';
+  var firstAttempt = App.quizAttempts[0];
+  document.getElementById('result-quiz').textContent = firstAttempt ? (firstAttempt.correct + '/' + firstAttempt.total + (App.quizAttempts.length > 1 ? ' (passed on attempt ' + App.quizAttempts.length + ')' : '')) : '15/15';
   var gTotal = 0, gCorrect = 0;
   App.gapfill.forEach(function (g, gi) { g.blankWordIdx.forEach(function (wi, bi) { gTotal++; if (App.gapBlankState[gi] && App.gapBlankState[gi][bi] && App.gapBlankState[gi][bi].firstTryCorrect) gCorrect++; }); });
   document.getElementById('result-gapfill').textContent = gTotal ? (gCorrect + '/' + gTotal) : '—';

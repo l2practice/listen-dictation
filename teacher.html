@@ -394,16 +394,26 @@ function renderGapFillDetail() {
 function renderQuizDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-quiz');
   var qj = d.QuizJSON;
-  if (!qj || !qj.questions || !qj.questions.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Quiz yet.</div>'; return; }
-  var answers = qj.answers || [];
-  pane.innerHTML = qj.questions.map(function (q, i) {
-    var chosen = answers[i];
-    return '<div class="dt-q"><span class="dt-q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Content' : 'Vocabulary') + '</span>' +
-      '<div class="dt-q-text">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
-      (q.o || []).map(function (o, j) {
-        var cls = j === q.a ? 'correct' : (j === chosen ? 'chosen-wrong' : '');
-        return '<div class="dt-opt ' + cls + '">' + (j === chosen ? '☑ ' : '☐ ') + LD.esc(o) + (j === q.a ? '  ✓' : '') + '</div>';
-      }).join('') + '</div>';
+  var attempts = (qj && qj.attempts) || [];
+  if (!attempts.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Quiz yet.</div>'; return; }
+  // Each attempt is a full 15-question batch (redo-with-fresh-questions design — a wrong
+  // answer means a whole new batch next time, not a per-question retry). Show every attempt
+  // so the teacher can see what tripped the student up before they eventually passed.
+  pane.innerHTML = attempts.map(function (att, ai) {
+    var questions = att.questions || [], answers = att.answers || [];
+    var passed = att.correct === (att.total || questions.length);
+    var header = '<div style="margin:' + (ai ? '18px' : '0') + ' 0 8px;font-size:12.5px;font-weight:700;color:' + (passed ? '#56d364' : '#ff7b8a') + '">' +
+      'Attempt ' + (ai + 1) + ' — ' + att.correct + '/' + (att.total || questions.length) + (passed ? ' ✓ passed' : ' ✗ failed, redid with new questions') + '</div>';
+    var qs = questions.map(function (q, i) {
+      var chosen = answers[i];
+      return '<div class="dt-q"><span class="dt-q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Content' : 'Vocabulary') + '</span>' +
+        '<div class="dt-q-text">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
+        (q.o || []).map(function (o, j) {
+          var cls = j === q.a ? 'correct' : (j === chosen ? 'chosen-wrong' : '');
+          return '<div class="dt-opt ' + cls + '">' + (j === chosen ? '☑ ' : '☐ ') + LD.esc(o) + (j === q.a ? '  ✓' : '') + '</div>';
+        }).join('') + '</div>';
+    }).join('');
+    return header + qs;
   }).join('');
 }
 function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSortDir : -1; App.sessSortKey = key; renderSessionsTable(); }
