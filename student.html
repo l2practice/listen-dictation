@@ -63,8 +63,16 @@
 .opt-label:hover{border-color:var(--red)}
 .opt-label.sel{border-color:var(--red);background:var(--red-light);font-weight:700}
 .opt-label input{margin-right:8px}
-.gap-sentence{background:var(--white);border-radius:12px;padding:14px 18px;margin-bottom:10px;border-left:4px solid var(--blue);font-size:14.5px;line-height:2}
+.gap-sentence{background:var(--white);border-radius:12px;padding:14px 18px;margin-bottom:10px;border-left:4px solid var(--blue);font-size:14.5px;line-height:2;transition:opacity .3s}
+.gap-sentence.gs-future{opacity:.45}
+.gap-sentence.gs-done{border-left-color:var(--green)}
 .gap-blank{display:inline-block;min-width:90px;padding:2px 8px;border:none;border-bottom:2px solid var(--red);background:var(--red-light);border-radius:4px;font-family:var(--font-mono);font-size:13.5px;text-align:center;margin:0 2px}
+.gap-blank.gb-correct{border-bottom-color:var(--green);background:#e9f7ef;color:var(--green);font-weight:700}
+.gap-blank.gb-wrong{border-bottom-color:var(--red);background:#fdecec}
+.gap-blank.gb-future{border-bottom-color:#ccc;background:#f3f3f1;color:#aaa;pointer-events:none}
+.gap-seg-hint{margin-top:10px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;text-align:center}
+.gap-seg-hint.ok{background:#e9f7ef;color:var(--green);border:1.5px solid var(--green)}
+.gap-seg-hint.bad{background:#fdecec;color:var(--red);border:1.5px solid var(--red)}
 .sentence-block{background:#fff;border-radius:13px;padding:16px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(26,35,126,.07);border-left:4px solid #c8d4ee}
 .sentence-block.active-block{border-left-color:var(--gold);box-shadow:0 4px 18px rgba(197,160,40,.2)}
 .sentence-block.completed{border-left-color:var(--green)}
@@ -263,11 +271,20 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <div class="topbar">
     <div class="topbar-brand">Language <em>Hub</em></div>
     <div class="topbar-app">🧩 Gap-fill</div>
+    <div class="topbar-right"><span id="gapfill-seg-label" style="color:#fff;font-size:12px"></span></div>
   </div>
   <div class="wrap">
+    <div class="card" style="padding:12px 16px;margin-bottom:14px">
+      <audio id="gapfill-audio" controls style="width:100%"></audio>
+    </div>
+    <div class="card" style="font-size:12.5px;color:var(--grey-600);margin-bottom:14px">
+      🎧 Listen and fill in the blanks <b>two sentences at a time</b>. Fill every blank in the current pair, then press <b>Enter</b> (or the Check button) — the app grades it instantly and marks each blank ✓ correct / ✗ wrong. If anything is wrong, fix it and press <b>Enter</b> again — your progress on earlier sentences is kept. Once the pair is fully correct, it automatically moves on to the next two sentences.
+    </div>
     <div id="gapfill-body"></div>
+    <div id="gapfill-seg-hint" class="gap-seg-hint" style="display:none"></div>
     <div style="text-align:center;padding:14px 0">
-      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-way loses all progress — you must fill every blank before it can be saved.</div>
+      <button class="btn btn-secondary btn-sm" id="btn-check-segment" onclick="checkSegment()" style="margin-bottom:10px">✓ Check This Pair</button>
+      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-way loses all progress.</div>
       <button class="btn btn-primary" id="btn-submit-gapfill" onclick="submitGapFill()" disabled style="padding:12px 30px">✅ Submit Gap-fill</button>
     </div>
   </div>
@@ -288,11 +305,16 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   </div>
   <div class="wrap">
     <div id="dict-shortcuts-banner" class="dict-banner">
-      <span>⌨️ <b>Enter</b> = Check this sentence &nbsp;·&nbsp; <b>Ctrl+→</b> = Jump to next unchecked &nbsp;·&nbsp; <b>Ctrl+Space</b> = Play / Pause audio</span>
+      <span>⌨️ <b>Enter</b> = Check this sentence &nbsp;·&nbsp; <b>Ctrl+→</b> = Jump to next unchecked &nbsp;·&nbsp; <b>Ctrl+Space</b> = Play / Pause audio &nbsp;·&nbsp; 🎯 Auto-pause estimates each sentence's end from word count — switch to Manual for full control.</span>
       <button class="dict-banner-close" onclick="toggleShortcutsBanner(false)">✕</button>
     </div>
     <div style="margin-bottom:12px" id="dict-audio-row">
       <audio id="dict-audio" controls style="width:100%"></audio>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <span style="font-size:11.5px;font-weight:700;color:var(--grey-600)">Playback:</span>
+        <button class="btn btn-secondary btn-sm" id="btn-mode-auto" onclick="setDictMode('auto')">🎯 Auto-pause per sentence</button>
+        <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')">✋ Manual control</button>
+      </div>
     </div>
     <div id="dictation-sentences"></div>
     <button class="btn btn-primary btn-full" id="btn-finish-dictation" onclick="finishDictation()" style="padding:14px;font-size:15px;display:none">🏁 Submit</button>
@@ -368,8 +390,9 @@ var App = {
   posColor: false, listenMode: false,
   audioBlobUrl: null,
   quiz: [], quizAnswers: [],
-  gapfill: [], gapfillAnswers: [],
+  gapfill: [], gapfillAnswers: [], gapBlankState: [], gapSegments: [], gapSegIdx: 0,
   dictationIdx: 0, dictationAnswers: [], dictationReplaysUsed: [],
+  dictMode: 'auto', pausePoints: [], _pausedForCurrentIdx: false,
   histRows: [], histSortKey: 'startTime', histSortDir: -1
 };
 
@@ -703,11 +726,16 @@ async function submitQuiz() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// GAP-FILL — rule-based blank selection (no AI)
+// GAP-FILL — rule-based blank selection (no AI). Flow: fill 2 sentences at a
+// time, grade the pair on Enter/Check, must be 100% correct to advance. Only
+// the FIRST attempt on each blank counts toward the score (mastery-learning
+// style: you must eventually get it right, but you're graded on your instinct).
 // ═══════════════════════════════════════════════════════════
 function goGapFill() {
   buildGapFill();
   showScreen('screen-gapfill');
+  var audio = document.getElementById('gapfill-audio');
+  if (App.audioBlobUrl) audio.src = App.audioBlobUrl;
   renderGapFill();
 }
 function buildGapFill() {
@@ -724,45 +752,105 @@ function buildGapFill() {
     });
     // Blank at most 2 words/sentence so it doesn't get too hard
     var picks = candidates.slice(0, 2);
-    if (picks.length) {
-      App.gapfill.push({ sentenceIdx: si, parts: words, blankWordIdx: picks });
-    }
+    App.gapfill.push({ sentenceIdx: si, parts: words, blankWordIdx: picks }); // pushed even if picks is empty, so every sentence still shows in its pair
   });
   App.gapfillAnswers = App.gapfill.map(function (g) { return g.blankWordIdx.map(function () { return ''; }); });
+  App.gapBlankState = App.gapfill.map(function (g) { return g.blankWordIdx.map(function () { return { checked: false, correct: false, firstTryCorrect: null, firstTryGiven: null }; }); });
+  // group sentences into pairs (2-sentence segments)
+  App.gapSegments = [];
+  for (var i = 0; i < App.gapfill.length; i += 2) {
+    var seg = [i]; if (i + 1 < App.gapfill.length) seg.push(i + 1);
+    App.gapSegments.push(seg);
+  }
+  App.gapSegIdx = 0;
+  gapAdvancePastEmptySegments();
+}
+function gapSegTotalBlanks(seg) { return seg.reduce(function (a, gi) { return a + App.gapfill[gi].blankWordIdx.length; }, 0); }
+function gapAdvancePastEmptySegments() {
+  while (App.gapSegIdx < App.gapSegments.length && gapSegTotalBlanks(App.gapSegments[App.gapSegIdx]) === 0) App.gapSegIdx++;
 }
 function renderGapFill() {
-  document.getElementById('gapfill-body').innerHTML = App.gapfill.map(function (g, gi) {
+  var html = App.gapfill.map(function (g, gi) {
+    var segIdx = App.gapSegments.findIndex(function (seg) { return seg.indexOf(gi) >= 0; });
+    var state = segIdx < App.gapSegIdx ? 'done' : segIdx === App.gapSegIdx ? 'active' : 'future';
     var out = g.parts.map(function (w, wi) {
       var bi = g.blankWordIdx.indexOf(wi);
       if (bi < 0) return LD.esc(w);
-      return '<input class="gap-blank" data-gi="' + gi + '" data-bi="' + bi + '" oninput="setGapAnswer(' + gi + ',' + bi + ',this.value)" placeholder="…">';
+      var bs = App.gapBlankState[gi][bi];
+      var cls = 'gap-blank' + (state === 'future' ? ' gb-future' : bs.checked ? (bs.correct ? ' gb-correct' : ' gb-wrong') : '');
+      var val = LD.esc(App.gapfillAnswers[gi][bi] || '');
+      var disabled = (state === 'future') || (bs.checked && bs.correct);
+      return '<input class="' + cls + '" data-gi="' + gi + '" data-bi="' + bi + '" value="' + val + '" ' + (disabled ? 'disabled' : '') +
+        ' oninput="setGapAnswer(' + gi + ',' + bi + ',this.value)" onkeydown="onGapKeydown(event,' + gi + ')" placeholder="…">';
     }).join('');
-    return '<div class="gap-sentence"><span class="sb-label">Sentence ' + (g.sentenceIdx + 1) + '</span><div>' + out + '</div></div>';
+    return '<div class="gap-sentence' + (state === 'future' ? ' gs-future' : state === 'done' ? ' gs-done' : '') + '"><span class="sb-label">Sentence ' + (g.sentenceIdx + 1) + '</span><div>' + out + '</div></div>';
   }).join('');
-  updateGapProgress();
+  document.getElementById('gapfill-body').innerHTML = html;
+  var finished = App.gapSegIdx >= App.gapSegments.length;
+  document.getElementById('gapfill-seg-label').textContent = finished ? 'All pairs done' : 'Pair ' + (App.gapSegIdx + 1) + '/' + App.gapSegments.length;
+  document.getElementById('btn-check-segment').style.display = finished ? 'none' : 'inline-flex';
+  document.getElementById('btn-submit-gapfill').disabled = !finished;
+  var hint = document.getElementById('gapfill-seg-hint');
+  if (finished) { hint.style.display = 'block'; hint.className = 'gap-seg-hint ok'; hint.textContent = '🎉 All pairs complete — you can submit now!'; }
+  else {
+    hint.style.display = 'none';
+    var seg = App.gapSegments[App.gapSegIdx];
+    for (var s = 0; s < seg.length; s++) {
+      var gi = seg[s];
+      for (var bi = 0; bi < App.gapBlankState[gi].length; bi++) {
+        if (!App.gapBlankState[gi][bi].correct) {
+          var el = document.querySelector('[data-gi="' + gi + '"][data-bi="' + bi + '"]');
+          if (el) { el.focus(); return; }
+        }
+      }
+    }
+  }
 }
-function setGapAnswer(gi, bi, v) { App.gapfillAnswers[gi][bi] = v; updateGapProgress(); }
-function updateGapProgress() {
-  var total = 0, filled = 0;
-  App.gapfillAnswers.forEach(function (arr) { arr.forEach(function (v) { total++; if (v.trim()) filled++; }); });
-  document.getElementById('btn-submit-gapfill').disabled = total === 0 || filled < total;
+function setGapAnswer(gi, bi, v) { App.gapfillAnswers[gi][bi] = v; }
+function onGapKeydown(e, gi) { if (e.key === 'Enter') { e.preventDefault(); checkSegment(); } }
+function checkSegment() {
+  if (App.gapSegIdx >= App.gapSegments.length) return;
+  var seg = App.gapSegments[App.gapSegIdx];
+  var allCorrect = true;
+  seg.forEach(function (gi) {
+    var g = App.gapfill[gi];
+    g.blankWordIdx.forEach(function (wi, bi) {
+      var given = (App.gapfillAnswers[gi][bi] || '').trim().toLowerCase();
+      var actual = g.parts[wi].replace(/[^A-Za-z'-]/g, '').toLowerCase();
+      var ok = given !== '' && given === actual;
+      var st = App.gapBlankState[gi][bi];
+      if (st.firstTryCorrect === null) { st.firstTryCorrect = ok; st.firstTryGiven = given; } // score + GV review reflect the FIRST attempt only
+      st.checked = true; st.correct = ok;
+      if (!ok) allCorrect = false;
+    });
+  });
+  var hint = document.getElementById('gapfill-seg-hint');
+  if (allCorrect) {
+    App.gapSegIdx++;
+    gapAdvancePastEmptySegments();
+    hint.style.display = 'block'; hint.className = 'gap-seg-hint ok'; hint.textContent = '✓ Correct! Moving to the next pair…';
+  } else {
+    hint.style.display = 'block'; hint.className = 'gap-seg-hint bad'; hint.textContent = '✗ Some answers are wrong — fix the highlighted blanks and press Enter again.';
+  }
+  renderGapFill();
 }
 async function submitGapFill() {
   var total = 0, correct = 0, flatAnswers = [];
   App.gapfill.forEach(function (g, gi) {
     g.blankWordIdx.forEach(function (wi, bi) {
       total++;
+      var st = App.gapBlankState[gi][bi];
+      if (st.firstTryCorrect) correct++;
       var given = (App.gapfillAnswers[gi][bi] || '').trim().toLowerCase();
       var actual = g.parts[wi].replace(/[^A-Za-z'-]/g, '').toLowerCase();
-      if (given === actual) correct++;
-      flatAnswers.push({ sentenceIdx: g.sentenceIdx, wordIdx: wi, given: given, actual: actual });
+      flatAnswers.push({ sentenceIdx: g.sentenceIdx, wordIdx: wi, given: given, actual: actual, firstTryGiven: st.firstTryGiven, firstTryCorrect: !!st.firstTryCorrect });
     });
   });
-  var score = total ? Math.round(correct / total * 100) : 0;
+  var score = total ? Math.round(correct / total * 100) : 100;
   try {
     var r = await LD.api('session.saveGapFill', { sessionId: App.sessionId, answers: flatAnswers, total: total, correct: correct, score: score });
     if (!r.success) { LD.toast(r.error || 'Could not save gap-fill', 'err'); return; }
-    LD.toast('Gap-fill: ' + correct + '/' + total + ' (' + score + '%)', 'ok');
+    LD.toast('Gap-fill: ' + correct + '/' + total + ' correct on the first try (' + score + '%)', 'ok');
     goDictation();
   } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
 }
@@ -777,7 +865,53 @@ function goDictation() {
   var audio = document.getElementById('dict-audio');
   if (App.audioBlobUrl) audio.src = App.audioBlobUrl; else document.getElementById('dict-audio-row').style.display = 'none';
   toggleShortcutsBanner(localStorage.getItem('ld_dict_shortcuts_hidden') !== '1');
+  setupDictAudioListeners();
+  setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
   renderDictation();
+}
+// ── Auto-pause per sentence: since there are no real per-sentence timestamps,
+// pause points are ESTIMATED by splitting the audio's total duration proportionally
+// to each sentence's word count. It's an approximation, not exact — Manual mode
+// exists precisely so a student can take full control when the estimate is off. ──
+function setupDictAudioListeners() {
+  var audio = document.getElementById('dict-audio');
+  if (!audio || audio._ldWired) return;
+  audio._ldWired = true;
+  audio.addEventListener('loadedmetadata', computePausePoints);
+  audio.addEventListener('timeupdate', onDictTimeUpdate);
+  if (audio.readyState >= 1) computePausePoints();
+}
+function computePausePoints() {
+  var audio = document.getElementById('dict-audio');
+  var dur = audio && audio.duration;
+  if (!dur || !isFinite(dur)) { App.pausePoints = []; return; }
+  var totalWords = App.correctedSentences.reduce(function (a, s) { return a + wc(s); }, 0) || 1;
+  var cum = 0;
+  App.pausePoints = App.correctedSentences.map(function (s) { cum += wc(s); return dur * (cum / totalWords); });
+}
+function onDictTimeUpdate() {
+  if (App.dictMode !== 'auto') return;
+  var audio = document.getElementById('dict-audio');
+  if (!audio || audio.paused) return;
+  var idx = App.dictationIdx;
+  if (!App.pausePoints.length || idx >= App.pausePoints.length) return;
+  if (App.dictationAnswers[idx] && App.dictationAnswers[idx].checked) return;
+  if (App._pausedForCurrentIdx) return;
+  if (audio.currentTime >= App.pausePoints[idx] - 0.05) {
+    audio.pause();
+    App._pausedForCurrentIdx = true;
+    var inp = document.getElementById('sb-input-' + idx);
+    if (inp) inp.focus();
+  }
+}
+function setDictMode(mode) {
+  App.dictMode = mode;
+  localStorage.setItem('ld_dict_mode', mode);
+  var ab = document.getElementById('btn-mode-auto'), mb = document.getElementById('btn-mode-manual');
+  if (ab) ab.classList.toggle('active', mode === 'auto');
+  if (mb) mb.classList.toggle('active', mode === 'manual');
+  App._pausedForCurrentIdx = false;
+  if (mode === 'auto' && !App.pausePoints.length) computePausePoints();
 }
 function wc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
 function renderDictation() {
@@ -834,7 +968,16 @@ document.addEventListener('keydown', function (e) {
 function jumpToNextUnchecked() {
   for (var i = 0; i < App.dictationAnswers.length; i++) if (!App.dictationAnswers[i].checked) { jumpTo(i); return; }
 }
-function jumpTo(i) { App.dictationIdx = i; renderDictation(); document.getElementById('sb-input-' + i).focus(); }
+function jumpTo(i) {
+  App.dictationIdx = i;
+  App._pausedForCurrentIdx = false;
+  if (App.dictMode === 'auto' && App.pausePoints.length) {
+    var audio = document.getElementById('dict-audio');
+    if (audio) audio.currentTime = i > 0 ? App.pausePoints[i - 1] : 0;
+  }
+  renderDictation();
+  document.getElementById('sb-input-' + i).focus();
+}
 function checkSentence(i) {
   var typed = (document.getElementById('sb-input-' + i).value || '').trim();
   App.dictationAnswers[i].typed = typed;
@@ -848,9 +991,17 @@ function checkSentence(i) {
   }).join(' ');
   document.getElementById('sb-result-' + i).innerHTML = html;
   if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
+  App._pausedForCurrentIdx = false;
   renderDictation();
   var nextInput = document.getElementById('sb-input-' + App.dictationIdx);
   if (nextInput && !nextInput.disabled) nextInput.focus();
+  // Auto mode: resume playback automatically so the student doesn't need to hit play again.
+  if (App.dictMode === 'auto') {
+    var audio = document.getElementById('dict-audio');
+    if (audio && audio.paused && App.dictationIdx < App.correctedSentences.length) {
+      setTimeout(function () { audio.play().catch(function () {}); }, 500);
+    }
+  }
 }
 async function saveDictationAndExit() {
   try {
@@ -881,7 +1032,7 @@ function loadFinalScoresIntoResult() {
   var qCorrect = App.quiz.reduce(function (a, q, i) { return a + (App.quizAnswers[i] === q.a ? 1 : 0); }, 0);
   document.getElementById('result-quiz').textContent = qCorrect + '/15';
   var gTotal = 0, gCorrect = 0;
-  App.gapfill.forEach(function (g, gi) { g.blankWordIdx.forEach(function (wi, bi) { gTotal++; var given = (App.gapfillAnswers[gi][bi] || '').trim().toLowerCase(); var actual = g.parts[wi].replace(/[^A-Za-z'-]/g, '').toLowerCase(); if (given === actual) gCorrect++; }); });
+  App.gapfill.forEach(function (g, gi) { g.blankWordIdx.forEach(function (wi, bi) { gTotal++; if (App.gapBlankState[gi] && App.gapBlankState[gi][bi] && App.gapBlankState[gi][bi].firstTryCorrect) gCorrect++; }); });
   document.getElementById('result-gapfill').textContent = gTotal ? (gCorrect + '/' + gTotal) : '—';
   var totalWords = 0, correctWords = 0;
   App.correctedSentences.forEach(function (s, i) { var actual = s.replace(/[.,!?;:"]/g, '').split(/\s+/); var typed = (App.dictationAnswers[i].typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/); actual.forEach(function (w, wi) { totalWords++; if ((typed[wi] || '').toLowerCase() === w.toLowerCase()) correctWords++; }); });
@@ -907,6 +1058,8 @@ async function resumeSession(sessionId) {
     var audio = document.getElementById('dict-audio');
     document.getElementById('dict-audio-row').style.display = App.audioBlobUrl ? 'block' : 'none';
     toggleShortcutsBanner(localStorage.getItem('ld_dict_shortcuts_hidden') !== '1');
+    setupDictAudioListeners();
+    setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
     renderDictation();
     LD.toast('Resumed your in-progress session.', 'ok');
   } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }

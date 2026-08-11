@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,14 +12,14 @@
   <div class="ld-auth-card" style="text-align:center">
     <div class="ld-brand">Language <em>Hub</em></div>
     <div class="ld-auth-title">🎧 LisDictation</div>
-    <p class="ld-auth-sub">Đang chuyển hướng…</p>
+    <p class="ld-auth-sub">Redirecting…</p>
   </div>
 </div>
 
 <script src="ld-common.js"></script>
 <script>
-// index.html chỉ để GitHub Pages có file gốc phục vụ (bắt buộc cho URL dạng thư mục).
-// Đăng nhập rồi → vào thẳng trang tương ứng. Chưa đăng nhập → login.html (thẻ <meta refresh> ở trên lo trường hợp JS lỗi).
+// index.html only exists so GitHub Pages has a root file to serve (required for directory-style URLs).
+// Already logged in → go straight to the right page. Not logged in → login.html (the <meta refresh> above covers the case where JS fails).
 (function () {
   if (typeof LD === 'undefined') { location.href = 'login.html'; return; }
   var s = LD.session.get();

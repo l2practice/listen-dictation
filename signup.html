@@ -1,67 +1,67 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Đăng ký · LisDictation</title>
+<title>Sign Up · LisDictation</title>
 <link rel="stylesheet" href="ld-theme.css">
 </head>
 <body>
 <div class="ld-auth-wrap">
   <div class="ld-auth-card">
     <div class="ld-brand">Language <em>Hub</em></div>
-    <div class="ld-auth-title">🎧 Tham gia LisDictation</div>
-    <p class="ld-auth-sub">Tạo tài khoản sinh viên để vào đúng lớp của bạn.</p>
+    <div class="ld-auth-title">🎧 Join LisDictation</div>
+    <p class="ld-auth-sub">Create a student account to join your class.</p>
 
     <form id="form" autocomplete="on">
-      <div class="ld-field"><label class="ld-label">Họ và tên</label><input class="ld-input" id="name" placeholder="Nguyễn Văn A"></div>
+      <div class="ld-field"><label class="ld-label">Full Name</label><input class="ld-input" id="name" placeholder="John Smith"></div>
       <div class="ld-row">
-        <div class="ld-field"><label class="ld-label">Mã sinh viên</label><input class="ld-input" id="studentId" placeholder="1234567"></div>
+        <div class="ld-field"><label class="ld-label">Student ID</label><input class="ld-input" id="studentId" placeholder="1234567"></div>
         <div class="ld-field">
-          <label class="ld-label">Mã lớp</label>
+          <label class="ld-label">Class Code</label>
           <input class="ld-input" id="classId" placeholder="LD-XXXXXX" style="text-transform:uppercase;font-family:monospace">
         </div>
       </div>
-      <div class="ld-hint" style="margin-top:-8px;margin-bottom:14px">Mã lớp do giảng viên cung cấp trên lớp — chỉ dùng lúc đăng ký, sau đó ứng dụng hiển thị tên lớp.</div>
-      <div class="ld-field"><label class="ld-label">Email (không bắt buộc)</label><input class="ld-input" id="email" type="email" placeholder="you@email.com"></div>
+      <div class="ld-hint" style="margin-top:-8px;margin-bottom:14px">Your teacher provides the class code — only needed at sign-up, the app shows the class name afterwards.</div>
+      <div class="ld-field"><label class="ld-label">Email (optional)</label><input class="ld-input" id="email" type="email" placeholder="you@email.com"></div>
       <div class="ld-row">
-        <div class="ld-field"><label class="ld-label">Số điện thoại</label><input class="ld-input" id="phone" placeholder="09xx xxx xxx"></div>
+        <div class="ld-field"><label class="ld-label">Phone Number</label><input class="ld-input" id="phone" placeholder="09xx xxx xxx"></div>
         <div class="ld-field">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <label class="ld-label" style="margin-bottom:0">Mật khẩu</label>
-            <button type="button" id="pwToggle" style="background:none;border:none;color:var(--red);font-size:11px;font-weight:700;cursor:pointer">Hiện</button>
+            <label class="ld-label" style="margin-bottom:0">Password</label>
+            <button type="button" id="pwToggle" style="background:none;border:none;color:var(--red);font-size:11px;font-weight:700;cursor:pointer">Show</button>
           </div>
           <input class="ld-input" id="pw" type="password" placeholder="••••••••" autocomplete="new-password" style="margin-top:6px">
         </div>
       </div>
-      <button class="ld-btn ld-btn-primary" id="submit" type="submit" style="margin-top:6px">Tạo tài khoản</button>
+      <button class="ld-btn ld-btn-primary" id="submit" type="submit" style="margin-top:6px">Create Account</button>
     </form>
 
     <div class="ld-hr"></div>
-    <button class="ld-btn ld-btn-ghost" id="teacherReg">🎓 Đăng ký tài khoản Giảng viên</button>
+    <button class="ld-btn ld-btn-ghost" id="teacherReg">🎓 Register as a Teacher</button>
 
-    <p class="ld-alt">Đã có tài khoản? <a href="login.html">Đăng nhập</a></p>
+    <p class="ld-alt">Already have an account? <a href="login.html">Log in</a></p>
   </div>
 </div>
 
 <div class="ld-modal-bg" id="teacherModal">
   <div class="ld-auth-card" style="max-width:400px">
-    <div class="ld-auth-title" style="font-size:1.2rem">Đăng ký Giảng viên</div>
-    <div class="ld-field"><label class="ld-label">Họ và tên</label><input class="ld-input" id="tName" placeholder="ThS. Nguyễn Văn A"></div>
+    <div class="ld-auth-title" style="font-size:1.2rem">Teacher Registration</div>
+    <div class="ld-field"><label class="ld-label">Full Name</label><input class="ld-input" id="tName" placeholder="Dr. Jane Smith"></div>
     <div class="ld-field"><label class="ld-label">Email</label><input class="ld-input" id="tEmail" type="email" placeholder="you@dnu.edu.vn"></div>
-    <div class="ld-field"><label class="ld-label">Số điện thoại</label><input class="ld-input" id="tPhone" placeholder="09xx"></div>
-    <div class="ld-field"><label class="ld-label">Mật khẩu</label><input class="ld-input" id="tPw" type="password" placeholder="••••••••"></div>
-    <button class="ld-btn ld-btn-primary" id="tSubmit">Tạo tài khoản GV</button>
-    <div style="text-align:center;margin-top:12px"><a href="#" id="tClose" style="font-size:12.5px;color:var(--grey-600);text-decoration:none">Huỷ</a></div>
+    <div class="ld-field"><label class="ld-label">Phone Number</label><input class="ld-input" id="tPhone" placeholder="09xx"></div>
+    <div class="ld-field"><label class="ld-label">Password</label><input class="ld-input" id="tPw" type="password" placeholder="••••••••"></div>
+    <button class="ld-btn ld-btn-primary" id="tSubmit">Create Teacher Account</button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="tClose" style="font-size:12.5px;color:var(--grey-600);text-decoration:none">Cancel</a></div>
   </div>
 </div>
 
 <script src="ld-common.js"></script>
 <script>
-if (typeof LD === 'undefined') { document.body.innerHTML = '<div style="max-width:560px;margin:80px auto;padding:30px;border:2px solid #C8102E;border-radius:14px;font-family:sans-serif"><h2>Không tải được ld-common.js</h2></div>'; throw new Error('no LD'); }
+if (typeof LD === 'undefined') { document.body.innerHTML = '<div style="max-width:560px;margin:80px auto;padding:30px;border:2px solid #C8102E;border-radius:14px;font-family:sans-serif"><h2>Could not load ld-common.js</h2></div>'; throw new Error('no LD'); }
 
 function val(id) { return document.getElementById(id).value.trim(); }
-function togglePw(input, btn) { btn.onclick = function () { var showing = input.type === 'text'; input.type = showing ? 'password' : 'text'; btn.textContent = showing ? 'Hiện' : 'Ẩn'; }; }
+function togglePw(input, btn) { btn.onclick = function () { var showing = input.type === 'text'; input.type = showing ? 'password' : 'text'; btn.textContent = showing ? 'Show' : 'Hide'; }; }
 togglePw(document.getElementById('pw'), document.getElementById('pwToggle'));
 
 var submitBtn = document.getElementById('submit');
@@ -69,20 +69,20 @@ document.getElementById('form').onsubmit = function (e) {
   e.preventDefault();
   var name = val('name'), sid = val('studentId'), classId = val('classId').toUpperCase();
   var pass = document.getElementById('pw').value, email = val('email'), phone = val('phone');
-  if (!name || !sid || !pass) { LD.toast('Nhập họ tên, mã SV và mật khẩu.', 'err'); return; }
-  if (!classId) { LD.toast('Nhập mã lớp do giảng viên cung cấp.', 'err'); return; }
+  if (!name || !sid || !pass) { LD.toast('Enter your full name, student ID and password.', 'err'); return; }
+  if (!classId) { LD.toast('Enter the class code provided by your teacher.', 'err'); return; }
   submitBtn.disabled = true; var orig = submitBtn.textContent; submitBtn.innerHTML = '<span class="ld-spin"></span>';
   LD.api('auth.register', { studentId: sid, fullName: name, classId: classId, password: pass, email: email, phone: phone })
     .then(function (res) {
       if (res && res.success) {
-        LD.toast(res.message || 'Tạo tài khoản thành công', 'ok');
+        LD.toast(res.message || 'Account created successfully', 'ok');
         setTimeout(function () { location.href = 'login.html'; }, 900);
       } else {
-        LD.toast((res && res.error) || 'Đăng ký thất bại', 'err');
+        LD.toast((res && res.error) || 'Sign-up failed', 'err');
         submitBtn.disabled = false; submitBtn.textContent = orig;
       }
     }).catch(function () {
-      LD.toast('Không kết nối được máy chủ.', 'err');
+      LD.toast('Could not connect to the server.', 'err');
       submitBtn.disabled = false; submitBtn.textContent = orig;
     });
 };
@@ -93,12 +93,12 @@ document.getElementById('tClose').onclick = function (e) { e.preventDefault(); t
 var tSubmit = document.getElementById('tSubmit');
 tSubmit.onclick = function () {
   var name = val('tName'), email = val('tEmail'), phone = val('tPhone'), pass = document.getElementById('tPw').value;
-  if (!name || !email || !pass) { LD.toast('Nhập họ tên, email và mật khẩu.', 'err'); return; }
+  if (!name || !email || !pass) { LD.toast('Enter your full name, email and password.', 'err'); return; }
   tSubmit.disabled = true; var orig = tSubmit.textContent; tSubmit.innerHTML = '<span class="ld-spin"></span>';
   LD.api('auth.registerTeacher', { fullName: name, email: email, phone: phone, password: pass }).then(function (res) {
-    if (res && res.success) { LD.toast('Tạo tài khoản GV thành công', 'ok'); setTimeout(function () { location.href = 'login.html'; }, 900); }
-    else { LD.toast((res && res.error) || 'Đăng ký thất bại', 'err'); tSubmit.disabled = false; tSubmit.textContent = orig; }
-  }).catch(function () { LD.toast('Không kết nối được máy chủ.', 'err'); tSubmit.disabled = false; tSubmit.textContent = orig; });
+    if (res && res.success) { LD.toast('Teacher account created successfully', 'ok'); setTimeout(function () { location.href = 'login.html'; }, 900); }
+    else { LD.toast((res && res.error) || 'Sign-up failed', 'err'); tSubmit.disabled = false; tSubmit.textContent = orig; }
+  }).catch(function () { LD.toast('Could not connect to the server.', 'err'); tSubmit.disabled = false; tSubmit.textContent = orig; });
 };
 </script>
 </body>

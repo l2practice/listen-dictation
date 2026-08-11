@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GV Dashboard · LisDictation</title>
+<title>Teacher Dashboard · LisDictation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="ld-theme.css">
@@ -93,41 +93,41 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 <body>
 <div class="topbar">
   <div class="topbar-brand">Language <em>Hub</em></div>
-  <div class="topbar-app">🎓 GV Dashboard · LisDictation</div>
+  <div class="topbar-app">🎓 Teacher Dashboard · LisDictation</div>
   <div class="topbar-right">
     <span class="topbar-user" id="tb-user"></span>
-    <button class="topbar-btn" onclick="LD.session.logout()">Đăng xuất</button>
+    <button class="topbar-btn" onclick="LD.session.logout()">Logout</button>
   </div>
 </div>
 
 <div class="wrap">
   <div class="tab-strip">
-    <button class="tab-strip-btn active" id="tab-btn-classes" onclick="switchTab('classes')">🏫 Lớp học</button>
+    <button class="tab-strip-btn active" id="tab-btn-classes" onclick="switchTab('classes')">🏫 Classes</button>
     <button class="tab-strip-btn" id="tab-btn-sessions" onclick="switchTab('sessions')">📊 Sessions</button>
   </div>
 
   <!-- ═══ CLASSES ═══ -->
   <div id="tab-classes">
     <div class="card">
-      <div class="card-title">➕ Tạo lớp mới</div>
+      <div class="card-title">➕ Create New Class</div>
       <div class="form-row">
-        <div><label class="form-label">Tên lớp</label><input class="form-input" id="new-class-name" placeholder="vd: DH21NA1"></div>
-        <div><label class="form-label">Năm học</label><input class="form-input" id="new-class-year" placeholder="2025-2026" style="width:110px"></div>
-        <div><label class="form-label">Học kỳ</label><input class="form-input" id="new-class-semester" placeholder="HK1" style="width:80px"></div>
-        <button class="btn btn-primary" onclick="createClass()">Tạo lớp</button>
+        <div><label class="form-label">Class Name</label><input class="form-input" id="new-class-name" placeholder="e.g. DH21NA1"></div>
+        <div><label class="form-label">Academic Year</label><input class="form-input" id="new-class-year" placeholder="2025-2026" style="width:110px"></div>
+        <div><label class="form-label">Semester</label><input class="form-input" id="new-class-semester" placeholder="Sem 1" style="width:80px"></div>
+        <button class="btn btn-primary" onclick="createClass()">Create Class</button>
       </div>
       <div id="new-class-result" style="margin-top:10px"></div>
     </div>
 
     <div class="card">
-      <div class="card-title">🏫 Danh sách lớp <button class="btn btn-secondary btn-sm" onclick="loadClasses()">🔄 Làm mới</button></div>
-      <div id="classes-list">Đang tải…</div>
+      <div class="card-title">🏫 Class List <button class="btn btn-secondary btn-sm" onclick="loadClasses()">🔄 Refresh</button></div>
+      <div id="classes-list">Loading…</div>
     </div>
 
     <div class="card hidden" id="roster-card">
-      <div class="card-title"><span id="roster-title">Sinh viên trong lớp</span><button class="btn btn-secondary btn-sm" onclick="document.getElementById('roster-card').classList.add('hidden')">✕ Đóng</button></div>
+      <div class="card-title"><span id="roster-title">Students in Class</span><button class="btn btn-secondary btn-sm" onclick="document.getElementById('roster-card').classList.add('hidden')">✕ Close</button></div>
       <div style="overflow:auto">
-        <table class="ld-table"><thead><tr><th>Mã SV</th><th>Họ tên</th><th>Email</th><th>Trạng thái</th><th></th></tr></thead>
+        <table class="ld-table"><thead><tr><th>Student ID</th><th>Full Name</th><th>Email</th><th>Status</th><th></th></tr></thead>
           <tbody id="roster-tbody"></tbody>
         </table>
       </div>
@@ -138,27 +138,28 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <div id="tab-sessions" class="hidden">
     <div class="card">
       <div class="toolbar">
-        <select class="form-select" id="sess-filter-class" onchange="loadSessions()"><option value="">Tất cả lớp</option></select>
+        <select class="form-select" id="sess-filter-class" onchange="loadSessions()"><option value="">All classes</option></select>
         <input type="date" class="form-input" id="sess-filter-from" onchange="loadSessions()">
-        <span style="font-size:12.5px;color:var(--grey-600)">đến</span>
+        <span style="font-size:12.5px;color:var(--grey-600)">to</span>
         <input type="date" class="form-input" id="sess-filter-to" onchange="loadSessions()">
-        <input class="form-input" id="sess-search" placeholder="🔍 Tìm tên bài / tên SV…" style="width:200px" oninput="renderSessionsTable()">
+        <input class="form-input" id="sess-search" placeholder="🔍 Search by book / student name…" style="width:200px" oninput="renderSessionsTable()">
         <div style="flex:1"></div>
-        <button class="btn btn-secondary btn-sm" onclick="loadSessions()">🔄 Làm mới</button>
-        <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Xuất CSV</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadSessions()">🔄 Refresh</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
       </div>
       <div style="overflow:auto">
         <table class="ld-table">
           <thead><tr>
-            <th onclick="sessSort('bookTestPart')">Tên bài</th>
-            <th onclick="sessSort('studentName')">Tên SV</th>
-            <th onclick="sessSort('className')">Lớp</th>
-            <th onclick="sessSort('startTime')">Ngày làm</th>
+            <th onclick="sessSort('bookTestPart')">Book/Test/Part</th>
+            <th onclick="sessSort('studentId')">Student ID</th>
+            <th onclick="sessSort('studentName')">Student Name</th>
+            <th onclick="sessSort('className')">Class</th>
+            <th onclick="sessSort('startTime')">Date</th>
             <th onclick="sessSort('durationMin')">Duration</th>
             <th onclick="sessSort('quizScore')">Quiz</th>
             <th onclick="sessSort('gapFillScore')">Gap-fill</th>
             <th onclick="sessSort('dictationAccuracy')">Dictation</th>
-            <th onclick="sessSort('totalScore')">Tổng điểm</th>
+            <th onclick="sessSort('totalScore')">Total Score</th>
             <th>Detail</th>
           </tr></thead>
           <tbody id="sessions-tbody"></tbody>
@@ -212,83 +213,83 @@ function switchTab(tab) {
 // ── CLASSES ──
 async function createClass() {
   var name = document.getElementById('new-class-name').value.trim();
-  if (!name) { LD.toast('Nhập tên lớp.', 'err'); return; }
+  if (!name) { LD.toast('Enter a class name.', 'err'); return; }
   var r = await LD.api('teacher.createClass', {
     className: name, academicYear: document.getElementById('new-class-year').value.trim(), semester: document.getElementById('new-class-semester').value.trim()
   });
-  if (!r.success) { LD.toast(r.error || 'Không tạo được lớp', 'err'); return; }
-  document.getElementById('new-class-result').innerHTML = '✅ Đã tạo lớp <b>' + LD.esc(r.className) + '</b> — mã lớp: <span class="badge badge-gold">' + r.classId + '</span> (gửi mã này cho sinh viên để đăng ký)';
+  if (!r.success) { LD.toast(r.error || 'Could not create the class', 'err'); return; }
+  document.getElementById('new-class-result').innerHTML = '✅ Created class <b>' + LD.esc(r.className) + '</b> — class code: <span class="badge badge-gold">' + r.classId + '</span> (share this code with students so they can register)';
   document.getElementById('new-class-name').value = ''; document.getElementById('new-class-year').value = ''; document.getElementById('new-class-semester').value = '';
   loadClasses();
 }
 async function loadClasses() {
   var el = document.getElementById('classes-list');
-  el.innerHTML = '<span class="spinner"></span> Đang tải…';
+  el.innerHTML = '<span class="spinner"></span> Loading…';
   var r = await LD.api('teacher.getClasses', {});
-  if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Lỗi: ' + LD.esc(r.error) + '</span>'; return; }
+  if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(r.error) + '</span>'; return; }
   App.classes = r.data;
   var filterSel = document.getElementById('sess-filter-class');
-  filterSel.innerHTML = '<option value="">Tất cả lớp</option>' + r.data.map(function (c) { return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>'; }).join('');
+  filterSel.innerHTML = '<option value="">All classes</option>' + r.data.map(function (c) { return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>'; }).join('');
   el.innerHTML = r.data.length ? r.data.map(function (c) {
     return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-gold">' + c.ClassID + '</span> ' +
       '<span class="badge ' + (c.Status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + c.Status + '</span>' +
-      '<div style="font-size:11.5px;color:var(--grey-600);margin-top:2px">' + (c.AcademicYear || '') + ' ' + (c.Semester || '') + ' · ' + c.StudentCount + ' SV</div></div>' +
+      '<div style="font-size:11.5px;color:var(--grey-600);margin-top:2px">' + (c.AcademicYear || '') + ' ' + (c.Semester || '') + ' · ' + c.StudentCount + ' students</div></div>' +
       '<div style="display:flex;gap:6px">' +
       '<button class="btn btn-secondary btn-sm" onclick="viewRoster(\'' + c.ClassID + '\',\'' + LD.esc(c.ClassName).replace(/'/g, "\\'") + '\')">👥 Roster</button>' +
-      '<button class="btn btn-secondary btn-sm" onclick="toggleClassStatus(\'' + c.ClassID + '\',\'' + c.Status + '\')">' + (c.Status === 'Active' ? '🔒 Khoá' : '🔓 Mở lại') + '</button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="toggleClassStatus(\'' + c.ClassID + '\',\'' + c.Status + '\')">' + (c.Status === 'Active' ? '🔒 Lock' : '🔓 Reopen') + '</button>' +
       '</div></div>';
-  }).join('') : '<p style="color:var(--grey-600);font-size:13px">Chưa có lớp nào.</p>';
+  }).join('') : '<p style="color:var(--grey-600);font-size:13px">No classes yet.</p>';
 }
 async function toggleClassStatus(classId, curStatus) {
   var newStatus = curStatus === 'Active' ? 'Archived' : 'Active';
   var r = await LD.api('teacher.setClassStatus', { classId: classId, status: newStatus });
-  if (r.success) loadClasses(); else LD.toast(r.error || 'Lỗi', 'err');
+  if (r.success) loadClasses(); else LD.toast(r.error || 'Error', 'err');
 }
 async function viewRoster(classId, className) {
-  document.getElementById('roster-title').textContent = '👥 Sinh viên lớp ' + className;
+  document.getElementById('roster-title').textContent = '👥 Students in ' + className;
   document.getElementById('roster-card').classList.remove('hidden');
-  document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5">Đang tải…</td></tr>';
+  document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
   var r = await LD.api('teacher.getRoster', { classId: classId });
-  if (!r.success) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--red)">Lỗi</td></tr>'; return; }
+  if (!r.success) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--red)">Error</td></tr>'; return; }
   document.getElementById('roster-tbody').innerHTML = r.data.length ? r.data.map(function (s) {
     return '<tr><td>' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td><td>' + LD.esc(s.email) + '</td>' +
       '<td><span class="badge ' + (s.status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + s.status + '</span></td>' +
-      '<td><button class="btn btn-secondary btn-sm" onclick="toggleStudentStatus(\'' + s.studentId + '\',\'' + s.status + '\')">' + (s.status === 'Active' ? 'Khoá' : 'Mở lại') + '</button></td></tr>';
-  }).join('') : '<tr><td colspan="5" style="color:var(--grey-600)">Lớp chưa có SV nào.</td></tr>';
+      '<td><button class="btn btn-secondary btn-sm" onclick="toggleStudentStatus(\'' + s.studentId + '\',\'' + s.status + '\')">' + (s.status === 'Active' ? 'Lock' : 'Reopen') + '</button></td></tr>';
+  }).join('') : '<tr><td colspan="5" style="color:var(--grey-600)">No students in this class yet.</td></tr>';
 }
 async function toggleStudentStatus(studentId, curStatus) {
   var r = await LD.api('teacher.archiveStudent', { studentId: studentId, archived: curStatus === 'Active' });
-  if (r.success) { LD.toast('Đã cập nhật', 'ok'); loadClasses(); } else LD.toast(r.error || 'Lỗi', 'err');
+  if (r.success) { LD.toast('Updated', 'ok'); loadClasses(); } else LD.toast(r.error || 'Error', 'err');
 }
 
 // ── SESSIONS DASHBOARD ──
 async function loadSessions() {
   var tbody = document.getElementById('sessions-tbody');
-  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--grey-400)">Đang tải…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
   var p = {
     classId: document.getElementById('sess-filter-class').value,
     fromDate: document.getElementById('sess-filter-from').value,
     toDate: document.getElementById('sess-filter-to').value
   };
   var r = await LD.api('teacher.getAllSessions', p);
-  if (!r.success) { tbody.innerHTML = '<tr><td colspan="9" style="color:var(--red)">Lỗi: ' + LD.esc(r.error) + '</td></tr>'; return; }
+  if (!r.success) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Error: ' + LD.esc(r.error) + '</td></tr>'; return; }
   App.sessions = r.data;
   renderSessionsTable();
 }
 function renderSessionsTable() {
   var q = (document.getElementById('sess-search').value || '').toLowerCase();
   var rows = App.sessions.filter(function (r) {
-    return !q || String(r.bookTestPart || '').toLowerCase().indexOf(q) >= 0 || String(r.studentName || '').toLowerCase().indexOf(q) >= 0;
+    return !q || String(r.bookTestPart || '').toLowerCase().indexOf(q) >= 0 || String(r.studentName || '').toLowerCase().indexOf(q) >= 0 || String(r.studentId || '').toLowerCase().indexOf(q) >= 0;
   });
   rows.sort(function (a, b) { var x = a[App.sessSortKey], y = b[App.sessSortKey]; return x > y ? App.sessSortDir : x < y ? -App.sessSortDir : 0; });
   document.getElementById('sessions-tbody').innerHTML = rows.length ? rows.map(function (r) {
-    return '<tr><td>' + LD.esc(r.bookTestPart || '—') + '</td><td>' + LD.esc(r.studentName) + '</td><td>' + LD.esc(r.className) + '</td>' +
+    return '<tr><td>' + LD.esc(r.bookTestPart || '—') + '</td><td>' + LD.esc(r.studentId || '—') + '</td><td>' + LD.esc(r.studentName) + '</td><td>' + LD.esc(r.className) + '</td>' +
       '<td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
       '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
       '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td>' +
       '<td><button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + r.sessionId + '\')">🔍 Detail</button></td></tr>';
-  }).join('') : '<tr><td colspan="10" style="text-align:center;color:var(--grey-400)">Không có session nào.</td></tr>';
-  document.getElementById('sess-count').textContent = rows.length + ' session';
+  }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">No sessions found.</td></tr>';
+  document.getElementById('sess-count').textContent = rows.length + ' session(s)';
 }
 
 // ── SESSION DETAIL ──
@@ -296,12 +297,12 @@ var DetailApp = { data: null, activeTab: 'dictation' };
 async function openDetail(sessionId) {
   document.getElementById('detail-overlay').classList.add('show');
   document.getElementById('dt-title').textContent = 'Session Detail';
-  document.getElementById('dt-subtitle').textContent = 'Đang tải…';
+  document.getElementById('dt-subtitle').textContent = 'Loading…';
   document.getElementById('dt-meta').innerHTML = '';
   document.getElementById('dt-stats').innerHTML = '';
   ['dictation', 'gapfill', 'quiz'].forEach(function (t) { document.getElementById('dt-pane-' + t).innerHTML = ''; });
   var r = await LD.api('teacher.getSessionDetail', { sessionId: sessionId });
-  if (!r.success) { document.getElementById('dt-subtitle').textContent = 'Lỗi: ' + (r.error || ''); return; }
+  if (!r.success) { document.getElementById('dt-subtitle').textContent = 'Error: ' + (r.error || ''); return; }
   DetailApp.data = r.data;
   renderDetailHeader();
   renderDictationDetail();
@@ -345,7 +346,7 @@ function renderDictationDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-dictation');
   var dj = d.DictationJSON;
   var sentences = d.CorrectedScriptJSON || [];
-  if (!dj || !sentences.length) { pane.innerHTML = '<div class="dt-empty">Sinh viên chưa làm phần Dictation.</div>'; return; }
+  if (!dj || !sentences.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Dictation part yet.</div>'; return; }
   var answers = dj.answers || [];
   pane.innerHTML = sentences.map(function (s, i) {
     var st = answers[i] || { typed: '', checked: false };
@@ -358,9 +359,8 @@ function renderDictationDetail() {
       if (!ok) allOk = false;
       return '<span class="' + (ok ? 'dt-w-ok' : (tw ? 'dt-w-bad' : 'dt-w-miss')) + '">' + LD.esc(w) + '</span>';
     }).join(' ');
-    var typedRaw = LD.esc(st.typed || '(chưa gõ)');
     return '<div class="dt-sentence ' + (st.checked ? (allOk ? 'ok' : 'bad') : '') + '">' +
-      '<div class="sn">Sentence ' + (i + 1) + ' · ' + dtWc(s) + ' words' + (st.checked ? '' : ' · chưa check') + '</div>' +
+      '<div class="sn">Sentence ' + (i + 1) + ' · ' + dtWc(s) + ' words' + (st.checked ? '' : ' · not checked yet') + '</div>' +
       '<div class="target">Target: ' + LD.esc(s) + '</div>' +
       '<div class="typed">Typed: ' + html + '</div></div>';
   }).join('');
@@ -369,7 +369,7 @@ function renderGapFillDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-gapfill');
   var gj = d.GapFillJSON;
   var sentences = d.CorrectedScriptJSON || [];
-  if (!gj || !gj.answers || !gj.answers.length) { pane.innerHTML = '<div class="dt-empty">Sinh viên chưa làm phần Gap-fill.</div>'; return; }
+  if (!gj || !gj.answers || !gj.answers.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Gap-fill part yet.</div>'; return; }
   var bySentence = {};
   gj.answers.forEach(function (a) { (bySentence[a.sentenceIdx] = bySentence[a.sentenceIdx] || []).push(a); });
   pane.innerHTML = Object.keys(bySentence).map(function (si) {
@@ -377,20 +377,24 @@ function renderGapFillDetail() {
     var sentence = sentences[si] || '';
     var parts = sentence.split(/(\s+)/);
     var blanks = bySentence[si];
-    var allOk = blanks.every(function (b) { return b.given === b.actual; });
+    // firstTryCorrect reflects the student's FIRST attempt (the mastery-learning score); the
+    // student may have retried until correct, so show what they typed the first time, not the
+    // final (always-correct) value — that's the meaningful signal for a teacher reviewing mistakes.
+    var allOk = blanks.every(function (b) { return b.firstTryCorrect; });
     var out = parts.map(function (w, wi) {
       var b = blanks.find(function (x) { return x.wordIdx === wi; });
       if (!b) return LD.esc(w);
-      var ok = b.given === b.actual;
-      return '<span class="dt-blank' + (ok ? ' correct' : '') + '">' + LD.esc(b.given || '(trống)') + (ok ? '' : ' → ' + LD.esc(b.actual)) + '</span>';
+      var ok = !!b.firstTryCorrect;
+      var shown = b.firstTryGiven != null ? b.firstTryGiven : b.given;
+      return '<span class="dt-blank' + (ok ? ' correct' : '') + '">' + LD.esc(shown || '(blank)') + (ok ? '' : ' → ' + LD.esc(b.actual)) + '</span>';
     }).join('');
-    return '<div class="dt-sentence ' + (allOk ? 'ok' : 'bad') + '"><div class="sn">Sentence ' + (si + 1) + '</div><div class="typed">' + out + '</div></div>';
+    return '<div class="dt-sentence ' + (allOk ? 'ok' : 'bad') + '"><div class="sn">Sentence ' + (si + 1) + (allOk ? '' : ' · needed a retry') + '</div><div class="typed">' + out + '</div></div>';
   }).join('');
 }
 function renderQuizDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-quiz');
   var qj = d.QuizJSON;
-  if (!qj || !qj.questions || !qj.questions.length) { pane.innerHTML = '<div class="dt-empty">Sinh viên chưa làm Quiz.</div>'; return; }
+  if (!qj || !qj.questions || !qj.questions.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Quiz yet.</div>'; return; }
   var answers = qj.answers || [];
   pane.innerHTML = qj.questions.map(function (q, i) {
     var chosen = answers[i];
@@ -406,7 +410,7 @@ function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSo
 async function exportCsv() {
   var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value };
   var r = await LD.api('teacher.exportSessions', p);
-  if (!r.success) { LD.toast(r.error || 'Lỗi xuất CSV', 'err'); return; }
+  if (!r.success) { LD.toast(r.error || 'Could not export CSV', 'err'); return; }
   var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
