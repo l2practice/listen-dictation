@@ -76,6 +76,10 @@
 .sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:14px}
 .sb-input:focus{border-color:var(--blue)}
 .sb-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.sb-wordcount{font-size:11.5px;color:#8a97b8;margin:-3px 0 8px}
+.dict-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:12.5px;color:#5a4600}
+.dict-banner.hidden{display:none}
+.dict-banner-close{background:none;border:none;color:#5a4600;font-size:14px;cursor:pointer;font-weight:700;line-height:1;flex-shrink:0}
 .progress-outer{flex:1;max-width:340px;background:var(--grey-200);border-radius:999px;height:8px}
 .progress-fill{height:8px;background:linear-gradient(90deg,var(--teal),var(--green));border-radius:999px;transition:width .4s}
 .result-card{background:#fff;border-radius:var(--radius-lg);padding:36px;max-width:520px;width:100%;box-shadow:var(--shadow-md);text-align:center;border-top:5px solid var(--gold);margin:0 auto}
@@ -275,12 +279,18 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div class="topbar-brand">Language <em>Hub</em></div>
     <div class="topbar-app">🎧 Dictation</div>
     <div class="topbar-right">
+      <span id="dict-word-total" style="color:#fff;font-size:12px"></span>
       <div class="progress-outer"><div class="progress-fill" id="dict-progress-fill" style="width:0%"></div></div>
       <span id="dict-progress-label" style="color:#fff;font-size:12px"></span>
+      <button class="btn btn-secondary btn-sm" id="btn-toggle-shortcuts" onclick="toggleShortcutsBanner()">⌨️ Shortcuts</button>
       <button class="btn btn-secondary btn-sm" onclick="saveDictationAndExit()">💾 Save &amp; Exit</button>
     </div>
   </div>
   <div class="wrap">
+    <div id="dict-shortcuts-banner" class="dict-banner">
+      <span>⌨️ <b>Enter</b> = Check this sentence &nbsp;·&nbsp; <b>Ctrl+→</b> = Jump to next unchecked &nbsp;·&nbsp; <b>Ctrl+Space</b> = Play / Pause audio</span>
+      <button class="dict-banner-close" onclick="toggleShortcutsBanner(false)">✕</button>
+    </div>
     <div style="margin-bottom:12px" id="dict-audio-row">
       <audio id="dict-audio" controls style="width:100%"></audio>
     </div>
@@ -766,16 +776,20 @@ function goDictation() {
   showScreen('screen-dictation');
   var audio = document.getElementById('dict-audio');
   if (App.audioBlobUrl) audio.src = App.audioBlobUrl; else document.getElementById('dict-audio-row').style.display = 'none';
+  toggleShortcutsBanner(localStorage.getItem('ld_dict_shortcuts_hidden') !== '1');
   renderDictation();
 }
+function wc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
 function renderDictation() {
   var html = App.correctedSentences.map(function (s, i) {
     var st = App.dictationAnswers[i];
+    var target = wc(s), typedNow = wc(st.typed);
     var cls = 'sentence-block' + (i === App.dictationIdx ? ' active-block' : '') + (st.checked ? ' completed' : '');
     return '<div class="' + cls + '" data-idx="' + i + '">' +
-      '<div class="sb-label">Sentence ' + (i + 1) + '</div>' +
+      '<div class="sb-label">Sentence ' + (i + 1) + ' <span style="opacity:.6;font-weight:600">· ' + target + ' words</span></div>' +
       '<div class="sb-result" id="sb-result-' + i + '"></div>' +
-      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '" ' + (st.checked ? 'disabled' : '') + ' oninput="App.dictationAnswers[' + i + '].typed=this.value">' +
+      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '" ' + (st.checked ? 'disabled' : '') + ' oninput="onDictInput(' + i + ',this.value)" onkeydown="onDictInputKeydown(event,' + i + ')">' +
+      '<div class="sb-wordcount" id="sb-wc-' + i + '">' + typedNow + '/' + target + ' words typed</div>' +
       '<div class="sb-controls">' +
       '<button class="btn btn-secondary btn-sm" onclick="checkSentence(' + i + ')" ' + (st.checked ? 'disabled' : '') + '>✓ Check</button>' +
       '<button class="btn btn-secondary btn-sm" onclick="jumpTo(' + i + ')">▶ Jump here</button>' +
@@ -787,6 +801,38 @@ function renderDictation() {
   document.getElementById('dict-progress-fill').style.width = pct + '%';
   document.getElementById('dict-progress-label').textContent = done + '/' + App.correctedSentences.length;
   document.getElementById('btn-finish-dictation').style.display = done === App.correctedSentences.length ? 'block' : 'none';
+  updateWordTotal();
+}
+function onDictInput(i, v) {
+  App.dictationAnswers[i].typed = v;
+  var el = document.getElementById('sb-wc-' + i);
+  if (el) el.textContent = wc(v) + '/' + wc(App.correctedSentences[i]) + ' words typed';
+  updateWordTotal();
+}
+function onDictInputKeydown(e, i) {
+  if (e.key === 'Enter') { e.preventDefault(); if (!App.dictationAnswers[i].checked) checkSentence(i); }
+}
+function updateWordTotal() {
+  var targetTotal = App.correctedSentences.reduce(function (a, s) { return a + wc(s); }, 0);
+  var typedTotal = App.dictationAnswers.reduce(function (a, d) { return a + wc(d.typed); }, 0);
+  var el = document.getElementById('dict-word-total');
+  if (el) el.textContent = '📝 ' + typedTotal + '/' + targetTotal + ' words';
+}
+function toggleShortcutsBanner(show) {
+  var banner = document.getElementById('dict-shortcuts-banner');
+  if (!banner) return;
+  var willShow = typeof show === 'boolean' ? show : banner.classList.contains('hidden');
+  banner.classList.toggle('hidden', !willShow);
+  localStorage.setItem('ld_dict_shortcuts_hidden', willShow ? '0' : '1');
+}
+document.addEventListener('keydown', function (e) {
+  var scr = document.getElementById('screen-dictation');
+  if (!scr || !scr.classList.contains('active')) return;
+  if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); var a = document.getElementById('dict-audio'); if (a) { if (a.paused) a.play(); else a.pause(); } }
+  if (e.ctrlKey && e.key === 'ArrowRight') { e.preventDefault(); jumpToNextUnchecked(); }
+});
+function jumpToNextUnchecked() {
+  for (var i = 0; i < App.dictationAnswers.length; i++) if (!App.dictationAnswers[i].checked) { jumpTo(i); return; }
 }
 function jumpTo(i) { App.dictationIdx = i; renderDictation(); document.getElementById('sb-input-' + i).focus(); }
 function checkSentence(i) {
@@ -803,6 +849,8 @@ function checkSentence(i) {
   document.getElementById('sb-result-' + i).innerHTML = html;
   if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
   renderDictation();
+  var nextInput = document.getElementById('sb-input-' + App.dictationIdx);
+  if (nextInput && !nextInput.disabled) nextInput.focus();
 }
 async function saveDictationAndExit() {
   try {
@@ -858,6 +906,7 @@ async function resumeSession(sessionId) {
     showScreen('screen-dictation');
     var audio = document.getElementById('dict-audio');
     document.getElementById('dict-audio-row').style.display = App.audioBlobUrl ? 'block' : 'none';
+    toggleShortcutsBanner(localStorage.getItem('ld_dict_shortcuts_hidden') !== '1');
     renderDictation();
     LD.toast('Resumed your in-progress session.', 'ok');
   } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }

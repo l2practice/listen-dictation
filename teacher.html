@@ -45,6 +45,49 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Session Detail overlay (dark theme) ── */
+#detail-overlay{position:fixed;inset:0;background:#0d1117;color:#e6edf3;z-index:500;overflow-y:auto;display:none}
+#detail-overlay.show{display:block}
+.dt-topbar{position:sticky;top:0;background:#161b22;border-bottom:1px solid #30363d;padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;z-index:2}
+.dt-topbar h2{font-family:var(--font-display);font-size:1.05rem;color:#fff;margin:0}
+.dt-topbar .dt-sub{font-size:12px;color:#8b949e}
+.dt-close{margin-left:auto;background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer}
+.dt-close:hover{background:#30363d}
+.dt-wrap{max-width:1000px;margin:0 auto;padding:20px 24px 60px}
+.dt-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.dt-meta-item{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:10px 14px}
+.dt-meta-item .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#8b949e;margin-bottom:3px}
+.dt-meta-item .v{font-size:13.5px;font-weight:700;color:#e6edf3}
+.dt-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px}
+.dt-stat-card{background:linear-gradient(135deg,#1c2128,#161b22);border:1px solid #30363d;border-radius:12px;padding:14px;text-align:center}
+.dt-stat-card .n{font-size:1.7rem;font-weight:800;color:#fff;font-family:var(--font-display)}
+.dt-stat-card .l{font-size:11px;color:#8b949e;margin-top:2px}
+.dt-tabs{display:flex;gap:4px;background:#161b22;border:1px solid #30363d;border-radius:11px;padding:4px;margin-bottom:16px;max-width:440px}
+.dt-tab-btn{flex:1;padding:9px;border:none;background:transparent;border-radius:8px;font-family:var(--font-body);font-size:12.5px;font-weight:700;color:#8b949e;cursor:pointer}
+.dt-tab-btn.active{background:#c8102e;color:#fff}
+.dt-pane{display:none}
+.dt-pane.active{display:block}
+.dt-sentence{background:#161b22;border:1px solid #30363d;border-left:3px solid #3b4453;border-radius:10px;padding:13px 16px;margin-bottom:10px}
+.dt-sentence.ok{border-left-color:#2ea043}
+.dt-sentence.bad{border-left-color:#c8102e}
+.dt-sentence .sn{font-size:10.5px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.dt-sentence .target{font-size:12px;color:#8b949e;margin-bottom:6px;line-height:1.6}
+.dt-sentence .typed{font-size:14px;line-height:1.9}
+.dt-w-ok{color:#3fb950;font-weight:700}
+.dt-w-bad{color:#f85149;font-weight:700;text-decoration:line-through}
+.dt-w-miss{color:#d29922;font-weight:800}
+.dt-blank{background:rgba(200,16,46,.18);border:1px solid #c8102e;border-radius:5px;padding:0 6px;color:#ff7b8a;font-weight:700}
+.dt-blank.correct{background:rgba(46,160,67,.18);border-color:#2ea043;color:#56d364}
+.dt-q{background:#161b22;border:1px solid #30363d;border-radius:11px;padding:14px 16px;margin-bottom:12px}
+.dt-q-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 9px;border-radius:100px;margin-bottom:8px}
+.dt-q-tag.content{background:rgba(200,16,46,.18);color:#ff7b8a}
+.dt-q-tag.vocab{background:rgba(20,158,140,.18);color:#4dd0c4}
+.dt-q-text{font-size:13.5px;font-weight:700;color:#e6edf3;margin-bottom:9px}
+.dt-opt{padding:7px 11px;border-radius:8px;font-size:13px;margin-bottom:5px;border:1px solid #30363d;color:#8b949e}
+.dt-opt.correct{border-color:#2ea043;background:rgba(46,160,67,.1);color:#56d364;font-weight:700}
+.dt-opt.chosen-wrong{border-color:#c8102e;background:rgba(200,16,46,.1);color:#f85149;font-weight:700}
+.dt-empty{color:#8b949e;font-size:13px;padding:30px;text-align:center}
 </style>
 </head>
 <body>
@@ -116,12 +159,34 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <th onclick="sessSort('gapFillScore')">Gap-fill</th>
             <th onclick="sessSort('dictationAccuracy')">Dictation</th>
             <th onclick="sessSort('totalScore')">Tổng điểm</th>
+            <th>Detail</th>
           </tr></thead>
           <tbody id="sessions-tbody"></tbody>
         </table>
       </div>
       <div id="sess-count" style="font-size:12px;color:var(--grey-400);margin-top:8px"></div>
     </div>
+  </div>
+</div>
+
+<!-- ═══ SESSION DETAIL (dark overlay) ═══ -->
+<div id="detail-overlay">
+  <div class="dt-topbar">
+    <h2 id="dt-title">Session Detail</h2>
+    <span class="dt-sub" id="dt-subtitle"></span>
+    <button class="dt-close" onclick="closeDetail()">✕ Close</button>
+  </div>
+  <div class="dt-wrap">
+    <div class="dt-meta" id="dt-meta"></div>
+    <div class="dt-stats" id="dt-stats"></div>
+    <div class="dt-tabs" id="dt-tabs">
+      <button class="dt-tab-btn" id="dt-tab-btn-dictation" onclick="switchDetailTab('dictation')">🎧 Dictation</button>
+      <button class="dt-tab-btn" id="dt-tab-btn-gapfill" onclick="switchDetailTab('gapfill')">🧩 Gap-fill</button>
+      <button class="dt-tab-btn" id="dt-tab-btn-quiz" onclick="switchDetailTab('quiz')">📝 Quiz</button>
+    </div>
+    <div class="dt-pane" id="dt-pane-dictation"></div>
+    <div class="dt-pane" id="dt-pane-gapfill"></div>
+    <div class="dt-pane" id="dt-pane-quiz"></div>
   </div>
 </div>
 
@@ -220,9 +285,122 @@ function renderSessionsTable() {
     return '<tr><td>' + LD.esc(r.bookTestPart || '—') + '</td><td>' + LD.esc(r.studentName) + '</td><td>' + LD.esc(r.className) + '</td>' +
       '<td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
       '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
-      '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td></tr>';
-  }).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--grey-400)">Không có session nào.</td></tr>';
+      '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td>' +
+      '<td><button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + r.sessionId + '\')">🔍 Detail</button></td></tr>';
+  }).join('') : '<tr><td colspan="10" style="text-align:center;color:var(--grey-400)">Không có session nào.</td></tr>';
   document.getElementById('sess-count').textContent = rows.length + ' session';
+}
+
+// ── SESSION DETAIL ──
+var DetailApp = { data: null, activeTab: 'dictation' };
+async function openDetail(sessionId) {
+  document.getElementById('detail-overlay').classList.add('show');
+  document.getElementById('dt-title').textContent = 'Session Detail';
+  document.getElementById('dt-subtitle').textContent = 'Đang tải…';
+  document.getElementById('dt-meta').innerHTML = '';
+  document.getElementById('dt-stats').innerHTML = '';
+  ['dictation', 'gapfill', 'quiz'].forEach(function (t) { document.getElementById('dt-pane-' + t).innerHTML = ''; });
+  var r = await LD.api('teacher.getSessionDetail', { sessionId: sessionId });
+  if (!r.success) { document.getElementById('dt-subtitle').textContent = 'Lỗi: ' + (r.error || ''); return; }
+  DetailApp.data = r.data;
+  renderDetailHeader();
+  renderDictationDetail();
+  renderGapFillDetail();
+  renderQuizDetail();
+  var d = r.data;
+  var defaultTab = d.DictationJSON ? 'dictation' : (d.GapFillJSON ? 'gapfill' : 'quiz');
+  switchDetailTab(defaultTab);
+}
+function closeDetail() { document.getElementById('detail-overlay').classList.remove('show'); }
+function switchDetailTab(tab) {
+  DetailApp.activeTab = tab;
+  ['dictation', 'gapfill', 'quiz'].forEach(function (t) {
+    document.getElementById('dt-tab-btn-' + t).classList.toggle('active', t === tab);
+    document.getElementById('dt-pane-' + t).classList.toggle('active', t === tab);
+  });
+}
+function dtWc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
+function renderDetailHeader() {
+  var d = DetailApp.data;
+  document.getElementById('dt-title').textContent = d.StudentName + ' — ' + (d.BookTestPart || 'Untitled');
+  document.getElementById('dt-subtitle').textContent = d.SessionID;
+  var durMin = d.DurationMin != null && d.DurationMin !== '' ? d.DurationMin + ' min' : '—';
+  document.getElementById('dt-meta').innerHTML = [
+    ['Student', d.StudentName + ' (' + d.StudentID + ')'],
+    ['Class', d.ClassName],
+    ['Book / Test / Part', d.BookTestPart || '—'],
+    ['Start time', LD.fmtDate(d.StartTime)],
+    ['Submit time', d.EndTime ? LD.fmtDate(d.EndTime) : '— (in progress)'],
+    ['Duration', durMin]
+  ].map(function (kv) { return '<div class="dt-meta-item"><div class="k">' + kv[0] + '</div><div class="v">' + LD.esc(String(kv[1])) + '</div></div>'; }).join('');
+
+  document.getElementById('dt-stats').innerHTML = [
+    ['Quiz', d.QuizScore != null && d.QuizScore !== '' ? d.QuizScore + '%' : '—'],
+    ['Gap-fill', d.GapFillScore != null && d.GapFillScore !== '' ? d.GapFillScore + '%' : '—'],
+    ['Dictation', d.DictationAccuracy != null && d.DictationAccuracy !== '' ? d.DictationAccuracy + '%' : '—'],
+    ['Total', d.TotalScore != null && d.TotalScore !== '' ? d.TotalScore + '%' : '—']
+  ].map(function (kv) { return '<div class="dt-stat-card"><div class="n">' + kv[1] + '</div><div class="l">' + kv[0] + '</div></div>'; }).join('');
+}
+function renderDictationDetail() {
+  var d = DetailApp.data, pane = document.getElementById('dt-pane-dictation');
+  var dj = d.DictationJSON;
+  var sentences = d.CorrectedScriptJSON || [];
+  if (!dj || !sentences.length) { pane.innerHTML = '<div class="dt-empty">Sinh viên chưa làm phần Dictation.</div>'; return; }
+  var answers = dj.answers || [];
+  pane.innerHTML = sentences.map(function (s, i) {
+    var st = answers[i] || { typed: '', checked: false };
+    var actualWords = s.replace(/[.,!?;:"]/g, '').split(/\s+/);
+    var typedWords = (st.typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/);
+    var allOk = true;
+    var html = actualWords.map(function (w, wi) {
+      var tw = (typedWords[wi] || '').toLowerCase();
+      var ok = tw === w.toLowerCase();
+      if (!ok) allOk = false;
+      return '<span class="' + (ok ? 'dt-w-ok' : (tw ? 'dt-w-bad' : 'dt-w-miss')) + '">' + LD.esc(w) + '</span>';
+    }).join(' ');
+    var typedRaw = LD.esc(st.typed || '(chưa gõ)');
+    return '<div class="dt-sentence ' + (st.checked ? (allOk ? 'ok' : 'bad') : '') + '">' +
+      '<div class="sn">Sentence ' + (i + 1) + ' · ' + dtWc(s) + ' words' + (st.checked ? '' : ' · chưa check') + '</div>' +
+      '<div class="target">Target: ' + LD.esc(s) + '</div>' +
+      '<div class="typed">Typed: ' + html + '</div></div>';
+  }).join('');
+}
+function renderGapFillDetail() {
+  var d = DetailApp.data, pane = document.getElementById('dt-pane-gapfill');
+  var gj = d.GapFillJSON;
+  var sentences = d.CorrectedScriptJSON || [];
+  if (!gj || !gj.answers || !gj.answers.length) { pane.innerHTML = '<div class="dt-empty">Sinh viên chưa làm phần Gap-fill.</div>'; return; }
+  var bySentence = {};
+  gj.answers.forEach(function (a) { (bySentence[a.sentenceIdx] = bySentence[a.sentenceIdx] || []).push(a); });
+  pane.innerHTML = Object.keys(bySentence).map(function (si) {
+    si = Number(si);
+    var sentence = sentences[si] || '';
+    var parts = sentence.split(/(\s+)/);
+    var blanks = bySentence[si];
+    var allOk = blanks.every(function (b) { return b.given === b.actual; });
+    var out = parts.map(function (w, wi) {
+      var b = blanks.find(function (x) { return x.wordIdx === wi; });
+      if (!b) return LD.esc(w);
+      var ok = b.given === b.actual;
+      return '<span class="dt-blank' + (ok ? ' correct' : '') + '">' + LD.esc(b.given || '(trống)') + (ok ? '' : ' → ' + LD.esc(b.actual)) + '</span>';
+    }).join('');
+    return '<div class="dt-sentence ' + (allOk ? 'ok' : 'bad') + '"><div class="sn">Sentence ' + (si + 1) + '</div><div class="typed">' + out + '</div></div>';
+  }).join('');
+}
+function renderQuizDetail() {
+  var d = DetailApp.data, pane = document.getElementById('dt-pane-quiz');
+  var qj = d.QuizJSON;
+  if (!qj || !qj.questions || !qj.questions.length) { pane.innerHTML = '<div class="dt-empty">Sinh viên chưa làm Quiz.</div>'; return; }
+  var answers = qj.answers || [];
+  pane.innerHTML = qj.questions.map(function (q, i) {
+    var chosen = answers[i];
+    return '<div class="dt-q"><span class="dt-q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Content' : 'Vocabulary') + '</span>' +
+      '<div class="dt-q-text">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
+      (q.o || []).map(function (o, j) {
+        var cls = j === q.a ? 'correct' : (j === chosen ? 'chosen-wrong' : '');
+        return '<div class="dt-opt ' + cls + '">' + (j === chosen ? '☑ ' : '☐ ') + LD.esc(o) + (j === q.a ? '  ✓' : '') + '</div>';
+      }).join('') + '</div>';
+  }).join('');
 }
 function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSortDir : -1; App.sessSortKey = key; renderSessionsTable(); }
 async function exportCsv() {
