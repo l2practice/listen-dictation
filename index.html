@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LisDictation — Language Hub</title>
+<link rel="stylesheet" href="ld-theme.css">
+<meta http-equiv="refresh" content="0; url=login.html">
+</head>
+<body>
+<div class="ld-auth-wrap">
+  <div class="ld-auth-card" style="text-align:center">
+    <div class="ld-brand">Language <em>Hub</em></div>
+    <div class="ld-auth-title">🎧 LisDictation</div>
+    <p class="ld-auth-sub">Đang chuyển hướng…</p>
+  </div>
+</div>
+
+<script src="ld-common.js"></script>
+<script>
+// index.html chỉ để GitHub Pages có file gốc phục vụ (bắt buộc cho URL dạng thư mục).
+// Đăng nhập rồi → vào thẳng trang tương ứng. Chưa đăng nhập → login.html (thẻ <meta refresh> ở trên lo trường hợp JS lỗi).
+(function () {
+  if (typeof LD === 'undefined') { location.href = 'login.html'; return; }
+  var s = LD.session.get();
+  location.href = (s && s.user && s.user.role === 'Teacher') ? LD.TEACHER_HOME : (s && s.user ? LD.STUDENT_HOME : LD.LOGIN_PAGE);
+})();
+</script>
+</body>
+</html>
