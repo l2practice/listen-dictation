@@ -90,15 +90,16 @@
 .sb-wc-pill.nomatch{background:#fdecec;color:var(--red)}
 .sb-result{min-height:22px;line-height:2.1;word-spacing:3px;margin-bottom:7px;font-weight:700}
 .sb-result .w-correct{color:var(--green);font-weight:700}
-.sb-result .w-wrong{background:var(--red);color:#fff;padding:1px 6px;border-radius:5px;font-weight:700}
-.sb-result .w-missing{color:var(--grey-600);font-weight:800;letter-spacing:2px;text-decoration:underline;text-decoration-color:#e67e22;text-decoration-thickness:2.5px;text-underline-offset:3px}
-.sb-result .w-extra{color:var(--grey-600);text-decoration:line-through;text-decoration-color:#8e44ad;text-decoration-thickness:2px;font-weight:700}
+.sb-result .w-wrong{background:#FFE9B3;color:#7A4A00;padding:1px 6px;border-radius:5px;font-weight:700}
+.sb-result .w-missing{color:var(--grey-500);font-weight:800;letter-spacing:2px;text-decoration:underline;text-decoration-color:#e67e22;text-decoration-thickness:2.5px;text-underline-offset:3px}
+.sb-result .w-extra{color:var(--red);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px;font-weight:700}
 .dict-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--grey-600);margin:2px 0 12px}
 .dict-legend span{display:inline-flex;align-items:center;gap:5px}
 .dict-legend b{font-weight:800}
 .sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:17px}
 .sb-input:focus{border-color:var(--blue)}
 .sb-input:disabled{background:#f0f1f4;color:var(--grey-600)}
+.sb-hint{background:#EEF6FF;border:1px solid #B9DDFF;border-radius:8px;padding:9px 11px;margin-top:8px;font-size:13.5px;line-height:1.5}
 .sb-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 .sb-summary{font-size:12px;color:var(--grey-600);font-weight:700}
 .sb-summary.ok{color:var(--green)}
@@ -377,9 +378,9 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     </div>
     <div class="dict-legend">
       <span><b style="color:var(--green)">green</b> = correct</span>
-      <span><b style="letter-spacing:2px;text-decoration:underline;text-decoration-color:#e67e22;text-decoration-thickness:2.5px">____</b> = missing word</span>
-      <span><b style="background:var(--red);color:#fff;padding:1px 6px;border-radius:5px">wrong</b> = wrong spelling</span>
-      <span><b style="text-decoration:line-through;text-decoration-color:#8e44ad;text-decoration-thickness:2px">extra</b> = word you shouldn't have typed</span>
+      <span><b style="background:#FFE9B3;color:#7A4A00;padding:1px 6px;border-radius:5px">wrong</b> = wrong spelling — listen to this spot again</span>
+      <span><b style="color:var(--red);text-decoration:line-through">extra</b> = word you shouldn't have typed</span>
+      <span><b style="letter-spacing:2px;text-decoration:underline;text-decoration-color:#e67e22;text-decoration-thickness:2.5px">____</b> = a word is missing here</span>
     </div>
     <div id="dictation-sentences"></div>
     <button class="btn btn-primary btn-full" id="btn-finish-dictation" onclick="finishDictation()" style="padding:14px;font-size:15px;display:none">🏁 Submit</button>
@@ -1344,7 +1345,7 @@ function exitGapFill() {
 // ═══════════════════════════════════════════════════════════
 function goDictation() {
   App.dictationIdx = 0;
-  App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false, firstTryDone: false, firstTryCorrectWords: 0, firstTryTotalWords: 0, attempts: 0 }; });
+  App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false, firstTryDone: false, firstTryCorrectWords: 0, firstTryTotalWords: 0, attempts: 0, hintEligible: false }; });
   showScreen('screen-dictation');
   ensureAudioUI('dict-audio-row', 'dict-audio');
   if (localStorage.getItem('ld_kbd_shortcuts_hidden') !== '1') openShortcutsModal();
@@ -1398,6 +1399,14 @@ function setDictMode(mode) {
   if (mode === 'auto' && !App.pausePoints.length) computePausePoints();
 }
 function wc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
+// Dictation-specific tokenizer: hyphens are treated as a soft word boundary (in ADDITION to
+// whitespace), so a script word like "modern-day" and a student typing "modern day" (the natural
+// thing to do — hyphenation isn't audible) line up as two separate, individually correct words
+// instead of cascading into a false "extra word + wrong word" pair. Used consistently for the
+// word-count pill AND the per-word diff/grading so they never disagree with each other.
+function dictTokenize(s) {
+  return String(s || '').replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
+}
 // Sequential mastery gating (same philosophy as Gap-fill and Quiz): a sentence is 'done' once
 // checked===true (100% correct), the ONE sentence at App.dictationIdx is 'active' (editable),
 // and everything after it is 'future' (dimmed, locked) — a student can't skip ahead without
@@ -1406,11 +1415,12 @@ function renderDictation() {
   var total = App.correctedSentences.length;
   var html = App.correctedSentences.map(function (s, i) {
     var st = App.dictationAnswers[i];
-    var target = wc(s), typedNow = wc(st.typed);
+    var target = dictTokenize(s).length, typedNow = dictTokenize(st.typed).length;
     var match = typedNow === target;
     var state = st.checked ? 'done' : (i === App.dictationIdx ? 'active' : 'future');
     var cls = 'sentence-block' + (state === 'active' ? ' active-block' : state === 'done' ? ' completed' : ' future-block');
     var disabled = state !== 'active';
+    var showHintBtn = state === 'active' && st.hintEligible;
     return '<div class="' + cls + '" data-idx="' + i + '">' +
       '<div class="sb-header">' +
       '<span class="sb-label">Sentence ' + (i + 1) + ' / ' + total + '</span>' +
@@ -1418,10 +1428,12 @@ function renderDictation() {
       '</div>' +
       '<div class="sb-result" id="sb-result-' + i + '"></div>' +
       '<input class="sb-input" id="sb-input-' + i + '" placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '" ' + (disabled ? 'disabled' : '') + ' oninput="onDictInput(' + i + ',this.value)" onkeydown="onDictInputKeydown(event,' + i + ')" ' + ANTI_PASTE_ATTRS + '>' +
+      '<div class="sb-hint" id="sb-hint-' + i + '" style="display:none"></div>' +
       '<div class="sb-controls">' +
       '<span class="sb-summary" id="sb-summary-' + i + '"></span>' +
       '<span style="display:flex;gap:7px">' +
       '<button class="btn btn-primary btn-sm" onclick="checkSentence(' + i + ')" ' + (disabled ? 'disabled' : '') + '>✅ Check <span class="kbd-hint">(Enter)</span></button>' +
+      (showHintBtn ? '<button class="btn btn-secondary btn-sm" onclick="toggleHint(' + i + ')">💡 Hint</button>' : '') +
       '<button class="btn btn-secondary btn-sm" onclick="editSentence(' + i + ')" ' + (state === 'future' ? 'disabled' : '') + '>✏️ Edit</button>' +
       '<button class="btn btn-secondary btn-sm" onclick="resetSentence(' + i + ')" ' + (state === 'future' ? 'disabled' : '') + '>↺ Reset</button>' +
       '</span></div></div>';
@@ -1445,7 +1457,7 @@ function onDictInput(i, v) {
 function updateWcPill(i) {
   var el = document.getElementById('sb-wc-' + i);
   if (!el) return;
-  var target = wc(App.correctedSentences[i]), typedNow = wc(App.dictationAnswers[i].typed);
+  var target = dictTokenize(App.correctedSentences[i]).length, typedNow = dictTokenize(App.dictationAnswers[i].typed).length;
   el.className = 'sb-wc-pill ' + (typedNow === target ? 'match' : 'nomatch');
   el.textContent = '✏️ ' + typedNow + '/' + target + ' words';
 }
@@ -1484,21 +1496,22 @@ function wordAlign(actualWords, typedWords) {
 // Renders the colored per-word feedback for the LAST check on sentence i, using one visual
 // language per mistake type so a student can tell at a glance WHAT kind of error they made:
 //   green            = correct
-//   underscored blank = a word is missing here (length hints how long it is, never reveals it —
-//                        the student still sees the real word once they DO get it right)
-//   red highlight     = wrong spelling/word typed in that spot (shown right after its blank)
-//   strikethrough     = an extra word the student typed that isn't in the target at all
+//   yellow highlight = wrong — shows the student's OWN typed word (not masked), meaning
+//                       "you typed/heard this wrong, go listen to this spot again"
+//   red strikethrough = extra — a word typed that isn't in the target sentence at all
+//   underscore blank  = missing — nothing was typed here; length hints how long the word is
+//                        without revealing it (an underscore per letter)
 function renderDictResult(i) {
   var el = document.getElementById('sb-result-' + i);
   if (!el) return;
   var ans = App.dictationAnswers[i];
-  var actualWords = App.correctedSentences[i].replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
-  var typedWords = (ans.lastCheckedTyped || '').replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
+  var actualWords = dictTokenize(App.correctedSentences[i]);
+  var typedWords = dictTokenize(ans.lastCheckedTyped || '');
   el.innerHTML = wordAlign(actualWords, typedWords).map(function (op) {
     if (op.type === 'match') return '<span class="w-correct">' + LD.esc(op.typed) + '</span>';
     if (op.type === 'extra') return '<span class="w-extra">' + LD.esc(op.typed) + '</span>';
-    var blank = '<span class="w-missing">' + '_'.repeat(op.actual.length) + '</span>';
-    return op.type === 'sub' ? (blank + ' <span class="w-wrong">' + LD.esc(op.typed) + '</span>') : blank;
+    if (op.type === 'miss') return '<span class="w-missing">' + '_'.repeat(op.actual.length) + '</span>';
+    return '<span class="w-wrong">' + LD.esc(op.typed) + '</span>'; // sub — show what they actually typed
   }).join(' ');
 }
 function onDictInputKeydown(e, i) {
@@ -1506,8 +1519,8 @@ function onDictInputKeydown(e, i) {
   // Shift+Enter is NOT handled here — it bubbles up to the shared shortcut handler ("Next sentence").
 }
 function updateWordTotal() {
-  var targetTotal = App.correctedSentences.reduce(function (a, s) { return a + wc(s); }, 0);
-  var typedTotal = App.dictationAnswers.reduce(function (a, d) { return a + wc(d.typed); }, 0);
+  var targetTotal = App.correctedSentences.reduce(function (a, s) { return a + dictTokenize(s).length; }, 0);
+  var typedTotal = App.dictationAnswers.reduce(function (a, d) { return a + dictTokenize(d.typed).length; }, 0);
   var el = document.getElementById('dict-word-total');
   if (el) el.textContent = '📝 ' + typedTotal + '/' + targetTotal + ' words';
 }
@@ -1647,8 +1660,8 @@ function checkSentence(i) {
   ans.lastCheckedTyped = typed;
   ans.attempts = (ans.attempts || 0) + 1;
 
-  var actualWords = App.correctedSentences[i].replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
-  var typedWords = typed.replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
+  var actualWords = dictTokenize(App.correctedSentences[i]);
+  var typedWords = dictTokenize(typed);
   // Align rather than compare positionally — see wordAlign() — so an inserted/dropped word only
   // costs the student credit for that one word instead of cascading through the rest.
   var alignOps = wordAlign(actualWords, typedWords);
@@ -1685,11 +1698,15 @@ function checkSentence(i) {
       }
     }
   } else {
+    // Once a student is close (≥90%) but still not passing, let them peek at the full correct
+    // answer to spot the exact issue — see toggleHint(). This never auto-completes the sentence;
+    // they still have to type it correctly themselves to advance.
+    ans.hintEligible = pct >= 90;
     if (summaryEl) {
       summaryEl.className = 'sb-summary bad';
       // Break the mistake down by TYPE (wrong spelling / missing / extra) instead of just a
       // percentage, so the student can immediately tell what kind of error to look for — matches
-      // the coloring in the diff above (red highlight = wrong, underscore = missing, strikethrough = extra).
+      // the coloring in the diff above (yellow highlight = wrong, underscore = missing, red strikethrough = extra).
       var subCount = alignOps.filter(function (op) { return op.type === 'sub'; }).length;
       var missCount = alignOps.filter(function (op) { return op.type === 'miss'; }).length;
       var extraCount = alignOps.filter(function (op) { return op.type === 'extra'; }).length;
@@ -1699,8 +1716,26 @@ function checkSentence(i) {
       if (extraCount) parts.push(extraCount + ' extra');
       summaryEl.textContent = correctCount + '/' + actualWords.length + ' words correct (' + pct + '%) — ' + parts.join(', ') + '. Fix and try again.';
     }
-    inputEl.focus();
+    renderDictation(); // re-render so the Hint button appears/disappears based on hintEligible
+    var curInput = document.getElementById('sb-input-' + i);
+    if (curInput) { curInput.focus(); curInput.setSelectionRange(curInput.value.length, curInput.value.length); }
   }
+}
+// Reveals the full correct sentence next to what the student actually typed, so they can spot
+// the exact discrepancy themselves. Purely informational — does NOT mark the sentence correct or
+// pre-fill the input; the student still has to retype it and pass Check like normal.
+function toggleHint(i) {
+  var el = document.getElementById('sb-hint-' + i);
+  if (!el) return;
+  var showing = el.style.display === 'block';
+  if (showing) { el.style.display = 'none'; return; }
+  var ans = App.dictationAnswers[i];
+  el.innerHTML =
+    '<div style="font-size:11.5px;color:var(--grey-600);margin-bottom:2px">✅ Correct answer</div>' +
+    '<div style="font-weight:700;color:var(--navy);margin-bottom:8px">' + LD.esc(App.correctedSentences[i]) + '</div>' +
+    '<div style="font-size:11.5px;color:var(--grey-600);margin-bottom:2px">📝 What you typed</div>' +
+    '<div style="color:var(--grey-700)">' + LD.esc(ans.lastCheckedTyped || '') + '</div>';
+  el.style.display = 'block';
 }
 function editSentence(i) {
   App.dictationAnswers[i].checked = false;
@@ -1712,7 +1747,7 @@ function editSentence(i) {
 }
 function resetSentence(i) {
   var ans = App.dictationAnswers[i];
-  ans.typed = ''; ans.checked = false;
+  ans.typed = ''; ans.checked = false; ans.hintEligible = false;
   // firstTryDone / firstTryCorrectWords / firstTryTotalWords are intentionally preserved — clearing
   // the text to retype shouldn't erase the mastery-learning "first attempt" score.
   App.dictationIdx = i;
@@ -1807,7 +1842,7 @@ async function resumeSession(sessionId, _isRetry) {
     }
     var dj = d.DictationJSON || { currentSentenceIdx: 0, answers: [] };
     App.dictationAnswers = App.correctedSentences.map(function (s, i) {
-      return (dj.answers && dj.answers[i]) || { typed: '', checked: false, firstTryDone: false, firstTryCorrectWords: 0, firstTryTotalWords: 0, attempts: 0 };
+      return (dj.answers && dj.answers[i]) || { typed: '', checked: false, firstTryDone: false, firstTryCorrectWords: 0, firstTryTotalWords: 0, attempts: 0, hintEligible: false };
     });
     App.dictationIdx = dj.currentSentenceIdx || 0;
     showScreen('screen-dictation');

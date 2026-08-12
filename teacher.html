@@ -409,15 +409,19 @@ function dtWordAlign(actualWords, typedWords) {
   ops.reverse();
   return ops;
 }
+// Same convention as the student view: yellow highlight = wrong spelling (shows what THEY typed,
+// not masked — a teacher needs to see the actual mistake), red strikethrough = extra word. Unlike
+// the student view, a missing word is shown as the ACTUAL target word (underlined) rather than a
+// blank — the teacher should always see the real answer, no need to hide it from them.
 function dtDictWordDiffHtml(actualWords, typedText) {
-  var typedWords = (typedText || '').replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
+  var typedWords = (typedText || '').replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
   var ops = dtWordAlign(actualWords, typedWords);
   var allOk = ops.every(function (op) { return op.type === 'match'; }) && typedWords.length === actualWords.length;
   var html = ops.map(function (op) {
     if (op.type === 'match') return '<span class="dt-w-ok">' + LD.esc(op.typed) + '</span>';
     if (op.type === 'extra') return '<span class="dt-w-extra">' + LD.esc(op.typed) + '</span>';
     if (op.type === 'miss') return '<span class="dt-w-miss">' + LD.esc(op.actual) + '</span>';
-    return '<span class="dt-w-miss">' + LD.esc(op.actual) + '</span> <span class="dt-w-bad">' + LD.esc(op.typed) + '</span>';
+    return '<span class="dt-w-bad">' + LD.esc(op.typed) + '</span>'; // sub — the student's own wrong word
   }).join(' ');
   return { html: html, allOk: allOk };
 }
@@ -433,7 +437,7 @@ function renderDictationDetail() {
   var answers = dj.answers || [];
   pane.innerHTML = sentences.map(function (s, i) {
     var st = answers[i] || { typed: '', checked: false };
-    var actualWords = s.replace(/[.,!?;:"]/g, '').split(/\s+/);
+    var actualWords = s.replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
     var firstAttempt = st.firstTryDone ? dtDictWordDiffHtml(actualWords, st.firstTryTyped) : null;
     var finalRes = dtDictWordDiffHtml(actualWords, st.typed);
     var showBothLines = firstAttempt && st.firstTryTyped !== st.typed;
