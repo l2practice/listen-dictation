@@ -221,19 +221,20 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
                 <option>Cam19</option><option>Cam20</option><option>Cam21</option>
                 <option value="__custom__">+ Add book…</option>
               </select>
-              <select class="form-select" id="test-input">
+              <select class="form-select" id="test-input" onchange="updateBookInfoPreview()">
                 <option value="">Test</option>
                 <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
                 <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
                 <option>11</option><option>12</option><option>13</option><option>14</option><option>15</option>
               </select>
-              <select class="form-select" id="part-input">
+              <select class="form-select" id="part-input" onchange="updateBookInfoPreview()">
                 <option value="">Part</option>
                 <option>1</option><option>2</option><option>3</option><option>4</option>
                 <option>5</option><option>6</option><option>7</option><option>8</option>
               </select>
             </div>
           </div>
+          <div id="book-info-preview" style="margin-top:10px;font-size:13px;font-weight:700;color:var(--grey-400);padding:8px 12px;background:var(--grey-100);border-radius:8px">Select a book, test, and part above…</div>
         </div>
         <button class="btn btn-primary btn-full" id="btn-start-session" onclick="startSession()" style="padding:14px;font-size:15px;margin-bottom:16px" disabled>
           🚀 Start (analyze script first)
@@ -407,6 +408,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <th onclick="histSort('gapFillScore')">Gap-fill</th>
             <th onclick="histSort('dictationAccuracy')">Dictation</th>
             <th onclick="histSort('totalScore')">Total Score</th>
+            <th></th>
           </tr></thead>
           <tbody id="history-tbody"></tbody>
         </table>
@@ -444,6 +446,15 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 // STATE
 // ═══════════════════════════════════════════════════════════
 var LD_GEMINI_KEY = 'ld_gemini_key';
+// Anti-cheat: block paste/copy/cut/drag on the Dictation and Gap-fill answer inputs, so a student
+// can't paste in text they found elsewhere instead of actually typing what they hear. Autocorrect
+// and autocapitalize are also off, since those would silently REWRITE what the student typed
+// (corrupting the accuracy grading without them noticing). Spellcheck stays ON on purpose — it only
+// underlines, never changes the text — so a student who typos a vowel (e.g. "freinds"/"firends" for
+// "friends") sees the squiggle and can self-correct before pressing Enter, without the app doing the
+// correcting for them. lang="en" keeps the spellcheck dictionary in English regardless of OS/browser
+// locale.
+var ANTI_PASTE_ATTRS = 'onpaste="return false" oncopy="return false" oncut="return false" ondrop="return false" ondragover="return false" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="true" lang="en"';
 var App = {
   session: null, sessionId: null,
   bookTestPart: '', maxReplays: 2,
@@ -608,6 +619,19 @@ function cleanScriptArtifacts(text) {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
+// Cuts `work` only at VALIDATED boundary positions (terminator punctuation followed by whitespace +
+// an uppercase letter/quote, or end of string) and takes the slice BETWEEN consecutive cuts as one
+// sentence — whatever that slice contains. This guarantees every character of the input ends up in
+// exactly one sentence.
+//
+// Root-cause note: the previous implementation used text.match(/regex/g), where each alternative in
+// the pattern required a valid boundary lookahead to match at all. When a stretch of text had NO
+// valid boundary in it (e.g. a period followed by a lowercase letter — common in real IELTS
+// transcripts that mis-capitalize a sentence start, like "...in the past. the winding spiral..."),
+// neither alternative could match starting anywhere inside that stretch, and .match(g) SILENTLY
+// DROPS any span of text it can't match — the whole sentence vanished, not just merged. Cutting at
+// explicit boundary positions instead of matching whole sentences makes dropping content impossible:
+// leftover text between two cuts always gets kept, just grouped with its neighbor.
 function splitSentences(text) {
   text = text.replace(/\r\n?/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
   if (!text) return [];
@@ -616,7 +640,12 @@ function splitSentences(text) {
     var re = new RegExp('\\b' + a.replace('.', '\\.') + '\\.', 'g');
     work = work.replace(re, a.replace('.', '') + '§' + idx + '§');
   });
-  var parts = work.match(/[^.!?]+[.!?]+(?=\s+[A-Z"“]|\s*$)|[^.!?]+$/g) || [work];
+  var boundaryRe = /[.!?]+(?=\s+[A-Z"“]|\s*$)/g;
+  var cuts = [], m;
+  while ((m = boundaryRe.exec(work)) !== null) cuts.push(m.index + m[0].length);
+  var parts = [], start = 0;
+  cuts.forEach(function (end) { parts.push(work.slice(start, end)); start = end; });
+  if (start < work.length) parts.push(work.slice(start)); // trailing text after the last boundary (or no boundary at all)
   return parts.map(function (s) {
     ABBR.forEach(function (a, idx) { s = s.split(a + '§' + idx + '§').join(a + '.'); });
     return s.trim();
@@ -624,13 +653,27 @@ function splitSentences(text) {
 }
 function onBookSelectChange() {
   var sel = document.getElementById('book-input');
-  if (sel.value !== '__custom__') return;
-  var name = prompt('Enter book name:');
-  if (name && name.trim()) {
-    var opt = document.createElement('option');
-    opt.value = name.trim(); opt.textContent = name.trim(); opt.selected = true;
-    sel.insertBefore(opt, sel.lastElementChild);
-  } else { sel.value = ''; }
+  if (sel.value === '__custom__') {
+    var name = prompt('Enter book name:');
+    if (name && name.trim()) {
+      var opt = document.createElement('option');
+      opt.value = name.trim(); opt.textContent = name.trim(); opt.selected = true;
+      sel.insertBefore(opt, sel.lastElementChild);
+    } else { sel.value = ''; }
+  }
+  updateBookInfoPreview();
+}
+function currentBookTestPart() {
+  var book = document.getElementById('book-input').value;
+  var test = document.getElementById('test-input').value;
+  var part = document.getElementById('part-input').value;
+  return [book, test ? ('Test ' + test) : '', part ? ('Part ' + part) : ''].filter(Boolean).join(' · ');
+}
+function updateBookInfoPreview() {
+  var el = document.getElementById('book-info-preview');
+  var bookTestPart = currentBookTestPart();
+  if (bookTestPart) { el.textContent = '📚 ' + bookTestPart; el.style.color = 'var(--navy)'; }
+  else { el.textContent = 'Select a book, test, and part above…'; el.style.color = 'var(--grey-400)'; }
 }
 function doSplit() {
   App.rawScript = cleanScriptArtifacts(App.rawScript);
@@ -764,13 +807,25 @@ function renderCollocations() {
 // START SESSION
 // ═══════════════════════════════════════════════════════════
 async function startSession() {
-  var book = document.getElementById('book-input').value;
-  var test = document.getElementById('test-input').value;
-  var part = document.getElementById('part-input').value;
-  App.bookTestPart = [book, test ? ('Test ' + test) : '', part ? ('Part ' + part) : ''].filter(Boolean).join(' · ');
+  App.bookTestPart = currentBookTestPart();
   App.maxReplays = 999; // unlimited (UI selector removed per request)
   var btn = document.getElementById('btn-start-session');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating session…';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Checking…';
+  // Warn (don't block) if the student already has a session under this same Book/Test/Part —
+  // usually means a typo in the picker, or they forgot they already started this test. They can
+  // still proceed on purpose (e.g. deliberately retrying); a duplicate is allowed either way.
+  try {
+    var dup = await LD.api('student.checkBookTestPart', { bookTestPart: App.bookTestPart });
+    if (dup.success && dup.data && dup.data.length) {
+      var proceed = confirm(
+        'You already have ' + dup.data.length + ' session(s) for "' + App.bookTestPart + '" (most recent: ' + LD.fmtDate(dup.data[0].startTime) + ').\n\n' +
+        'Double-check the Book/Test/Part you picked, or go to "History → In Progress" to continue the existing one instead.\n\n' +
+        'Press OK to start a NEW session anyway, or Cancel to go check.'
+      );
+      if (!proceed) { btn.disabled = false; btn.textContent = '🚀 Start Practice Session'; return; }
+    }
+  } catch (e) { /* duplicate check failing shouldn't block the student from starting */ }
+  btn.innerHTML = '<span class="spinner"></span> Creating session…';
   try {
     var r = await LD.api('session.start', { bookTestPart: App.bookTestPart });
     if (!r.success) throw new Error(r.error || 'Could not create session');
@@ -1077,7 +1132,7 @@ function renderGapFill() {
       var val = LD.esc(App.gapfillAnswers[gi][bi] || '');
       var disabled = (state === 'future') || (bs.checked && bs.correct);
       return '<input class="' + cls + '" data-gi="' + gi + '" data-bi="' + bi + '" value="' + val + '" ' + (disabled ? 'disabled' : '') +
-        ' oninput="setGapAnswer(' + gi + ',' + bi + ',this.value)" onkeydown="onGapKeydown(event,' + gi + ')" placeholder="…">';
+        ' oninput="setGapAnswer(' + gi + ',' + bi + ',this.value)" onkeydown="onGapKeydown(event,' + gi + ')" placeholder="…" ' + ANTI_PASTE_ATTRS + '>';
     }).join('');
     return '<div class="gap-sentence' + (state === 'future' ? ' gs-future' : state === 'done' ? ' gs-done' : '') + '"><span class="sb-label">Sentence ' + (g.sentenceIdx + 1) + '</span><div>' + out + '</div></div>';
   }).join('');
@@ -1237,7 +1292,7 @@ function renderDictation() {
     return '<div class="' + cls + '" data-idx="' + i + '">' +
       '<div class="sb-label">Sentence ' + (i + 1) + ' <span style="opacity:.6;font-weight:600">· ' + target + ' words</span></div>' +
       '<div class="sb-result" id="sb-result-' + i + '"></div>' +
-      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '" ' + (st.checked ? 'disabled' : '') + ' oninput="onDictInput(' + i + ',this.value)" onkeydown="onDictInputKeydown(event,' + i + ')">' +
+      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '" ' + (st.checked ? 'disabled' : '') + ' oninput="onDictInput(' + i + ',this.value)" onkeydown="onDictInputKeydown(event,' + i + ')" ' + ANTI_PASTE_ATTRS + '>' +
       '<div class="sb-wordcount" id="sb-wc-' + i + '">' + typedNow + '/' + target + ' words typed</div>' +
       '<div class="sb-controls">' +
       '<button class="btn btn-secondary btn-sm" onclick="checkSentence(' + i + ')" ' + (st.checked ? 'disabled' : '') + '>✓ Check</button>' +
@@ -1483,6 +1538,21 @@ async function checkInProgressHint() {
 // ═══════════════════════════════════════════════════════════
 // HISTORY — In Progress + Completed
 // ═══════════════════════════════════════════════════════════
+// Builds a single-quoted, HTML-attribute-safe JS string literal for embedding dynamic values
+// (book names can contain quotes/special chars) inside onclick="..." handlers.
+function jsAttrStr(s) {
+  var raw = String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  return LD.esc("'" + raw + "'");
+}
+async function deleteSession(sessionId, label) {
+  if (!confirm('Delete "' + label + '"? This cannot be undone — your teacher will no longer see or get credit for this session.')) return;
+  try {
+    var r = await LD.api('session.delete', { sessionId: sessionId });
+    if (!r.success) { LD.toast(r.error || 'Could not delete', 'err'); return; }
+    LD.toast('Session deleted.', 'ok');
+    loadInProgress(); loadHistory();
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+}
 async function loadInProgress() {
   var card = document.getElementById('inprogress-card'), list = document.getElementById('inprogress-list');
   try {
@@ -1497,18 +1567,21 @@ async function loadInProgress() {
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--grey-100)">' +
         '<div><div style="font-weight:700;font-size:13.5px">' + LD.esc(d.bookTestPart || 'Untitled session') + '</div>' +
         '<div style="font-size:11.5px;color:var(--grey-600)">' + stageLabel + ' · Saved at ' + LD.fmtDate(d.savedAt) + '</div></div>' +
-        '<button class="btn btn-primary btn-sm" onclick="location.href=\'student.html?resume=' + d.sessionId + '\'">' + btnLabel + '</button></div>';
+        '<div style="display:flex;gap:6px">' +
+        '<button class="btn btn-primary btn-sm" onclick="location.href=\'student.html?resume=' + d.sessionId + '\'">' + btnLabel + '</button>' +
+        '<button class="btn btn-secondary btn-sm" onclick="deleteSession(' + jsAttrStr(d.sessionId) + ',' + jsAttrStr(d.bookTestPart || 'this session') + ')">🗑️</button>' +
+        '</div></div>';
     }).join('');
   } catch (e) {}
 }
 async function loadHistory() {
   var tbody = document.getElementById('history-tbody');
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
   try {
     var r = await LD.api('student.getHistory', {});
     App.histRows = (r.success && r.data) || [];
     renderHistoryTable();
-  } catch (e) { tbody.innerHTML = '<tr><td colspan="7" style="color:var(--red)">Error loading history</td></tr>'; }
+  } catch (e) { tbody.innerHTML = '<tr><td colspan="8" style="color:var(--red)">Error loading history</td></tr>'; }
 }
 function renderHistoryTable() {
   var q = (document.getElementById('hist-search').value || '').toLowerCase();
@@ -1517,8 +1590,9 @@ function renderHistoryTable() {
   document.getElementById('history-tbody').innerHTML = rows.length ? rows.map(function (r) {
     return '<tr><td>' + LD.esc(r.bookTestPart || '—') + '</td><td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
       '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
-      '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td></tr>';
-  }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--grey-400)">No completed sessions yet.</td></tr>';
+      '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td>' +
+      '<td><button class="btn btn-secondary btn-sm" onclick="deleteSession(' + jsAttrStr(r.sessionId) + ',' + jsAttrStr(r.bookTestPart || 'this session') + ')">🗑️</button></td></tr>';
+  }).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--grey-400)">No completed sessions yet.</td></tr>';
 }
 function histSort(key) {
   App.histSortDir = App.histSortKey === key ? -App.histSortDir : -1;
