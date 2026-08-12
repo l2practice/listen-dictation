@@ -82,15 +82,24 @@
 .sentence-block{background:#fff;border-radius:13px;padding:16px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(26,35,126,.07);border-left:4px solid #c8d4ee;font-size:18px}
 .sentence-block.active-block{border-left-color:var(--gold);box-shadow:0 4px 18px rgba(197,160,40,.2)}
 .sentence-block.completed{border-left-color:var(--green)}
-.sb-label{font-size:11px;font-weight:700;color:#9aaac8;letter-spacing:.5px;margin-bottom:7px;text-transform:uppercase}
-.sb-result{min-height:22px;line-height:2.1;word-spacing:3px;margin-bottom:7px}
+.sentence-block.future-block{opacity:.4;pointer-events:none}
+.sb-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.sb-label{font-size:11px;font-weight:700;color:#9aaac8;letter-spacing:.5px;text-transform:uppercase}
+.sb-wc-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 12px;border-radius:100px;font-size:12px;font-weight:800;white-space:nowrap}
+.sb-wc-pill.match{background:#e9f7ef;color:var(--green)}
+.sb-wc-pill.nomatch{background:#fdecec;color:var(--red)}
+.sb-result{min-height:22px;line-height:2.1;word-spacing:3px;margin-bottom:7px;font-weight:700}
 .sb-result .w-correct{color:var(--green);font-weight:700}
 .sb-result .w-wrong{color:var(--red);text-decoration:line-through;font-weight:700}
-.sb-result .w-missing{color:#e67e22;font-weight:800}
+.sb-result .w-missing{color:#e67e22;font-weight:800;letter-spacing:1px}
 .sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:17px}
 .sb-input:focus{border-color:var(--blue)}
-.sb-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
-.sb-wordcount{font-size:11.5px;color:#8a97b8;margin:-3px 0 8px}
+.sb-input:disabled{background:#f0f1f4;color:var(--grey-600)}
+.sb-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.sb-summary{font-size:12px;color:var(--grey-600);font-weight:700}
+.sb-summary.ok{color:var(--green)}
+.sb-summary.bad{color:var(--red)}
+.kbd-hint{opacity:.65;font-weight:600;font-size:.85em}
 .dict-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:12.5px;color:#5a4600}
 /* Audio bar stays pinned just below the topbar (which is itself sticky at top:0) while the
    student scrolls through sentences below. */
@@ -114,6 +123,10 @@
 .kbd-modal-footer{padding:14px 22px;border-top:1px solid var(--grey-200);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .kbd-dontshow{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--grey-600);cursor:pointer}
 .kbd-cta{background:var(--green);color:#fff;border:none;padding:10px 24px;border-radius:10px;font-weight:700;font-size:13.5px;cursor:pointer}
+/* Global loading overlay — see HTML comment for why this exists */
+#ld-loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.82);z-index:600;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+#ld-loading-overlay.active{display:flex}
+#ld-loading-text{font-size:13.5px;font-weight:700;color:var(--navy)}
 .progress-outer{flex:1;max-width:340px;background:var(--grey-200);border-radius:999px;height:8px}
 .progress-fill{height:8px;background:linear-gradient(90deg,var(--teal),var(--green));border-radius:999px;transition:width .4s}
 .result-card{background:#fff;border-radius:var(--radius-lg);padding:36px;max-width:520px;width:100%;box-shadow:var(--shadow-md);text-align:center;border-top:5px solid var(--gold);margin:0 auto}
@@ -438,6 +451,30 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <button class="kbd-cta" onclick="closeShortcutsModal()">Got it</button>
     </div>
   </div>
+</div>
+
+<!-- ═══════════ DUPLICATE BOOK/TEST/PART WARNING MODAL ═══════════ -->
+<div class="kbd-modal-overlay" id="dup-warning-overlay" onclick="if (event.target === this) closeDupWarning()">
+  <div class="kbd-modal">
+    <div class="kbd-modal-header">⚠️ You already have a session for this test</div>
+    <div class="kbd-modal-body">
+      <div class="kbd-tip" id="dup-warning-detail"></div>
+      <div style="font-size:13px;color:var(--grey-600);line-height:1.6">Double-check the Book/Test/Part you picked above — or go to <b>History → In Progress</b> to continue the existing session instead of starting a new one.</div>
+    </div>
+    <div class="kbd-modal-footer">
+      <button class="btn btn-secondary btn-sm" onclick="closeDupWarning()">Let me check</button>
+      <button class="kbd-cta" onclick="confirmStartAnyway()">Start new session anyway</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ GLOBAL LOADING OVERLAY — shown during any slow API call/screen transition,
+     so the student sees the app is working and doesn't spam-click. Also physically blocks
+     clicks to whatever is underneath it (full-screen + high z-index), which prevents the
+     double-submit issue that motivated adding this in the first place. ═══════════ -->
+<div id="ld-loading-overlay">
+  <div class="spinner" style="width:34px;height:34px;border-width:4px"></div>
+  <div id="ld-loading-text">Loading…</div>
 </div>
 
 <script src="ld-common.js"></script>
@@ -817,15 +854,14 @@ async function startSession() {
   try {
     var dup = await LD.api('student.checkBookTestPart', { bookTestPart: App.bookTestPart });
     if (dup.success && dup.data && dup.data.length) {
-      var proceed = confirm(
-        'You already have ' + dup.data.length + ' session(s) for "' + App.bookTestPart + '" (most recent: ' + LD.fmtDate(dup.data[0].startTime) + ').\n\n' +
-        'Double-check the Book/Test/Part you picked, or go to "History → In Progress" to continue the existing one instead.\n\n' +
-        'Press OK to start a NEW session anyway, or Cancel to go check.'
-      );
+      var detail = 'You already have <b>' + dup.data.length + '</b> session(s) for <b>' + LD.esc(App.bookTestPart) +
+        '</b> (most recent: ' + LD.fmtDate(dup.data[0].startTime) + ').';
+      var proceed = await openDupWarning(detail);
       if (!proceed) { btn.disabled = false; btn.textContent = '🚀 Start Practice Session'; return; }
     }
   } catch (e) { /* duplicate check failing shouldn't block the student from starting */ }
   btn.innerHTML = '<span class="spinner"></span> Creating session…';
+  showLoading('Creating your session…');
   try {
     var r = await LD.api('session.start', { bookTestPart: App.bookTestPart });
     if (!r.success) throw new Error(r.error || 'Could not create session');
@@ -841,7 +877,7 @@ async function startSession() {
   } catch (err) {
     LD.toast('Error: ' + err.message, 'err');
     btn.disabled = false; btn.textContent = '🚀 Start Practice Session';
-  }
+  } finally { hideLoading(); }
 }
 function goStudy() {
   renderLevelChips(); renderStudyPassage(); renderCefrDist(); renderCollocations();
@@ -1020,12 +1056,13 @@ async function retryQuiz() {
   renderQuiz();
 }
 async function finalizeQuizPass() {
+  showLoading('Saving your quiz…');
   try {
     var r = await LD.api('session.saveQuiz', { sessionId: App.sessionId, attempts: App.quizAttempts, attemptsCount: App.quizAttempts.length, correct: 15, total: 15, score: 100 });
     if (!r.success) { LD.toast(r.error || 'Could not save the quiz', 'err'); return; }
     LD.toast(App.quizAttempts.length > 1 ? ('Quiz passed on attempt ' + App.quizAttempts.length + '!') : 'Quiz: 15/15 on the first try!', 'ok');
     goGapFill();
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1053,6 +1090,10 @@ function setupGapAudioListeners() {
   if (!audio || audio._ldWired) return;
   audio._ldWired = true;
   audio.addEventListener('loadedmetadata', computeGapPausePoints);
+  // Some sources (e.g. a streamed Google Drive link, vs. a directly-uploaded file) report
+  // duration as Infinity/unknown at 'loadedmetadata' and only resolve it later — 'durationchange'
+  // catches that case too, so the estimate isn't silently left empty/stale.
+  audio.addEventListener('durationchange', computeGapPausePoints);
   audio.addEventListener('timeupdate', onGapTimeUpdate);
   if (audio.readyState >= 1) computeGapPausePoints();
 }
@@ -1209,12 +1250,13 @@ async function submitGapFill() {
     });
   });
   var score = total ? Math.round(correct / total * 100) : 100;
+  showLoading('Saving your Gap-fill…');
   try {
     var r = await LD.api('session.saveGapFill', { sessionId: App.sessionId, answers: flatAnswers, total: total, correct: correct, score: score });
     if (!r.success) { LD.toast(r.error || 'Could not save gap-fill', 'err'); return; }
     LD.toast('Gap-fill: ' + correct + '/' + total + ' correct on the first try (' + score + '%)', 'ok');
     goDictation();
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 // Gap-fill has NO partial save (must be 100% correct to save) — exiting mid-way just leaves
 // GapFillJSON unset server-side. Since Quiz was already saved on pass (finalizeQuizPass), the
@@ -1230,7 +1272,7 @@ function exitGapFill() {
 // ═══════════════════════════════════════════════════════════
 function goDictation() {
   App.dictationIdx = 0;
-  App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false, replaysUsed: 0 }; });
+  App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false, firstTryDone: false, firstTryCorrectWords: 0, firstTryTotalWords: 0, attempts: 0 }; });
   showScreen('screen-dictation');
   var audio = document.getElementById('dict-audio');
   if (App.audioBlobUrl) audio.src = App.audioBlobUrl; else document.getElementById('dict-audio-row').style.display = 'none';
@@ -1248,6 +1290,7 @@ function setupDictAudioListeners() {
   if (!audio || audio._ldWired) return;
   audio._ldWired = true;
   audio.addEventListener('loadedmetadata', computePausePoints);
+  audio.addEventListener('durationchange', computePausePoints); // see comment on the Gap-fill equivalent
   audio.addEventListener('timeupdate', onDictTimeUpdate);
   if (audio.readyState >= 1) computePausePoints();
 }
@@ -1284,34 +1327,75 @@ function setDictMode(mode) {
   if (mode === 'auto' && !App.pausePoints.length) computePausePoints();
 }
 function wc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
+// Sequential mastery gating (same philosophy as Gap-fill and Quiz): a sentence is 'done' once
+// checked===true (100% correct), the ONE sentence at App.dictationIdx is 'active' (editable),
+// and everything after it is 'future' (dimmed, locked) — a student can't skip ahead without
+// passing the current sentence first.
 function renderDictation() {
+  var total = App.correctedSentences.length;
   var html = App.correctedSentences.map(function (s, i) {
     var st = App.dictationAnswers[i];
     var target = wc(s), typedNow = wc(st.typed);
-    var cls = 'sentence-block' + (i === App.dictationIdx ? ' active-block' : '') + (st.checked ? ' completed' : '');
+    var match = typedNow === target;
+    var state = st.checked ? 'done' : (i === App.dictationIdx ? 'active' : 'future');
+    var cls = 'sentence-block' + (state === 'active' ? ' active-block' : state === 'done' ? ' completed' : ' future-block');
+    var disabled = state !== 'active';
     return '<div class="' + cls + '" data-idx="' + i + '">' +
-      '<div class="sb-label">Sentence ' + (i + 1) + ' <span style="opacity:.6;font-weight:600">· ' + target + ' words</span></div>' +
+      '<div class="sb-header">' +
+      '<span class="sb-label">Sentence ' + (i + 1) + ' / ' + total + '</span>' +
+      '<span class="sb-wc-pill ' + (match ? 'match' : 'nomatch') + '" id="sb-wc-' + i + '">✏️ ' + typedNow + '/' + target + ' words</span>' +
+      '</div>' +
       '<div class="sb-result" id="sb-result-' + i + '"></div>' +
-      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '" ' + (st.checked ? 'disabled' : '') + ' oninput="onDictInput(' + i + ',this.value)" onkeydown="onDictInputKeydown(event,' + i + ')" ' + ANTI_PASTE_ATTRS + '>' +
-      '<div class="sb-wordcount" id="sb-wc-' + i + '">' + typedNow + '/' + target + ' words typed</div>' +
+      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '" ' + (disabled ? 'disabled' : '') + ' oninput="onDictInput(' + i + ',this.value)" onkeydown="onDictInputKeydown(event,' + i + ')" ' + ANTI_PASTE_ATTRS + '>' +
       '<div class="sb-controls">' +
-      '<button class="btn btn-secondary btn-sm" onclick="checkSentence(' + i + ')" ' + (st.checked ? 'disabled' : '') + '>✓ Check</button>' +
-      '<button class="btn btn-secondary btn-sm" onclick="jumpTo(' + i + ')">▶ Jump here</button>' +
-      '</div></div>';
+      '<span class="sb-summary" id="sb-summary-' + i + '"></span>' +
+      '<span style="display:flex;gap:7px">' +
+      '<button class="btn btn-primary btn-sm" onclick="checkSentence(' + i + ')" ' + (disabled ? 'disabled' : '') + '>✅ Check <span class="kbd-hint">(Enter)</span></button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="editSentence(' + i + ')" ' + (state === 'future' ? 'disabled' : '') + '>✏️ Edit</button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="resetSentence(' + i + ')" ' + (state === 'future' ? 'disabled' : '') + '>↺ Reset</button>' +
+      '</span></div></div>';
   }).join('');
   document.getElementById('dictation-sentences').innerHTML = html;
   var done = App.dictationAnswers.filter(function (a) { return a.checked; }).length;
-  var pct = Math.round(done / App.correctedSentences.length * 100);
+  var pct = Math.round(done / total * 100);
   document.getElementById('dict-progress-fill').style.width = pct + '%';
-  document.getElementById('dict-progress-label').textContent = done + '/' + App.correctedSentences.length;
-  document.getElementById('btn-finish-dictation').style.display = done === App.correctedSentences.length ? 'block' : 'none';
+  document.getElementById('dict-progress-label').textContent = done + '/' + total;
+  document.getElementById('btn-finish-dictation').style.display = done === total ? 'block' : 'none';
+  // Re-populate the result/summary line for sentences already checked at least once, so it
+  // survives a re-render (e.g. after jumping between sentences) instead of going blank.
+  App.dictationAnswers.forEach(function (ans, i) { if (ans.firstTryDone) renderDictResult(i); });
   updateWordTotal();
 }
 function onDictInput(i, v) {
   App.dictationAnswers[i].typed = v;
-  var el = document.getElementById('sb-wc-' + i);
-  if (el) el.textContent = wc(v) + '/' + wc(App.correctedSentences[i]) + ' words typed';
+  updateWcPill(i);
   updateWordTotal();
+}
+function updateWcPill(i) {
+  var el = document.getElementById('sb-wc-' + i);
+  if (!el) return;
+  var target = wc(App.correctedSentences[i]), typedNow = wc(App.dictationAnswers[i].typed);
+  el.className = 'sb-wc-pill ' + (typedNow === target ? 'match' : 'nomatch');
+  el.textContent = '✏️ ' + typedNow + '/' + target + ' words';
+}
+// Renders the colored per-word feedback for the LAST check on sentence i: correct words in
+// green; for a wrong or missing word, the correct answer is masked as asterisks (never revealed
+// directly — the student can still see it once they DO get it right) followed by their actual
+// wrong input struck through, so they see exactly where they went wrong without being handed
+// the answer outright.
+function renderDictResult(i) {
+  var el = document.getElementById('sb-result-' + i);
+  if (!el) return;
+  var ans = App.dictationAnswers[i];
+  var actualWords = App.correctedSentences[i].replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
+  var typedWords = (ans.lastCheckedTyped || '').replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
+  el.innerHTML = actualWords.map(function (w, wi) {
+    var tw = typedWords[wi];
+    var ok = tw && tw.toLowerCase() === w.toLowerCase();
+    if (ok) return '<span class="w-correct">' + LD.esc(tw) + '</span>';
+    var mask = '<span class="w-missing">' + '*'.repeat(w.length) + '</span>';
+    return tw ? (mask + ' <span class="w-wrong">' + LD.esc(tw) + '</span>') : mask;
+  }).join(' ');
 }
 function onDictInputKeydown(e, i) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!App.dictationAnswers[i].checked) checkSentence(i); }
@@ -1338,11 +1422,45 @@ function closeShortcutsModal() {
   if (chk && chk.checked) localStorage.setItem('ld_kbd_shortcuts_hidden', '1');
   document.getElementById('kbd-modal-overlay').classList.remove('active');
 }
+// Duplicate Book/Test/Part warning — same visual style as the shortcuts modal, but resolves a
+// Promise instead of blocking with a native confirm(), so startSession() can just `await` it.
+var _dupWarningResolve = null;
+function openDupWarning(detailHtml) {
+  document.getElementById('dup-warning-detail').innerHTML = detailHtml;
+  document.getElementById('dup-warning-overlay').classList.add('active');
+  return new Promise(function (resolve) { _dupWarningResolve = resolve; });
+}
+function closeDupWarning() {
+  document.getElementById('dup-warning-overlay').classList.remove('active');
+  if (_dupWarningResolve) { _dupWarningResolve(false); _dupWarningResolve = null; }
+}
+function confirmStartAnyway() {
+  document.getElementById('dup-warning-overlay').classList.remove('active');
+  if (_dupWarningResolve) { _dupWarningResolve(true); _dupWarningResolve = null; }
+}
+// Global "the app is working" overlay for slow API calls / screen transitions (Save & Exit,
+// submitting Quiz/Gap-fill/Dictation, deleting a session, etc.) — a counter so nested/overlapping
+// calls don't hide it prematurely, and it doubles as a click-blocker to prevent double-submits.
+var _loadingDepth = 0;
+function showLoading(msg) {
+  _loadingDepth++;
+  document.getElementById('ld-loading-text').textContent = msg || 'Loading…';
+  document.getElementById('ld-loading-overlay').classList.add('active');
+}
+function hideLoading() {
+  _loadingDepth = Math.max(0, _loadingDepth - 1);
+  if (_loadingDepth === 0) document.getElementById('ld-loading-overlay').classList.remove('active');
+}
 document.addEventListener('keydown', function (e) {
   var modal = document.getElementById('kbd-modal-overlay');
   if (modal && modal.classList.contains('active')) {
     if (e.key === 'Escape') closeShortcutsModal();
     return; // don't let the shortcuts fire into the screen behind the modal while it's open
+  }
+  var dupModal = document.getElementById('dup-warning-overlay');
+  if (dupModal && dupModal.classList.contains('active')) {
+    if (e.key === 'Escape') closeDupWarning();
+    return;
   }
   var gapActive = isScreenActive('screen-gapfill');
   var dictActive = isScreenActive('screen-dictation');
@@ -1363,8 +1481,10 @@ document.addEventListener('keydown', function (e) {
   }
   if (e.shiftKey && e.key === 'Enter') {
     e.preventDefault();
-    if (dictActive) jumpToNextUnchecked();
-    else if (gapActive) checkSegment(); // Gap-fill has no ungated "skip" — must pass the pair to advance
+    // Neither screen allows an ungated "skip" anymore — 100% correct is required to advance —
+    // so Shift+Enter just aliases to Check on the active sentence/pair.
+    if (dictActive) checkSentence(App.dictationIdx);
+    else if (gapActive) checkSegment();
     return;
   }
   if (e.ctrlKey && e.altKey && (e.key === 'r' || e.key === 'R')) {
@@ -1380,27 +1500,14 @@ document.addEventListener('keydown', function (e) {
     return;
   }
 });
-function jumpToNextUnchecked() {
-  for (var i = 0; i < App.dictationAnswers.length; i++) if (!App.dictationAnswers[i].checked) { jumpTo(i); return; }
-}
-function resetCurrentDictationSentence() {
-  var i = App.dictationIdx;
-  if (i >= App.dictationAnswers.length) return;
-  App.dictationAnswers[i].typed = ''; App.dictationAnswers[i].checked = false;
-  renderDictation();
-  var inp = document.getElementById('sb-input-' + i); if (inp) inp.focus();
-  LD.toast('Sentence ' + (i + 1) + ' reset.', 'ok', 1500);
-}
+// Keyboard-shortcut wrappers — delegate to the same per-sentence functions the Check/Edit/Reset
+// buttons use, so the ↑ and Ctrl+Alt+R hotkeys always behave identically to clicking the button.
+function resetCurrentDictationSentence() { resetSentence(App.dictationIdx); }
 function editLastDictationSentence() {
   var last = -1;
   for (var i = 0; i < App.dictationAnswers.length; i++) if (App.dictationAnswers[i].checked) last = i;
   if (last < 0) { LD.toast('No completed sentence to edit yet.', 'info', 1500); return; }
-  App.dictationAnswers[last].checked = false;
-  App.dictationIdx = last;
-  App._pausedForCurrentIdx = false;
-  renderDictation();
-  var inp = document.getElementById('sb-input-' + last); if (inp) inp.focus();
-  LD.toast('Editing sentence ' + (last + 1) + ' — press Enter to re-check.', 'ok', 2000);
+  editSentence(last);
 }
 function resetCurrentGapSegment() {
   if (App.gapSegIdx >= App.gapSegments.length) return;
@@ -1424,65 +1531,109 @@ function editLastGapSegment() {
   if (firstInput) firstInput.focus();
   LD.toast('Editing the previous pair — fix any wrong blanks and press Enter.', 'ok', 2000);
 }
-function jumpTo(i) {
+// Must be 100% correct to advance — same mastery-learning gate as Gap-fill/Quiz. Score is based
+// on the FIRST attempt only (ans.firstTryDone freezes it); retries after that are ungraded and
+// exist purely so the student can keep fixing mistakes until they pass, per sentence.
+function checkSentence(i) {
+  var inputEl = document.getElementById('sb-input-' + i);
+  if (!inputEl || inputEl.disabled) return;
+  var typed = (inputEl.value || '').trim();
+  var ans = App.dictationAnswers[i];
+  ans.typed = typed;
+  ans.lastCheckedTyped = typed;
+  ans.attempts = (ans.attempts || 0) + 1;
+
+  var actualWords = App.correctedSentences[i].replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
+  var typedWords = typed.replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
+  var correctCount = 0;
+  actualWords.forEach(function (w, wi) { if (typedWords[wi] && typedWords[wi].toLowerCase() === w.toLowerCase()) correctCount++; });
+  var allCorrect = correctCount === actualWords.length && typedWords.length === actualWords.length;
+
+  if (!ans.firstTryDone) {
+    ans.firstTryDone = true;
+    ans.firstTryCorrectWords = correctCount;
+    ans.firstTryTotalWords = actualWords.length;
+    ans.firstTryTyped = typed; // kept for the teacher's Session Detail view, so a passed sentence
+    // doesn't just show the (always-correct) final text — the teacher can see what the student
+    // actually typed the first time, same idea as Gap-fill's firstTryGiven.
+  }
+
+  renderDictResult(i);
+  updateWcPill(i);
+  var pct = actualWords.length ? Math.round(correctCount / actualWords.length * 100) : 100;
+  var summaryEl = document.getElementById('sb-summary-' + i);
+
+  if (allCorrect) {
+    ans.checked = true;
+    if (summaryEl) { summaryEl.className = 'sb-summary ok'; summaryEl.textContent = '✅ ' + actualWords.length + '/' + actualWords.length + ' words (100%) — correct!'; }
+    if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
+    App._pausedForCurrentIdx = false;
+    renderDictation();
+    var nextInput = document.getElementById('sb-input-' + App.dictationIdx);
+    if (nextInput && !nextInput.disabled) nextInput.focus();
+    // Auto mode: resume playback automatically so the student doesn't need to hit play again.
+    if (App.dictMode === 'auto') {
+      var audio = document.getElementById('dict-audio');
+      if (audio && audio.paused && App.dictationIdx < App.correctedSentences.length) {
+        setTimeout(function () { audio.play().catch(function () {}); }, 500);
+      }
+    }
+  } else {
+    if (summaryEl) { summaryEl.className = 'sb-summary bad'; summaryEl.textContent = correctCount + '/' + actualWords.length + ' words (' + pct + '%) — fix errors and try again'; }
+    inputEl.focus();
+  }
+}
+function editSentence(i) {
+  App.dictationAnswers[i].checked = false;
   App.dictationIdx = i;
   App._pausedForCurrentIdx = false;
-  if (App.dictMode === 'auto' && App.pausePoints.length) {
-    var audio = document.getElementById('dict-audio');
-    if (audio) audio.currentTime = i > 0 ? App.pausePoints[i - 1] : 0;
-  }
   renderDictation();
-  document.getElementById('sb-input-' + i).focus();
+  var inp = document.getElementById('sb-input-' + i); if (inp) inp.focus();
+  LD.toast('Editing sentence ' + (i + 1) + ' — press Enter to re-check.', 'ok', 2000);
 }
-function checkSentence(i) {
-  var typed = (document.getElementById('sb-input-' + i).value || '').trim();
-  App.dictationAnswers[i].typed = typed;
-  App.dictationAnswers[i].checked = true;
-  var actualWords = App.correctedSentences[i].replace(/[.,!?;:"]/g, '').split(/\s+/);
-  var typedWords = typed.replace(/[.,!?;:"]/g, '').split(/\s+/);
-  var html = actualWords.map(function (w, wi) {
-    var tw = (typedWords[wi] || '').toLowerCase();
-    var ok = tw === w.toLowerCase();
-    return '<span class="' + (ok ? 'w-correct' : (tw ? 'w-wrong' : 'w-missing')) + '">' + LD.esc(w) + '</span>';
-  }).join(' ');
-  document.getElementById('sb-result-' + i).innerHTML = html;
-  if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
+function resetSentence(i) {
+  var ans = App.dictationAnswers[i];
+  ans.typed = ''; ans.checked = false;
+  // firstTryDone / firstTryCorrectWords / firstTryTotalWords are intentionally preserved — clearing
+  // the text to retype shouldn't erase the mastery-learning "first attempt" score.
+  App.dictationIdx = i;
   App._pausedForCurrentIdx = false;
   renderDictation();
-  var nextInput = document.getElementById('sb-input-' + App.dictationIdx);
-  if (nextInput && !nextInput.disabled) nextInput.focus();
-  // Auto mode: resume playback automatically so the student doesn't need to hit play again.
-  if (App.dictMode === 'auto') {
-    var audio = document.getElementById('dict-audio');
-    if (audio && audio.paused && App.dictationIdx < App.correctedSentences.length) {
-      setTimeout(function () { audio.play().catch(function () {}); }, 500);
-    }
-  }
+  var inp = document.getElementById('sb-input-' + i); if (inp) inp.focus();
+  LD.toast('Sentence ' + (i + 1) + ' reset — type it again.', 'ok', 1500);
 }
 async function saveDictationAndExit() {
+  showLoading('Saving your progress…');
   try {
     var r = await LD.api('session.saveDictationProgress', {
       sessionId: App.sessionId, currentSentenceIdx: App.dictationIdx, answers: App.dictationAnswers
     });
     if (r.success) { LD.toast('Saved — resume it from "History → In Progress".', 'ok', 3500); goHistory(); }
     else LD.toast(r.error || 'Could not save', 'err');
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
+}
+// Accuracy is computed from each sentence's FIRST attempt, not the final (post-retry) typed
+// text — since every sentence must eventually reach 100% to be marked done, comparing the final
+// text would always show ~100% and the accuracy score would be meaningless. This mirrors the
+// same mastery-learning scoring already used for Quiz and Gap-fill.
+function dictationAccuracyFromFirstTry() {
+  var totalWords = 0, correctWords = 0;
+  App.dictationAnswers.forEach(function (ans) {
+    totalWords += ans.firstTryTotalWords || 0;
+    correctWords += ans.firstTryCorrectWords || 0;
+  });
+  return totalWords ? Math.round(correctWords / totalWords * 100) : 0;
 }
 async function finishDictation() {
-  var totalWords = 0, correctWords = 0;
-  App.correctedSentences.forEach(function (s, i) {
-    var actual = s.replace(/[.,!?;:"]/g, '').split(/\s+/);
-    var typed = (App.dictationAnswers[i].typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/);
-    actual.forEach(function (w, wi) { totalWords++; if ((typed[wi] || '').toLowerCase() === w.toLowerCase()) correctWords++; });
-  });
-  var accuracy = totalWords ? Math.round(correctWords / totalWords * 100) : 0;
+  var accuracy = dictationAccuracyFromFirstTry();
+  showLoading('Submitting your results…');
   try {
     var r = await LD.api('session.finishDictation', { sessionId: App.sessionId, answers: App.dictationAnswers, accuracy: accuracy });
     if (!r.success) { LD.toast(r.error || 'Could not submit', 'err'); return; }
     document.getElementById('result-total').textContent = r.totalScore + '%';
     loadFinalScoresIntoResult();
     showScreen('screen-result');
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 function loadFinalScoresIntoResult() {
   var firstAttempt = App.quizAttempts[0];
@@ -1490,9 +1641,7 @@ function loadFinalScoresIntoResult() {
   var gTotal = 0, gCorrect = 0;
   App.gapfill.forEach(function (g, gi) { g.blankWordIdx.forEach(function (wi, bi) { gTotal++; if (App.gapBlankState[gi] && App.gapBlankState[gi][bi] && App.gapBlankState[gi][bi].firstTryCorrect) gCorrect++; }); });
   document.getElementById('result-gapfill').textContent = gTotal ? (gCorrect + '/' + gTotal) : '—';
-  var totalWords = 0, correctWords = 0;
-  App.correctedSentences.forEach(function (s, i) { var actual = s.replace(/[.,!?;:"]/g, '').split(/\s+/); var typed = (App.dictationAnswers[i].typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/); actual.forEach(function (w, wi) { totalWords++; if ((typed[wi] || '').toLowerCase() === w.toLowerCase()) correctWords++; }); });
-  document.getElementById('result-dictation').textContent = totalWords ? Math.round(correctWords / totalWords * 100) + '%' : '—';
+  document.getElementById('result-dictation').textContent = dictationAccuracyFromFirstTry() + '%';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1501,6 +1650,7 @@ function loadFinalScoresIntoResult() {
 //  - Gap-fill saved                     → resume/start Dictation (the only step with a real checkpoint)
 // ═══════════════════════════════════════════════════════════
 async function resumeSession(sessionId) {
+  showLoading('Loading your session…');
   try {
     var r = await LD.api('student.resumeSession', { sessionId: sessionId });
     if (!r.success) { LD.toast(r.error || 'Could not open this session', 'err'); return; }
@@ -1516,7 +1666,9 @@ async function resumeSession(sessionId) {
       return;
     }
     var dj = d.DictationJSON || { currentSentenceIdx: 0, answers: [] };
-    App.dictationAnswers = App.correctedSentences.map(function (s, i) { return (dj.answers && dj.answers[i]) || { typed: '', checked: false }; });
+    App.dictationAnswers = App.correctedSentences.map(function (s, i) {
+      return (dj.answers && dj.answers[i]) || { typed: '', checked: false, firstTryDone: false, firstTryCorrectWords: 0, firstTryTotalWords: 0, attempts: 0 };
+    });
     App.dictationIdx = dj.currentSentenceIdx || 0;
     showScreen('screen-dictation');
     document.getElementById('dict-audio-row').style.display = App.audioBlobUrl ? 'block' : 'none';
@@ -1525,7 +1677,7 @@ async function resumeSession(sessionId) {
     setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
     renderDictation();
     LD.toast('Resumed your in-progress session.', 'ok');
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 async function checkInProgressHint() {
   try {
@@ -1546,12 +1698,13 @@ function jsAttrStr(s) {
 }
 async function deleteSession(sessionId, label) {
   if (!confirm('Delete "' + label + '"? This cannot be undone — your teacher will no longer see or get credit for this session.')) return;
+  showLoading('Deleting…');
   try {
     var r = await LD.api('session.delete', { sessionId: sessionId });
     if (!r.success) { LD.toast(r.error || 'Could not delete', 'err'); return; }
     LD.toast('Session deleted.', 'ok');
     loadInProgress(); loadHistory();
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 async function loadInProgress() {
   var card = document.getElementById('inprogress-card'), list = document.getElementById('inprogress-list');
@@ -1561,12 +1714,15 @@ async function loadInProgress() {
     card.style.display = 'block';
     list.innerHTML = r.data.map(function (d) {
       var stageLabel = d.stage === 'gapfill'
-        ? '🧩 Quiz passed — Gap-fill not started yet'
-        : '🎧 Gap-fill passed — Dictation at sentence ' + ((d.currentSentenceIdx || 0) + 1);
+        ? '🧩 Gap-fill not started yet'
+        : '🎧 Dictation at sentence ' + ((d.currentSentenceIdx || 0) + 1);
       var btnLabel = d.stage === 'gapfill' ? '▶ Continue → Gap-fill' : '▶ Continue → Dictation';
+      var scoresLine = '🎯 Quiz: ' + (d.quizScore != null ? d.quizScore + '%' : '—') +
+        ' &nbsp;·&nbsp; 🧩 Gap-fill: ' + (d.gapFillScore != null ? d.gapFillScore + '%' : '—');
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--grey-100)">' +
         '<div><div style="font-weight:700;font-size:13.5px">' + LD.esc(d.bookTestPart || 'Untitled session') + '</div>' +
-        '<div style="font-size:11.5px;color:var(--grey-600)">' + stageLabel + ' · Saved at ' + LD.fmtDate(d.savedAt) + '</div></div>' +
+        '<div style="font-size:11.5px;color:var(--grey-600);margin-top:2px">' + scoresLine + ' &nbsp;·&nbsp; ' + stageLabel + '</div>' +
+        '<div style="font-size:10.5px;color:var(--grey-400);margin-top:1px">Saved at ' + LD.fmtDate(d.savedAt) + '</div></div>' +
         '<div style="display:flex;gap:6px">' +
         '<button class="btn btn-primary btn-sm" onclick="location.href=\'student.html?resume=' + d.sessionId + '\'">' + btnLabel + '</button>' +
         '<button class="btn btn-secondary btn-sm" onclick="deleteSession(' + jsAttrStr(d.sessionId) + ',' + jsAttrStr(d.bookTestPart || 'this session') + ')">🗑️</button>' +

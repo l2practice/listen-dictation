@@ -21,6 +21,8 @@
 .tab-strip-btn{flex:1;padding:9px;border:none;background:transparent;border-radius:9px;font-family:var(--font-body);font-size:13px;font-weight:700;color:var(--grey-600);cursor:pointer}
 .tab-strip-btn.active{background:#fff;color:var(--red);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .card{background:var(--white);border-radius:var(--radius-lg);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--grey-200);margin-bottom:16px}
+.stat-num{font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--navy)}
+.stat-lbl{font-size:11px;font-weight:700;color:var(--grey-600);text-transform:uppercase;letter-spacing:.04em}
 .card-title{font-family:var(--font-display);font-size:1.05rem;color:var(--black);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer}
 .btn-primary{background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff}
@@ -136,6 +138,15 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
   <!-- ═══ SESSIONS DASHBOARD ═══ -->
   <div id="tab-sessions" class="hidden">
+    <div class="card" id="sess-stats-card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center;padding:14px 20px">
+      <div><div class="stat-num" id="stat-total">—</div><div class="stat-lbl">Sessions (filtered)</div></div>
+      <div><div class="stat-num" id="stat-completed">—</div><div class="stat-lbl">Completed</div></div>
+      <div><div class="stat-num" id="stat-inprogress">—</div><div class="stat-lbl">In progress</div></div>
+      <div><div class="stat-num" id="stat-avg-quiz">—</div><div class="stat-lbl">Avg Quiz</div></div>
+      <div><div class="stat-num" id="stat-avg-gapfill">—</div><div class="stat-lbl">Avg Gap-fill</div></div>
+      <div><div class="stat-num" id="stat-avg-dictation">—</div><div class="stat-lbl">Avg Dictation</div></div>
+      <div><div class="stat-num" id="stat-avg-total">—</div><div class="stat-lbl">Avg Total Score</div></div>
+    </div>
     <div class="card">
       <div class="toolbar">
         <select class="form-select" id="sess-filter-class" onchange="loadSessions()"><option value="">All classes</option></select>
@@ -290,6 +301,24 @@ function renderSessionsTable() {
       '<td><button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + r.sessionId + '\')">🔍 Detail</button></td></tr>';
   }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">No sessions found.</td></tr>';
   document.getElementById('sess-count').textContent = rows.length + ' session(s)';
+  renderSessStats(rows);
+}
+// Summary stats over whatever rows are currently visible (respects the class/date filters AND
+// the search box), so a teacher can see class-wide performance at a glance instead of scanning
+// every row by hand.
+function renderSessStats(rows) {
+  var completed = rows.filter(function (r) { return r.dictationAccuracy != null; }).length;
+  var avg = function (key) {
+    var vals = rows.map(function (r) { return r[key]; }).filter(function (v) { return v != null; });
+    return vals.length ? Math.round(vals.reduce(function (a, b) { return a + Number(b); }, 0) / vals.length) + '%' : '—';
+  };
+  document.getElementById('stat-total').textContent = rows.length;
+  document.getElementById('stat-completed').textContent = completed;
+  document.getElementById('stat-inprogress').textContent = rows.length - completed;
+  document.getElementById('stat-avg-quiz').textContent = avg('quizScore');
+  document.getElementById('stat-avg-gapfill').textContent = avg('gapFillScore');
+  document.getElementById('stat-avg-dictation').textContent = avg('dictationAccuracy');
+  document.getElementById('stat-avg-total').textContent = avg('totalScore');
 }
 
 // ── SESSION DETAIL ──
@@ -342,6 +371,21 @@ function renderDetailHeader() {
     ['Total', d.TotalScore != null && d.TotalScore !== '' ? d.TotalScore + '%' : '—']
   ].map(function (kv) { return '<div class="dt-stat-card"><div class="n">' + kv[1] + '</div><div class="l">' + kv[0] + '</div></div>'; }).join('');
 }
+function dtDictWordDiffHtml(actualWords, typedText) {
+  var typedWords = (typedText || '').replace(/[.,!?;:"]/g, '').split(/\s+/);
+  var allOk = true;
+  var html = actualWords.map(function (w, wi) {
+    var tw = (typedWords[wi] || '').toLowerCase();
+    var ok = tw === w.toLowerCase();
+    if (!ok) allOk = false;
+    return '<span class="' + (ok ? 'dt-w-ok' : (tw ? 'dt-w-bad' : 'dt-w-miss')) + '">' + LD.esc(w) + '</span>';
+  }).join(' ');
+  return { html: html, allOk: allOk };
+}
+// Dictation now requires 100% correct to pass a sentence (mastery gating, same as Gap-fill/Quiz),
+// so the FINAL typed text is always correct once checked — showing only that would hide how the
+// student actually did. We show the first-attempt text (with errors highlighted) whenever it
+// differs from the final passed text, same idea as Gap-fill's firstTryGiven.
 function renderDictationDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-dictation');
   var dj = d.DictationJSON;
@@ -351,18 +395,15 @@ function renderDictationDetail() {
   pane.innerHTML = sentences.map(function (s, i) {
     var st = answers[i] || { typed: '', checked: false };
     var actualWords = s.replace(/[.,!?;:"]/g, '').split(/\s+/);
-    var typedWords = (st.typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/);
-    var allOk = true;
-    var html = actualWords.map(function (w, wi) {
-      var tw = (typedWords[wi] || '').toLowerCase();
-      var ok = tw === w.toLowerCase();
-      if (!ok) allOk = false;
-      return '<span class="' + (ok ? 'dt-w-ok' : (tw ? 'dt-w-bad' : 'dt-w-miss')) + '">' + LD.esc(w) + '</span>';
-    }).join(' ');
-    return '<div class="dt-sentence ' + (st.checked ? (allOk ? 'ok' : 'bad') : '') + '">' +
-      '<div class="sn">Sentence ' + (i + 1) + ' · ' + dtWc(s) + ' words' + (st.checked ? '' : ' · not checked yet') + '</div>' +
+    var firstAttempt = st.firstTryDone ? dtDictWordDiffHtml(actualWords, st.firstTryTyped) : null;
+    var finalRes = dtDictWordDiffHtml(actualWords, st.typed);
+    var showBothLines = firstAttempt && st.firstTryTyped !== st.typed;
+    var attemptsNote = st.attempts > 1 ? (' · ' + st.attempts + ' attempts') : '';
+    return '<div class="dt-sentence ' + (st.checked ? (finalRes.allOk ? 'ok' : 'bad') : '') + '">' +
+      '<div class="sn">Sentence ' + (i + 1) + ' · ' + dtWc(s) + ' words' + attemptsNote + (st.checked ? '' : ' · not checked yet') + '</div>' +
       '<div class="target">Target: ' + LD.esc(s) + '</div>' +
-      '<div class="typed">Typed: ' + html + '</div></div>';
+      (showBothLines ? '<div class="typed">First attempt: ' + firstAttempt.html + '</div>' : '') +
+      '<div class="typed">' + (showBothLines ? 'Final (passed): ' : 'Typed: ') + finalRes.html + '</div></div>';
   }).join('');
 }
 function renderGapFillDetail() {
