@@ -59,7 +59,7 @@
 .q-tag{display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 9px;border-radius:100px;margin-bottom:8px}
 .q-tag.content{background:var(--red-light);color:var(--red)}
 .q-tag.vocab{background:#E0F2EF;color:var(--teal)}
-.opt-label{display:block;padding:9px 12px;border:1.5px solid var(--grey-200);border-radius:9px;margin-bottom:6px;cursor:pointer;font-size:13.5px}
+.opt-label{display:block;padding:9px 12px;border:1.5px solid var(--grey-200);border-radius:9px;margin-bottom:6px;cursor:pointer;font-size:16.5px}
 .opt-label:hover{border-color:var(--red)}
 .opt-label.sel{border-color:var(--red);background:var(--red-light);font-weight:700}
 .opt-label input{margin-right:8px}
@@ -68,18 +68,18 @@
 .opt-label.locked{cursor:default}
 .opt-label.correct-answer{border-color:var(--green);background:#e9f7ef;color:var(--green);font-weight:700}
 .opt-label.wrong-pick{border-color:var(--red);background:#fdecec;color:var(--red)}
-.q-explain{margin-top:8px;padding:8px 12px;background:#f0f4ff;border-left:3px solid var(--blue);border-radius:0 8px 8px 0;font-size:12.5px;color:var(--grey-800);line-height:1.6}
-.gap-sentence{background:var(--white);border-radius:12px;padding:14px 18px;margin-bottom:10px;border-left:4px solid var(--blue);font-size:14.5px;line-height:2;transition:opacity .3s}
+.q-explain{margin-top:8px;padding:8px 12px;background:#f0f4ff;border-left:3px solid var(--blue);border-radius:0 8px 8px 0;font-size:15.5px;color:var(--grey-800);line-height:1.6}
+.gap-sentence{background:var(--white);border-radius:12px;padding:14px 18px;margin-bottom:10px;border-left:4px solid var(--blue);font-size:17.5px;line-height:2;transition:opacity .3s}
 .gap-sentence.gs-future{opacity:.45}
 .gap-sentence.gs-done{border-left-color:var(--green)}
-.gap-blank{display:inline-block;min-width:90px;padding:2px 8px;border:none;border-bottom:2px solid var(--red);background:var(--red-light);border-radius:4px;font-family:var(--font-mono);font-size:13.5px;text-align:center;margin:0 2px}
+.gap-blank{display:inline-block;min-width:90px;padding:2px 8px;border:none;border-bottom:2px solid var(--red);background:var(--red-light);border-radius:4px;font-family:var(--font-mono);font-size:16.5px;text-align:center;margin:0 2px}
 .gap-blank.gb-correct{border-bottom-color:var(--green);background:#e9f7ef;color:var(--green);font-weight:700}
 .gap-blank.gb-wrong{border-bottom-color:var(--red);background:#fdecec}
 .gap-blank.gb-future{border-bottom-color:#ccc;background:#f3f3f1;color:#aaa;pointer-events:none}
 .gap-seg-hint{margin-top:10px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;text-align:center}
 .gap-seg-hint.ok{background:#e9f7ef;color:var(--green);border:1.5px solid var(--green)}
 .gap-seg-hint.bad{background:#fdecec;color:var(--red);border:1.5px solid var(--red)}
-.sentence-block{background:#fff;border-radius:13px;padding:16px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(26,35,126,.07);border-left:4px solid #c8d4ee}
+.sentence-block{background:#fff;border-radius:13px;padding:16px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(26,35,126,.07);border-left:4px solid #c8d4ee;font-size:18px}
 .sentence-block.active-block{border-left-color:var(--gold);box-shadow:0 4px 18px rgba(197,160,40,.2)}
 .sentence-block.completed{border-left-color:var(--green)}
 .sb-label{font-size:11px;font-weight:700;color:#9aaac8;letter-spacing:.5px;margin-bottom:7px;text-transform:uppercase}
@@ -87,13 +87,33 @@
 .sb-result .w-correct{color:var(--green);font-weight:700}
 .sb-result .w-wrong{color:var(--red);text-decoration:line-through;font-weight:700}
 .sb-result .w-missing{color:#e67e22;font-weight:800}
-.sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:14px}
+.sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:17px}
 .sb-input:focus{border-color:var(--blue)}
 .sb-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .sb-wordcount{font-size:11.5px;color:#8a97b8;margin:-3px 0 8px}
 .dict-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:12.5px;color:#5a4600}
+/* Audio bar stays pinned just below the topbar (which is itself sticky at top:0) while the
+   student scrolls through sentences below. */
+.audio-sticky{position:sticky;top:57px;z-index:90;background:var(--off-white);padding:10px 20px 12px;margin:0 -20px 14px;border-bottom:1px solid var(--grey-200);box-shadow:0 2px 8px rgba(0,0,0,.04)}
 .dict-banner.hidden{display:none}
 .dict-banner-close{background:none;border:none;color:#5a4600;font-size:14px;cursor:pointer;font-weight:700;line-height:1;flex-shrink:0}
+/* Keyboard Shortcuts modal — shared by Gap-fill and Dictation (identical hotkey scheme) */
+.kbd-modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,8,.6);z-index:300;align-items:center;justify-content:center;padding:20px}
+.kbd-modal-overlay.active{display:flex}
+.kbd-modal{background:#fff;border-radius:16px;max-width:460px;width:100%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.4)}
+.kbd-modal-header{background:linear-gradient(90deg,var(--black) 0%,var(--navy2) 45%,var(--red-dark) 100%);color:#fff;padding:16px 22px;font-family:var(--font-display);font-size:1.05rem;font-weight:700;border-bottom:2px solid var(--gold)}
+.kbd-modal-body{padding:18px 22px;overflow-y:auto}
+.kbd-tip{background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:10px 13px;font-size:12.5px;color:#5a4600;margin-bottom:14px;line-height:1.5}
+.kbd-table{width:100%;border-collapse:collapse}
+.kbd-table tr{border-bottom:1px solid var(--grey-100)}
+.kbd-table tr:last-child{border-bottom:none}
+.kbd-table td{padding:10px 4px;font-size:13.5px;color:var(--grey-800);vertical-align:middle}
+.kbd-table td:first-child{white-space:nowrap;width:1%;padding-right:14px}
+.kbd-badge{display:inline-block;background:#2b2b28;color:#fff;font-family:var(--font-mono);font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:6px;border-bottom:2px solid #000}
+.kbd-plus{color:var(--grey-400);font-weight:700;margin:0 2px;font-size:11px}
+.kbd-modal-footer{padding:14px 22px;border-top:1px solid var(--grey-200);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.kbd-dontshow{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--grey-600);cursor:pointer}
+.kbd-cta{background:var(--green);color:#fff;border:none;padding:10px 24px;border-radius:10px;font-weight:700;font-size:13.5px;cursor:pointer}
 .progress-outer{flex:1;max-width:340px;background:var(--grey-200);border-radius:999px;height:8px}
 .progress-fill{height:8px;background:linear-gradient(90deg,var(--teal),var(--green));border-radius:999px;transition:width .4s}
 .result-card{background:#fff;border-radius:var(--radius-lg);padding:36px;max-width:520px;width:100%;box-shadow:var(--shadow-md);text-align:center;border-top:5px solid var(--gold);margin:0 auto}
@@ -180,6 +200,11 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
           </div>
           <button class="btn btn-primary btn-full" id="btn-analyze" onclick="runAnalyzeScript()">🤖 Analyze Script</button>
           <div id="analyze-status" style="font-size:12.5px;color:var(--grey-600);margin-top:8px"></div>
+          <div id="analyze-complete-banner" class="hidden" style="margin-top:10px;background:#e9f7ef;border:2px solid var(--green);border-radius:10px;padding:14px 16px;text-align:center">
+            <div style="font-size:15px;font-weight:800;color:var(--green)">✅ Analysis complete!</div>
+            <div id="analyze-complete-detail" style="font-size:13px;color:#1a5c3a;margin-top:5px;line-height:1.6"></div>
+            <div style="font-size:12.5px;color:var(--grey-600);margin-top:8px">👉 Scroll down and press <b>Start Practice Session</b> when you're ready.</div>
+          </div>
         </div>
       </div>
 
@@ -232,6 +257,9 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     </div>
   </div>
   <div class="wrap">
+    <div class="audio-sticky" id="study-audio-row">
+      <audio id="study-audio" controls style="width:100%"></audio>
+    </div>
     <div class="card" id="study-toolbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span style="font-size:11px;font-weight:700;color:var(--grey-600)">CEFR:</span>
       <span id="level-chips"></span>
@@ -280,16 +308,18 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div class="topbar-app">🧩 Gap-fill</div>
     <div class="topbar-right">
       <span id="gapfill-seg-label" style="color:#fff;font-size:12px"></span>
-      <button class="btn btn-secondary btn-sm" id="btn-toggle-gap-shortcuts" onclick="toggleGapShortcutsBanner()">⌨️ Shortcuts</button>
+      <button class="btn btn-secondary btn-sm" id="btn-toggle-gap-shortcuts" onclick="openShortcutsModal()">⌨️ Shortcuts</button>
+      <button class="btn btn-secondary btn-sm" onclick="exitGapFill()">💾 Save &amp; Exit</button>
     </div>
   </div>
   <div class="wrap">
-    <div class="card" style="padding:12px 16px;margin-bottom:14px">
+    <div class="audio-sticky" id="gapfill-audio-row">
       <audio id="gapfill-audio" controls style="width:100%"></audio>
-    </div>
-    <div id="gapfill-shortcuts-banner" class="dict-banner">
-      <span>⌨️ <b>Enter</b> = Check the current pair &nbsp;·&nbsp; <b>Tab</b> = Jump to the next blank &nbsp;·&nbsp; Correct blanks lock automatically — only fix the ones marked wrong.</span>
-      <button class="dict-banner-close" onclick="toggleGapShortcutsBanner(false)">✕</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <span style="font-size:11.5px;font-weight:700;color:var(--grey-600)">Playback:</span>
+        <button class="btn btn-secondary btn-sm" id="btn-gap-mode-auto" onclick="setGapMode('auto')">🎯 Auto-pause per pair</button>
+        <button class="btn btn-secondary btn-sm" id="btn-gap-mode-manual" onclick="setGapMode('manual')">✋ Manual control</button>
+      </div>
     </div>
     <div class="card" style="font-size:12.5px;color:var(--grey-600);margin-bottom:14px">
       🎧 Listen and fill in the blanks <b>two sentences at a time</b>. Fill every blank in the current pair, then press <b>Enter</b> (or the Check button) — the app grades it instantly and marks each blank ✓ correct / ✗ wrong. If anything is wrong, fix it and press <b>Enter</b> again — your progress on earlier sentences is kept. Once the pair is fully correct, it automatically moves on to the next two sentences.
@@ -298,7 +328,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div id="gapfill-seg-hint" class="gap-seg-hint" style="display:none"></div>
     <div style="text-align:center;padding:14px 0">
       <button class="btn btn-secondary btn-sm" id="btn-check-segment" onclick="checkSegment()" style="margin-bottom:10px">✓ Check This Pair</button>
-      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-way loses all progress.</div>
+      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-way loses Gap-fill progress only — your Quiz pass is already saved, so you won't have to redo that.</div>
       <button class="btn btn-primary" id="btn-submit-gapfill" onclick="submitGapFill()" disabled style="padding:12px 30px">✅ Submit Gap-fill</button>
     </div>
   </div>
@@ -313,16 +343,12 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <span id="dict-word-total" style="color:#fff;font-size:12px"></span>
       <div class="progress-outer"><div class="progress-fill" id="dict-progress-fill" style="width:0%"></div></div>
       <span id="dict-progress-label" style="color:#fff;font-size:12px"></span>
-      <button class="btn btn-secondary btn-sm" id="btn-toggle-shortcuts" onclick="toggleShortcutsBanner()">⌨️ Shortcuts</button>
+      <button class="btn btn-secondary btn-sm" id="btn-toggle-shortcuts" onclick="openShortcutsModal()">⌨️ Shortcuts</button>
       <button class="btn btn-secondary btn-sm" onclick="saveDictationAndExit()">💾 Save &amp; Exit</button>
     </div>
   </div>
   <div class="wrap">
-    <div id="dict-shortcuts-banner" class="dict-banner">
-      <span>⌨️ <b>Enter</b> = Check this sentence &nbsp;·&nbsp; <b>Ctrl+→</b> = Jump to next unchecked &nbsp;·&nbsp; <b>Ctrl+Space</b> = Play / Pause audio &nbsp;·&nbsp; 🎯 Auto-pause estimates each sentence's end from word count — switch to Manual for full control.</span>
-      <button class="dict-banner-close" onclick="toggleShortcutsBanner(false)">✕</button>
-    </div>
-    <div style="margin-bottom:12px" id="dict-audio-row">
+    <div class="audio-sticky" id="dict-audio-row">
       <audio id="dict-audio" controls style="width:100%"></audio>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
         <span style="font-size:11.5px;font-weight:700;color:var(--grey-600)">Playback:</span>
@@ -361,7 +387,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   </div>
   <div class="wrap">
     <div class="card" id="inprogress-card" style="display:none">
-      <div class="card-title">📌 In Progress <span style="font-size:11px;color:var(--grey-400);font-weight:400">only Dictation can be saved mid-way</span></div>
+      <div class="card-title">📌 In Progress <span style="font-size:11px;color:var(--grey-400);font-weight:400">resume Gap-fill or Dictation where you left off</span></div>
       <div id="inprogress-list"></div>
     </div>
     <div class="card">
@@ -389,6 +415,29 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   </div>
 </div>
 
+<!-- ═══════════ KEYBOARD SHORTCUTS MODAL — shared by Gap-fill + Dictation ═══════════ -->
+<div class="kbd-modal-overlay" id="kbd-modal-overlay" onclick="if (event.target === this) closeShortcutsModal()">
+  <div class="kbd-modal">
+    <div class="kbd-modal-header">⌨️ Keyboard Shortcuts</div>
+    <div class="kbd-modal-body">
+      <div class="kbd-tip">💡 These shortcuts work the same way on both <b>Gap-fill</b> and <b>Dictation</b>. Auto-pause itself is toggled on the audio bar, not a hotkey.</div>
+      <table class="kbd-table">
+        <tr><td><span class="kbd-badge">Shift</span><span class="kbd-plus">+</span><span class="kbd-badge">Space</span></td><td>Play / Pause audio</td></tr>
+        <tr><td><span class="kbd-badge">Enter</span></td><td>Check answer</td></tr>
+        <tr><td><span class="kbd-badge">Shift</span><span class="kbd-plus">+</span><span class="kbd-badge">Enter</span></td><td>Next sentence</td></tr>
+        <tr><td><span class="kbd-badge">Ctrl</span><span class="kbd-plus">+</span><span class="kbd-badge">,</span></td><td>Seek audio −3s</td></tr>
+        <tr><td><span class="kbd-badge">Ctrl</span><span class="kbd-plus">+</span><span class="kbd-badge">.</span></td><td>Seek audio +3s</td></tr>
+        <tr><td><span class="kbd-badge">↑</span></td><td>Edit last sentence <span style="color:var(--grey-400)">(when not typing)</span></td></tr>
+        <tr><td><span class="kbd-badge">Ctrl</span><span class="kbd-plus">+</span><span class="kbd-badge">Alt</span><span class="kbd-plus">+</span><span class="kbd-badge">R</span></td><td>Reset current sentence</td></tr>
+      </table>
+    </div>
+    <div class="kbd-modal-footer">
+      <label class="kbd-dontshow"><input type="checkbox" id="kbd-dontshow-check"> Don't show this again</label>
+      <button class="kbd-cta" onclick="closeShortcutsModal()">Got it</button>
+    </div>
+  </div>
+</div>
+
 <script src="ld-common.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -405,6 +454,7 @@ var App = {
   audioBlobUrl: null,
   quiz: [], quizAnswers: [], quizPool: [], quizBatchIdx: 0, quizPhase: 'answering', quizAttempts: [], _quizPromise: null,
   gapfill: [], gapfillAnswers: [], gapBlankState: [], gapSegments: [], gapSegIdx: 0,
+  gapAudioMode: 'auto', gapPausePoints: [], _gapPausedForCurrentSeg: false,
   dictationIdx: 0, dictationAnswers: [], dictationReplaysUsed: [],
   dictMode: 'auto', pausePoints: [], _pausedForCurrentIdx: false,
   histRows: [], histSortKey: 'startTime', histSortDir: -1
@@ -423,7 +473,7 @@ var App = {
   updateLdKeyStatus();
   checkInProgressHint();
 
-  // Resume from History (?resume=SESSIONID) — only Dictation is resumable
+  // Resume from History (?resume=SESSIONID) — routes into Gap-fill (redo) or Dictation (checkpoint)
   var params = new URLSearchParams(location.search);
   var resumeId = params.get('resume');
   if (resumeId) resumeSession(resumeId);
@@ -545,6 +595,19 @@ function onScriptInput() {
   document.getElementById('btn-split').disabled = n < 10;
 }
 var ABBR = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sr', 'Jr', 'St', 'Mt', 'vs', 'etc', 'approx', 'No', 'pp', 'Fig', 'Co', 'Corp', 'Inc', 'Ltd', 'a.m', 'p.m', 'e.g', 'i.e'];
+// Strips IELTS-transcript artifacts that aren't part of the spoken script: question-number
+// markers like "(Q37)" and "----" divider lines between Parts. Left in place, these break
+// sentence-boundary detection (no capital letter right after the period) and pollute word
+// counts / dictation targets.
+function cleanScriptArtifacts(text) {
+  return String(text || '')
+    .replace(/\(\s*Q\s*\d+\s*(?:[-–]\s*\d+)?\s*\)/gi, '') // (Q37), (Q36-40)...
+    .replace(/[-_]{3,}/g, ' ')                             // ----------------------------- divider lines
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 function splitSentences(text) {
   text = text.replace(/\r\n?/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
   if (!text) return [];
@@ -570,6 +633,8 @@ function onBookSelectChange() {
   } else { sel.value = ''; }
 }
 function doSplit() {
+  App.rawScript = cleanScriptArtifacts(App.rawScript);
+  document.getElementById('raw-script-input').value = App.rawScript; // reflect the cleaned version back to the student
   App.sentences = splitSentences(App.rawScript);
   if (!App.sentences.length) { LD.toast('Could not split any sentences — check your script.', 'err'); return; }
   var list = document.getElementById('split-list');
@@ -578,6 +643,9 @@ function doSplit() {
   }).join('');
   document.getElementById('split-preview').classList.remove('hidden');
   document.getElementById('analyze-card').style.display = 'block';
+  document.getElementById('analyze-complete-banner').classList.add('hidden'); // script changed — stale "analysis complete" no longer applies
+  document.getElementById('btn-start-session').disabled = true;
+  document.getElementById('btn-start-session').textContent = '🚀 Start (analyze script first)';
 }
 
 // audio
@@ -622,14 +690,34 @@ async function runAnalyzeScript() {
     App.gloss = {};
     (res.gloss || []).forEach(function (g) { if (g && g[0]) App.gloss[String(g[0]).toLowerCase()] = { vi: g[1] || '', ipa: g[2] || '' }; });
     App.cefr = computeCEFR(App.correctedSentences.join(' ')); // final recompute on the corrected script
+    var fixCount = countSpellingFixes(App.sentences, App.correctedSentences);
     document.getElementById('analyze-status').innerHTML = '✅ Spelling fixed + found ' + App.collocations.length + ' collocations + translated ' + Object.keys(App.gloss).length + ' difficult words.';
     document.getElementById('btn-start-session').disabled = false;
     document.getElementById('btn-start-session').textContent = '🚀 Start Practice Session';
+    document.getElementById('analyze-complete-detail').innerHTML =
+      'Your script has <b>' + App.sentences.length + '</b> sentence' + (App.sentences.length === 1 ? '' : 's') + ', and <b>' +
+      fixCount + '</b> spelling ' + (fixCount === 1 ? 'error was' : 'errors were') + ' fixed.';
+    document.getElementById('analyze-complete-banner').classList.remove('hidden');
   } catch (err) {
     document.getElementById('analyze-status').innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(err.message) + '</span>';
   } finally {
     btn.disabled = false; btn.innerHTML = '🤖 Re-analyze (if needed)';
   }
+}
+// Word-level diff between original and AI-corrected sentences — used only to show the student a
+// friendly "N spelling errors fixed" count on the analysis-complete banner, not for grading.
+function countSpellingFixes(origSentences, correctedSentences) {
+  var fixes = 0;
+  for (var i = 0; i < origSentences.length; i++) {
+    var ow = (origSentences[i] || '').trim().split(/\s+/);
+    var cw = (correctedSentences[i] || '').trim().split(/\s+/);
+    if (ow.length === cw.length) {
+      for (var j = 0; j < ow.length; j++) { if (ow[j].toLowerCase() !== cw[j].toLowerCase()) fixes++; }
+    } else if ((origSentences[i] || '').trim() !== (correctedSentences[i] || '').trim()) {
+      fixes++; // word count changed (e.g. contraction split) — count the whole sentence as one fix
+    }
+  }
+  return fixes;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -687,10 +775,13 @@ async function startSession() {
     var r = await LD.api('session.start', { bookTestPart: App.bookTestPart });
     if (!r.success) throw new Error(r.error || 'Could not create session');
     App.sessionId = r.sessionId;
-    await LD.api('session.saveAnalysis', {
+    // Fire-and-forget: the session row already exists (we have sessionId), so don't make the
+    // student wait on a 2nd network round-trip just to persist the analysis for later resume —
+    // go straight to Study and let this save quietly in the background.
+    LD.api('session.saveAnalysis', {
       sessionId: App.sessionId, scriptText: App.rawScript,
       correctedSentences: App.correctedSentences, cefr: App.cefr, collocations: App.collocations
-    });
+    }).catch(function (e) { console.warn('session.saveAnalysis failed in background:', e); });
     goStudy();
   } catch (err) {
     LD.toast('Error: ' + err.message, 'err');
@@ -699,6 +790,9 @@ async function startSession() {
 }
 function goStudy() {
   renderLevelChips(); renderStudyPassage(); renderCefrDist(); renderCollocations();
+  var studyAudio = document.getElementById('study-audio');
+  if (App.audioBlobUrl) { studyAudio.src = App.audioBlobUrl; document.getElementById('study-audio-row').style.display = 'block'; }
+  else { document.getElementById('study-audio-row').style.display = 'none'; }
   showScreen('screen-study');
   prefetchQuiz(); // generate the quiz in the background while the student is still studying, so Quiz opens instantly
 }
@@ -821,7 +915,7 @@ function renderQuiz() {
     return '<div class="q-card' + cardCls + '">' +
       '<span class="q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Content' : 'Vocabulary') + '</span>' +
       (reviewing ? (ok ? ' <b style="color:var(--green);font-size:12px">✓ Correct</b>' : ' <b style="color:var(--red);font-size:12px">✗ Wrong</b>') : '') +
-      '<div style="font-weight:700;font-size:14px;margin:6px 0 10px">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
+      '<div style="font-weight:700;font-size:17px;margin:6px 0 10px">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
       opts + explain + '</div>';
   }).join('');
   updateQuizProgress();
@@ -889,16 +983,56 @@ function goGapFill() {
   buildGapFill();
   showScreen('screen-gapfill');
   var audio = document.getElementById('gapfill-audio');
-  if (App.audioBlobUrl) audio.src = App.audioBlobUrl;
-  toggleGapShortcutsBanner(localStorage.getItem('ld_gap_shortcuts_hidden') !== '1');
+  if (App.audioBlobUrl) { audio.src = App.audioBlobUrl; document.getElementById('gapfill-audio-row').style.display = 'block'; }
+  else document.getElementById('gapfill-audio-row').style.display = 'none';
+  if (localStorage.getItem('ld_kbd_shortcuts_hidden') !== '1') openShortcutsModal();
+  setupGapAudioListeners();
+  setGapMode(localStorage.getItem('ld_gap_mode') || 'auto');
   renderGapFill();
 }
-function toggleGapShortcutsBanner(show) {
-  var banner = document.getElementById('gapfill-shortcuts-banner');
-  if (!banner) return;
-  var willShow = typeof show === 'boolean' ? show : banner.classList.contains('hidden');
-  banner.classList.toggle('hidden', !willShow);
-  localStorage.setItem('ld_gap_shortcuts_hidden', willShow ? '0' : '1');
+// ── Auto-pause per PAIR (not per sentence): same word-count-proportional estimate as Dictation,
+// but the pause target is the END of the LAST sentence in the active 2-sentence segment, so the
+// student hears the whole pair before typing — matching how Gap-fill grades a pair at a time. ──
+function setupGapAudioListeners() {
+  var audio = document.getElementById('gapfill-audio');
+  if (!audio || audio._ldWired) return;
+  audio._ldWired = true;
+  audio.addEventListener('loadedmetadata', computeGapPausePoints);
+  audio.addEventListener('timeupdate', onGapTimeUpdate);
+  if (audio.readyState >= 1) computeGapPausePoints();
+}
+function computeGapPausePoints() {
+  var audio = document.getElementById('gapfill-audio');
+  var dur = audio && audio.duration;
+  if (!dur || !isFinite(dur)) { App.gapPausePoints = []; return; }
+  var totalWords = App.correctedSentences.reduce(function (a, s) { return a + wc(s); }, 0) || 1;
+  var cum = 0;
+  App.gapPausePoints = App.correctedSentences.map(function (s) { cum += wc(s); return dur * (cum / totalWords); });
+}
+function onGapTimeUpdate() {
+  if (App.gapAudioMode !== 'auto') return;
+  var audio = document.getElementById('gapfill-audio');
+  if (!audio || audio.paused) return;
+  if (!App.gapPausePoints.length || App.gapSegIdx >= App.gapSegments.length) return;
+  if (App._gapPausedForCurrentSeg) return;
+  var seg = App.gapSegments[App.gapSegIdx];
+  var target = App.gapPausePoints[seg[seg.length - 1]];
+  if (target == null) return;
+  if (audio.currentTime >= target - 0.05) {
+    audio.pause();
+    App._gapPausedForCurrentSeg = true;
+    var firstInput = document.querySelector('#gapfill-body input:not([disabled])');
+    if (firstInput) firstInput.focus();
+  }
+}
+function setGapMode(mode) {
+  App.gapAudioMode = mode;
+  localStorage.setItem('ld_gap_mode', mode);
+  var ab = document.getElementById('btn-gap-mode-auto'), mb = document.getElementById('btn-gap-mode-manual');
+  if (ab) ab.classList.toggle('active', mode === 'auto');
+  if (mb) mb.classList.toggle('active', mode === 'manual');
+  App._gapPausedForCurrentSeg = false;
+  if (mode === 'auto' && !App.gapPausePoints.length) computeGapPausePoints();
 }
 function buildGapFill() {
   App.gapfill = [];
@@ -969,7 +1103,10 @@ function renderGapFill() {
   }
 }
 function setGapAnswer(gi, bi, v) { App.gapfillAnswers[gi][bi] = v; }
-function onGapKeydown(e, gi) { if (e.key === 'Enter') { e.preventDefault(); checkSegment(); } }
+function onGapKeydown(e, gi) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); checkSegment(); }
+  // Shift+Enter is NOT handled here — it bubbles up to the shared shortcut handler ("Next sentence").
+}
 function checkSegment() {
   if (App.gapSegIdx >= App.gapSegments.length) return;
   var seg = App.gapSegments[App.gapSegIdx];
@@ -991,6 +1128,14 @@ function checkSegment() {
     App.gapSegIdx++;
     gapAdvancePastEmptySegments();
     hint.style.display = 'block'; hint.className = 'gap-seg-hint ok'; hint.textContent = '✓ Correct! Moving to the next pair…';
+    App._gapPausedForCurrentSeg = false;
+    // Auto mode: resume playback automatically for the next pair, same as Dictation.
+    if (App.gapAudioMode === 'auto') {
+      var audio = document.getElementById('gapfill-audio');
+      if (audio && audio.paused && App.gapSegIdx < App.gapSegments.length) {
+        setTimeout(function () { audio.play().catch(function () {}); }, 500);
+      }
+    }
   } else {
     hint.style.display = 'block'; hint.className = 'gap-seg-hint bad'; hint.textContent = '✗ Some answers are wrong — fix the highlighted blanks and press Enter again.';
   }
@@ -1016,6 +1161,14 @@ async function submitGapFill() {
     goDictation();
   } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
 }
+// Gap-fill has NO partial save (must be 100% correct to save) — exiting mid-way just leaves
+// GapFillJSON unset server-side. Since Quiz was already saved on pass (finalizeQuizPass), the
+// session still shows up in "In Progress" and resuming redoes Gap-fill only, not the Quiz.
+function exitGapFill() {
+  if (!confirm('Leaving now will discard your Gap-fill progress — you\'ll redo this step from the start next time. Your Quiz pass is already saved. Exit anyway?')) return;
+  LD.toast('Exited — your Quiz is saved. Resume from "History → In Progress" to redo Gap-fill.', 'ok', 3500);
+  goHistory();
+}
 
 // ═══════════════════════════════════════════════════════════
 // DICTATION — the ONLY resumable step
@@ -1026,7 +1179,7 @@ function goDictation() {
   showScreen('screen-dictation');
   var audio = document.getElementById('dict-audio');
   if (App.audioBlobUrl) audio.src = App.audioBlobUrl; else document.getElementById('dict-audio-row').style.display = 'none';
-  toggleShortcutsBanner(localStorage.getItem('ld_dict_shortcuts_hidden') !== '1');
+  if (localStorage.getItem('ld_kbd_shortcuts_hidden') !== '1') openShortcutsModal();
   setupDictAudioListeners();
   setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
   renderDictation();
@@ -1106,7 +1259,8 @@ function onDictInput(i, v) {
   updateWordTotal();
 }
 function onDictInputKeydown(e, i) {
-  if (e.key === 'Enter') { e.preventDefault(); if (!App.dictationAnswers[i].checked) checkSentence(i); }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!App.dictationAnswers[i].checked) checkSentence(i); }
+  // Shift+Enter is NOT handled here — it bubbles up to the shared shortcut handler ("Next sentence").
 }
 function updateWordTotal() {
   var targetTotal = App.correctedSentences.reduce(function (a, s) { return a + wc(s); }, 0);
@@ -1114,21 +1268,106 @@ function updateWordTotal() {
   var el = document.getElementById('dict-word-total');
   if (el) el.textContent = '📝 ' + typedTotal + '/' + targetTotal + ' words';
 }
-function toggleShortcutsBanner(show) {
-  var banner = document.getElementById('dict-shortcuts-banner');
-  if (!banner) return;
-  var willShow = typeof show === 'boolean' ? show : banner.classList.contains('hidden');
-  banner.classList.toggle('hidden', !willShow);
-  localStorage.setItem('ld_dict_shortcuts_hidden', willShow ? '0' : '1');
+// ═══════════════════════════════════════════════════════════
+// UNIFIED KEYBOARD SHORTCUTS — same scheme on Gap-fill AND Dictation:
+//   Shift+Space  = Play / Pause audio          Enter        = Check answer (per-input, see onDictInputKeydown/onGapKeydown)
+//   Shift+Enter  = Next sentence                Ctrl+,       = Seek −3s
+//   Ctrl+.       = Seek +3s                     ↑ (not typing) = Edit last sentence/pair
+//   Ctrl+Alt+R   = Reset current sentence/pair  (Auto-pause is toggled via the audio bar, not a hotkey)
+// ═══════════════════════════════════════════════════════════
+function isScreenActive(id) { var scr = document.getElementById(id); return !!scr && scr.classList.contains('active'); }
+function isTypingTarget(el) { return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable); }
+function openShortcutsModal() { document.getElementById('kbd-modal-overlay').classList.add('active'); }
+function closeShortcutsModal() {
+  var chk = document.getElementById('kbd-dontshow-check');
+  if (chk && chk.checked) localStorage.setItem('ld_kbd_shortcuts_hidden', '1');
+  document.getElementById('kbd-modal-overlay').classList.remove('active');
 }
 document.addEventListener('keydown', function (e) {
-  var scr = document.getElementById('screen-dictation');
-  if (!scr || !scr.classList.contains('active')) return;
-  if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); var a = document.getElementById('dict-audio'); if (a) { if (a.paused) a.play(); else a.pause(); } }
-  if (e.ctrlKey && e.key === 'ArrowRight') { e.preventDefault(); jumpToNextUnchecked(); }
+  var modal = document.getElementById('kbd-modal-overlay');
+  if (modal && modal.classList.contains('active')) {
+    if (e.key === 'Escape') closeShortcutsModal();
+    return; // don't let the shortcuts fire into the screen behind the modal while it's open
+  }
+  var gapActive = isScreenActive('screen-gapfill');
+  var dictActive = isScreenActive('screen-dictation');
+  if (!gapActive && !dictActive) return;
+  var audioId = gapActive ? 'gapfill-audio' : 'dict-audio';
+
+  if (e.shiftKey && e.code === 'Space') {
+    e.preventDefault();
+    var a = document.getElementById(audioId);
+    if (a) { if (a.paused) a.play().catch(function () {}); else a.pause(); }
+    return;
+  }
+  if (e.ctrlKey && !e.altKey && (e.key === ',' || e.key === '.')) {
+    e.preventDefault();
+    var au = document.getElementById(audioId);
+    if (au) au.currentTime = Math.max(0, au.currentTime + (e.key === ',' ? -3 : 3));
+    return;
+  }
+  if (e.shiftKey && e.key === 'Enter') {
+    e.preventDefault();
+    if (dictActive) jumpToNextUnchecked();
+    else if (gapActive) checkSegment(); // Gap-fill has no ungated "skip" — must pass the pair to advance
+    return;
+  }
+  if (e.ctrlKey && e.altKey && (e.key === 'r' || e.key === 'R')) {
+    e.preventDefault();
+    if (dictActive) resetCurrentDictationSentence();
+    else if (gapActive) resetCurrentGapSegment();
+    return;
+  }
+  if (e.key === 'ArrowUp' && !isTypingTarget(e.target)) {
+    e.preventDefault();
+    if (dictActive) editLastDictationSentence();
+    else if (gapActive) editLastGapSegment();
+    return;
+  }
 });
 function jumpToNextUnchecked() {
   for (var i = 0; i < App.dictationAnswers.length; i++) if (!App.dictationAnswers[i].checked) { jumpTo(i); return; }
+}
+function resetCurrentDictationSentence() {
+  var i = App.dictationIdx;
+  if (i >= App.dictationAnswers.length) return;
+  App.dictationAnswers[i].typed = ''; App.dictationAnswers[i].checked = false;
+  renderDictation();
+  var inp = document.getElementById('sb-input-' + i); if (inp) inp.focus();
+  LD.toast('Sentence ' + (i + 1) + ' reset.', 'ok', 1500);
+}
+function editLastDictationSentence() {
+  var last = -1;
+  for (var i = 0; i < App.dictationAnswers.length; i++) if (App.dictationAnswers[i].checked) last = i;
+  if (last < 0) { LD.toast('No completed sentence to edit yet.', 'info', 1500); return; }
+  App.dictationAnswers[last].checked = false;
+  App.dictationIdx = last;
+  App._pausedForCurrentIdx = false;
+  renderDictation();
+  var inp = document.getElementById('sb-input-' + last); if (inp) inp.focus();
+  LD.toast('Editing sentence ' + (last + 1) + ' — press Enter to re-check.', 'ok', 2000);
+}
+function resetCurrentGapSegment() {
+  if (App.gapSegIdx >= App.gapSegments.length) return;
+  App.gapSegments[App.gapSegIdx].forEach(function (gi) {
+    App.gapfill[gi].blankWordIdx.forEach(function (wi, bi) {
+      var st = App.gapBlankState[gi][bi];
+      if (st.checked && st.correct) return; // keep already-locked correct blanks
+      App.gapfillAnswers[gi][bi] = ''; st.checked = false; st.correct = false;
+    });
+  });
+  renderGapFill();
+  LD.toast('Current pair reset.', 'ok', 1500);
+}
+function editLastGapSegment() {
+  if (App.gapSegIdx <= 0) { LD.toast('No completed pair to edit yet.', 'info', 1500); return; }
+  App.gapSegIdx--;
+  while (App.gapSegIdx > 0 && gapSegTotalBlanks(App.gapSegments[App.gapSegIdx]) === 0) App.gapSegIdx--;
+  App._gapPausedForCurrentSeg = false;
+  renderGapFill();
+  var firstInput = document.querySelector('#gapfill-body input:not([disabled])');
+  if (firstInput) firstInput.focus();
+  LD.toast('Editing the previous pair — fix any wrong blanks and press Enter.', 'ok', 2000);
 }
 function jumpTo(i) {
   App.dictationIdx = i;
@@ -1202,7 +1441,9 @@ function loadFinalScoresIntoResult() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// RESUME (Dictation only) — StudentID + SessionID
+// RESUME — StudentID + SessionID. Two possible re-entry stages:
+//  - Quiz saved but Gap-fill not saved  → redo Gap-fill from scratch (no partial save exists for it)
+//  - Gap-fill saved                     → resume/start Dictation (the only step with a real checkpoint)
 // ═══════════════════════════════════════════════════════════
 async function resumeSession(sessionId) {
   try {
@@ -1213,13 +1454,18 @@ async function resumeSession(sessionId) {
     App.correctedSentences = d.CorrectedScriptJSON || [];
     App.cefr = d.CEFRJSON || null;
     App.collocations = d.CollocationJSON || [];
+    App.quizAttempts = (d.QuizJSON && d.QuizJSON.attempts) || [];
+    if (!d.GapFillJSON) {
+      goGapFill();
+      LD.toast('Resumed — redo Gap-fill (your Quiz pass is already saved).', 'ok');
+      return;
+    }
     var dj = d.DictationJSON || { currentSentenceIdx: 0, answers: [] };
     App.dictationAnswers = App.correctedSentences.map(function (s, i) { return (dj.answers && dj.answers[i]) || { typed: '', checked: false }; });
     App.dictationIdx = dj.currentSentenceIdx || 0;
     showScreen('screen-dictation');
-    var audio = document.getElementById('dict-audio');
     document.getElementById('dict-audio-row').style.display = App.audioBlobUrl ? 'block' : 'none';
-    toggleShortcutsBanner(localStorage.getItem('ld_dict_shortcuts_hidden') !== '1');
+    if (localStorage.getItem('ld_kbd_shortcuts_hidden') !== '1') openShortcutsModal();
     setupDictAudioListeners();
     setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
     renderDictation();
@@ -1229,7 +1475,7 @@ async function resumeSession(sessionId) {
 async function checkInProgressHint() {
   try {
     var r = await LD.api('student.getInProgress', {});
-    if (r.success && r.data.length) document.getElementById('setup-inprogress-hint').innerHTML = '📌 You have <b>' + r.data.length + '</b> session(s) in progress at Dictation.';
+    if (r.success && r.data.length) document.getElementById('setup-inprogress-hint').innerHTML = '📌 You have <b>' + r.data.length + '</b> session(s) in progress — check "History → In Progress" to continue.';
     else document.getElementById('setup-inprogress-hint').textContent = 'No sessions in progress.';
   } catch (e) {}
 }
@@ -1244,10 +1490,14 @@ async function loadInProgress() {
     if (!r.success || !r.data.length) { card.style.display = 'none'; return; }
     card.style.display = 'block';
     list.innerHTML = r.data.map(function (d) {
+      var stageLabel = d.stage === 'gapfill'
+        ? '🧩 Quiz passed — Gap-fill not started yet'
+        : '🎧 Gap-fill passed — Dictation at sentence ' + ((d.currentSentenceIdx || 0) + 1);
+      var btnLabel = d.stage === 'gapfill' ? '▶ Continue → Gap-fill' : '▶ Continue → Dictation';
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--grey-100)">' +
         '<div><div style="font-weight:700;font-size:13.5px">' + LD.esc(d.bookTestPart || 'Untitled session') + '</div>' +
-        '<div style="font-size:11.5px;color:var(--grey-600)">Sentence ' + ((d.currentSentenceIdx || 0) + 1) + ' · Saved at ' + LD.fmtDate(d.savedAt) + '</div></div>' +
-        '<button class="btn btn-primary btn-sm" onclick="location.href=\'student.html?resume=' + d.sessionId + '\'">▶ Continue</button></div>';
+        '<div style="font-size:11.5px;color:var(--grey-600)">' + stageLabel + ' · Saved at ' + LD.fmtDate(d.savedAt) + '</div></div>' +
+        '<button class="btn btn-primary btn-sm" onclick="location.href=\'student.html?resume=' + d.sessionId + '\'">' + btnLabel + '</button></div>';
     }).join('');
   } catch (e) {}
 }
