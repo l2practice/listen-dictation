@@ -218,7 +218,11 @@ function switchTab(tab) {
   document.getElementById('tab-sessions').classList.toggle('hidden', tab !== 'sessions');
   document.getElementById('tab-btn-classes').classList.toggle('active', tab === 'classes');
   document.getElementById('tab-btn-sessions').classList.toggle('active', tab === 'sessions');
-  if (tab === 'sessions' && !App.sessions.length) loadSessions();
+  // Always refresh on switching into Sessions — previously this only loaded the FIRST time the
+  // tab was opened (guarded by "sessions still empty"), so a teacher who'd already visited it once
+  // kept seeing stale cached data on every later visit and never saw newly-finished Quiz/Gap-fill
+  // work until they happened to click Refresh manually.
+  if (tab === 'sessions') loadSessions();
 }
 
 // ── CLASSES ──

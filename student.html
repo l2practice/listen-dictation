@@ -400,6 +400,19 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div class="topbar-right"><button class="topbar-btn" onclick="showScreen('screen-setup')">← New Session</button></div>
   </div>
   <div class="wrap">
+    <div class="card" id="resume-error-banner" style="display:none;border-color:var(--red);background:var(--red-light,#FCEBED)">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="font-size:20px;line-height:1">⚠️</div>
+        <div style="flex:1">
+          <div style="font-weight:800;color:var(--red-dark,#9B0B22);font-size:14px">Couldn't resume that session</div>
+          <div id="resume-error-msg" style="font-size:12.5px;color:var(--grey-700,#333);margin-top:3px;line-height:1.5">The connection was too slow or dropped. Your progress is safe on the server — just try again below.</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-primary btn-sm" id="resume-error-retry-btn" onclick="retryResumeFromBanner()">🔄 Try again</button>
+          <button class="btn btn-secondary btn-sm" onclick="dismissResumeError()">✕</button>
+        </div>
+      </div>
+    </div>
     <div class="card" id="inprogress-card" style="display:none">
       <div class="card-title">📌 In Progress <span style="font-size:11px;color:var(--grey-400);font-weight:400">resume Gap-fill or Dictation where you left off</span></div>
       <div id="inprogress-list"></div>
@@ -1649,11 +1662,28 @@ function loadFinalScoresIntoResult() {
 //  - Quiz saved but Gap-fill not saved  → redo Gap-fill from scratch (no partial save exists for it)
 //  - Gap-fill saved                     → resume/start Dictation (the only step with a real checkpoint)
 // ═══════════════════════════════════════════════════════════
-async function resumeSession(sessionId) {
-  showLoading('Loading your session…');
+function sleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+// Resuming is a high-stakes call (it's how a student gets back into a session with real progress
+// on it), and GAS cold-starts / flaky mobile networks can make a single attempt fail even though
+// the server side is perfectly fine. Retry once with a short delay before surfacing an error —
+// and if it still fails, land the student on a screen that clearly explains what happened and
+// offers a one-click retry, instead of silently falling back to the default Setup screen (which
+// looks exactly like starting a brand-new session and has caused real confusion).
+var _lastResumeSessionId = null;
+async function resumeSession(sessionId, _isRetry) {
+  _lastResumeSessionId = sessionId;
+  if (!_isRetry) dismissResumeError();
+  showLoading(_isRetry ? 'Retrying…' : 'Loading your session…');
   try {
-    var r = await LD.api('student.resumeSession', { sessionId: sessionId });
-    if (!r.success) { LD.toast(r.error || 'Could not open this session', 'err'); return; }
+    var r;
+    try {
+      r = await LD.api('student.resumeSession', { sessionId: sessionId });
+    } catch (firstErr) {
+      // one automatic retry after a short delay before giving up
+      await sleep(1500);
+      r = await LD.api('student.resumeSession', { sessionId: sessionId });
+    }
+    if (!r.success) { showResumeError(r.error || 'Could not open this session.'); return; }
     var d = r.data;
     App.sessionId = d.SessionID;
     App.correctedSentences = d.CorrectedScriptJSON || [];
@@ -1677,7 +1707,24 @@ async function resumeSession(sessionId) {
     setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
     renderDictation();
     LD.toast('Resumed your in-progress session.', 'ok');
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
+  } catch (e) {
+    showResumeError('Network error: ' + e.message + '. Your progress is still saved on the server.');
+  } finally { hideLoading(); }
+}
+// Graceful failure UX: land on History (where "Continue" lives anyway) with a persistent,
+// dismissible banner + retry button — instead of leaving the student on the default Setup
+// screen, which looks identical to starting a brand-new session.
+function showResumeError(msg) {
+  goHistory();
+  document.getElementById('resume-error-msg').textContent = msg;
+  document.getElementById('resume-error-banner').style.display = 'block';
+}
+function dismissResumeError() {
+  var el = document.getElementById('resume-error-banner');
+  if (el) el.style.display = 'none';
+}
+function retryResumeFromBanner() {
+  if (_lastResumeSessionId) resumeSession(_lastResumeSessionId, true);
 }
 async function checkInProgressHint() {
   try {
