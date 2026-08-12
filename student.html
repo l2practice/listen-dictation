@@ -517,6 +517,32 @@ var LD_GEMINI_KEY = 'ld_gemini_key';
 // correcting for them. lang="en" keeps the spellcheck dictionary in English regardless of OS/browser
 // locale.
 var ANTI_PASTE_ATTRS = 'onpaste="return false" oncopy="return false" oncut="return false" ondrop="return false" ondragover="return false" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="true" lang="en"';
+// AI "correction" (and some mobile keyboards) routinely substitutes typographic/"smart" characters
+// for the plain ASCII ones a student's keyboard actually produces — same character to the eye,
+// different Unicode code point, so a naive === comparison falsely fails. This does NOT relax
+// grading (a genuinely different word/letter is still wrong) — it just makes sure two renderings
+// of the SAME character are recognized as equal before comparing, covering every class of this bug
+// we've hit so far (curly apostrophe) plus the others that follow the identical pattern:
+//  - curly/low/reversed single quotes (’ ‘ ‚ ‛)      → straight apostrophe '
+//  - curly/low/reversed double quotes (“ ” „ ‟)      → straight double quote "
+//  - en dash / em dash / minus sign / non-break hyphen (– — − ‑) → plain hyphen - (dictTokenize
+//    then treats any hyphen as a soft word boundary, same fix as "modern-day")
+//  - ellipsis character (…) — not covered by the punctuation-strip regex since that only matches
+//    literal ASCII periods
+//  - zero-width spaces/joiners and a stray BOM, which are invisible but still distinct characters
+//  - non-breaking space → regular space (defensive; \s already matches U+00A0 in JS regex)
+//  - Unicode NFC normalization, so composed vs decomposed accented letters (rare, but possible in
+//    proper nouns) compare equal too
+function normalizeQuotes(s) {
+  return String(s || '')
+    .normalize('NFC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // zero-width spaces/joiners + stray BOM
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'") // curly/low/reversed single quotes
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"') // curly/low/reversed double quotes
+    .replace(/[\u2013\u2014\u2212\u2011]/g, '-') // en dash / em dash / minus sign / non-break hyphen
+    .replace(/\u2026/g, '') // ellipsis character
+    .replace(/\u00A0/g, ' '); // non-breaking space
+}
 var App = {
   session: null, sessionId: null,
   bookTestPart: '', maxReplays: 2,
@@ -841,7 +867,11 @@ async function runAnalyzeScript() {
       'WORDS TO TRANSLATE (' + hardWords.length + ' words, already filtered by CEFR level): ' + hardWords.join(', ') + '\n\n' +
       'Return ONLY this JSON: {"corrected":["sentence 0 fixed",...],"collocations":[["phrase","Vietnamese meaning"]],"gloss":[["word","Vietnamese meaning","/ipa/"]]}';
     var res = await callGemini(prompt, 6144);
-    App.correctedSentences = (res.corrected && res.corrected.length === App.sentences.length) ? res.corrected : App.sentences.slice();
+    // Gemini's "corrected" text tends to come back with typographic curly quotes (’ “ ”) even
+    // though the student's script/keyboard uses plain ASCII ones — left as-is, "it's" (curly)
+    // vs "it's" (straight) are different characters and would falsely fail an exact-match check
+    // in Gap-fill/Dictation. Normalize once here so it never happens for scripts analyzed from now on.
+    App.correctedSentences = (res.corrected && res.corrected.length === App.sentences.length) ? res.corrected.map(normalizeQuotes) : App.sentences.slice();
     App.collocations = (res.collocations || []).map(function (c) { return { en: c[0] || '', vi: c[1] || '' }; }).filter(function (c) { return c.en; });
     App.gloss = {};
     (res.gloss || []).forEach(function (g) { if (g && g[0]) App.gloss[String(g[0]).toLowerCase()] = { vi: g[1] || '', ipa: g[2] || '' }; });
@@ -1283,8 +1313,11 @@ function checkSegment() {
   seg.forEach(function (gi) {
     var g = App.gapfill[gi];
     g.blankWordIdx.forEach(function (wi, bi) {
-      var given = (App.gapfillAnswers[gi][bi] || '').trim().toLowerCase();
-      var actual = g.parts[wi].replace(/[^A-Za-z'-]/g, '').toLowerCase();
+      var given = normalizeQuotes((App.gapfillAnswers[gi][bi] || '').trim()).toLowerCase(); // some mobile keyboards auto-curl apostrophes as you type
+      // Normalize curly apostrophes (’) to straight (') FIRST — otherwise the whitelist strip
+      // below would just delete a curly apostrophe outright (it's not in [A-Za-z'-]), turning
+      // "it's" into "its" and failing an otherwise-correct answer.
+      var actual = normalizeQuotes(g.parts[wi]).replace(/[^A-Za-z'-]/g, '').toLowerCase();
       var ok = given !== '' && given === actual;
       var st = App.gapBlankState[gi][bi];
       if (st.firstTryCorrect === null) { st.firstTryCorrect = ok; st.firstTryGiven = given; } // score + GV review reflect the FIRST attempt only
@@ -1317,8 +1350,11 @@ async function submitGapFill() {
       total++;
       var st = App.gapBlankState[gi][bi];
       if (st.firstTryCorrect) correct++;
-      var given = (App.gapfillAnswers[gi][bi] || '').trim().toLowerCase();
-      var actual = g.parts[wi].replace(/[^A-Za-z'-]/g, '').toLowerCase();
+      var given = normalizeQuotes((App.gapfillAnswers[gi][bi] || '').trim()).toLowerCase(); // some mobile keyboards auto-curl apostrophes as you type
+      // Normalize curly apostrophes (’) to straight (') FIRST — otherwise the whitelist strip
+      // below would just delete a curly apostrophe outright (it's not in [A-Za-z'-]), turning
+      // "it's" into "its" and failing an otherwise-correct answer.
+      var actual = normalizeQuotes(g.parts[wi]).replace(/[^A-Za-z'-]/g, '').toLowerCase();
       flatAnswers.push({ sentenceIdx: g.sentenceIdx, wordIdx: wi, given: given, actual: actual, firstTryGiven: st.firstTryGiven, firstTryCorrect: !!st.firstTryCorrect });
     });
   });
@@ -1405,7 +1441,7 @@ function wc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).leng
 // instead of cascading into a false "extra word + wrong word" pair. Used consistently for the
 // word-count pill AND the per-word diff/grading so they never disagree with each other.
 function dictTokenize(s) {
-  return String(s || '').replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
+  return normalizeQuotes(s).replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
 }
 // Sequential mastery gating (same philosophy as Gap-fill and Quiz): a sentence is 'done' once
 // checked===true (100% correct), the ONE sentence at App.dictationIdx is 'active' (editable),

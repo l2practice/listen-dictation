@@ -355,26 +355,18 @@ function switchDetailTab(tab) {
   });
 }
 function dtWc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
-function renderDetailHeader() {
-  var d = DetailApp.data;
-  document.getElementById('dt-title').textContent = d.StudentName + ' — ' + (d.BookTestPart || 'Untitled');
-  document.getElementById('dt-subtitle').textContent = d.SessionID;
-  var durMin = d.DurationMin != null && d.DurationMin !== '' ? d.DurationMin + ' min' : '—';
-  document.getElementById('dt-meta').innerHTML = [
-    ['Student', d.StudentName + ' (' + d.StudentID + ')'],
-    ['Class', d.ClassName],
-    ['Book / Test / Part', d.BookTestPart || '—'],
-    ['Start time', LD.fmtDate(d.StartTime)],
-    ['Submit time', d.EndTime ? LD.fmtDate(d.EndTime) : '— (in progress)'],
-    ['Duration', durMin]
-  ].map(function (kv) { return '<div class="dt-meta-item"><div class="k">' + kv[0] + '</div><div class="v">' + LD.esc(String(kv[1])) + '</div></div>'; }).join('');
-
-  document.getElementById('dt-stats').innerHTML = [
-    ['Quiz', d.QuizScore != null && d.QuizScore !== '' ? d.QuizScore + '%' : '—'],
-    ['Gap-fill', d.GapFillScore != null && d.GapFillScore !== '' ? d.GapFillScore + '%' : '—'],
-    ['Dictation', d.DictationAccuracy != null && d.DictationAccuracy !== '' ? d.DictationAccuracy + '%' : '—'],
-    ['Total', d.TotalScore != null && d.TotalScore !== '' ? d.TotalScore + '%' : '—']
-  ].map(function (kv) { return '<div class="dt-stat-card"><div class="n">' + kv[1] + '</div><div class="l">' + kv[0] + '</div></div>'; }).join('');
+// Older AI-corrected scripts may still have typographic curly quotes (’ “ ”) baked in from before
+// this was normalized at the source — normalize here too so the teacher's diff view doesn't show
+// false mismatches for sessions analyzed before that fix.
+function normalizeQuotes(s) {
+  return String(s || '')
+    .normalize('NFC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u2013\u2014\u2212\u2011]/g, '-')
+    .replace(/\u2026/g, '')
+    .replace(/\u00A0/g, ' ');
 }
 // Same alignment approach as the student view (see wordAlign() in student.html): plain positional
 // comparison makes a single inserted/dropped word cascade into "wrong" for everything after it,
@@ -414,7 +406,7 @@ function dtWordAlign(actualWords, typedWords) {
 // the student view, a missing word is shown as the ACTUAL target word (underlined) rather than a
 // blank — the teacher should always see the real answer, no need to hide it from them.
 function dtDictWordDiffHtml(actualWords, typedText) {
-  var typedWords = (typedText || '').replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
+  var typedWords = normalizeQuotes(typedText).replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
   var ops = dtWordAlign(actualWords, typedWords);
   var allOk = ops.every(function (op) { return op.type === 'match'; }) && typedWords.length === actualWords.length;
   var html = ops.map(function (op) {
@@ -437,7 +429,7 @@ function renderDictationDetail() {
   var answers = dj.answers || [];
   pane.innerHTML = sentences.map(function (s, i) {
     var st = answers[i] || { typed: '', checked: false };
-    var actualWords = s.replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
+    var actualWords = normalizeQuotes(s).replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
     var firstAttempt = st.firstTryDone ? dtDictWordDiffHtml(actualWords, st.firstTryTyped) : null;
     var finalRes = dtDictWordDiffHtml(actualWords, st.typed);
     var showBothLines = firstAttempt && st.firstTryTyped !== st.typed;
