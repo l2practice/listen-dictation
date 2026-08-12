@@ -77,8 +77,9 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .dt-sentence .target{font-size:12px;color:#8b949e;margin-bottom:6px;line-height:1.6}
 .dt-sentence .typed{font-size:14px;line-height:1.9}
 .dt-w-ok{color:#3fb950;font-weight:700}
-.dt-w-bad{color:#f85149;font-weight:700;text-decoration:line-through}
-.dt-w-miss{color:#d29922;font-weight:800}
+.dt-w-bad{background:#f85149;color:#0d1117;padding:1px 6px;border-radius:5px;font-weight:700}
+.dt-w-miss{color:#8b949e;font-weight:800;letter-spacing:2px;text-decoration:underline;text-decoration-color:#d29922;text-decoration-thickness:2.5px;text-underline-offset:3px}
+.dt-w-extra{color:#8b949e;text-decoration:line-through;text-decoration-color:#a970ff;text-decoration-thickness:2px;font-weight:700}
 .dt-blank{background:rgba(200,16,46,.18);border:1px solid #c8102e;border-radius:5px;padding:0 6px;color:#ff7b8a;font-weight:700}
 .dt-blank.correct{background:rgba(46,160,67,.18);border-color:#2ea043;color:#56d364}
 .dt-q{background:#161b22;border:1px solid #30363d;border-radius:11px;padding:14px 16px;margin-bottom:12px}
@@ -375,14 +376,48 @@ function renderDetailHeader() {
     ['Total', d.TotalScore != null && d.TotalScore !== '' ? d.TotalScore + '%' : '—']
   ].map(function (kv) { return '<div class="dt-stat-card"><div class="n">' + kv[1] + '</div><div class="l">' + kv[0] + '</div></div>'; }).join('');
 }
+// Same alignment approach as the student view (see wordAlign() in student.html): plain positional
+// comparison makes a single inserted/dropped word cascade into "wrong" for everything after it,
+// which is both a misleading picture for the teacher and doesn't match what the student actually
+// saw. Aligning first isolates the real mistake. This also fixes a second, separate bug — the old
+// version always rendered the TARGET word (just colored), never the student's actual wrong input,
+// so a teacher couldn't tell what the student typed, only that it was wrong.
+function dtWordAlign(actualWords, typedWords) {
+  var n = actualWords.length, m = typedWords.length;
+  var dp = []; for (var i = 0; i <= n; i++) dp.push(new Array(m + 1).fill(0));
+  for (i = 0; i <= n; i++) dp[i][0] = i;
+  for (var j = 0; j <= m; j++) dp[0][j] = j;
+  for (i = 1; i <= n; i++) {
+    for (j = 1; j <= m; j++) {
+      var same = actualWords[i - 1].toLowerCase() === typedWords[j - 1].toLowerCase();
+      dp[i][j] = same ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  var ops = []; i = n; j = m;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && actualWords[i - 1].toLowerCase() === typedWords[j - 1].toLowerCase() && dp[i][j] === dp[i - 1][j - 1]) {
+      ops.push({ type: 'match', actual: actualWords[i - 1], typed: typedWords[j - 1] }); i--; j--;
+    } else if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
+      ops.push({ type: 'sub', actual: actualWords[i - 1], typed: typedWords[j - 1] }); i--; j--;
+    } else if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
+      ops.push({ type: 'miss', actual: actualWords[i - 1], typed: null }); i--;
+    } else if (j > 0 && dp[i][j] === dp[i][j - 1] + 1) {
+      ops.push({ type: 'extra', actual: null, typed: typedWords[j - 1] }); j--;
+    } else if (i > 0) { ops.push({ type: 'miss', actual: actualWords[i - 1], typed: null }); i--; }
+    else { ops.push({ type: 'extra', actual: null, typed: typedWords[j - 1] }); j--; }
+  }
+  ops.reverse();
+  return ops;
+}
 function dtDictWordDiffHtml(actualWords, typedText) {
-  var typedWords = (typedText || '').replace(/[.,!?;:"]/g, '').split(/\s+/);
-  var allOk = true;
-  var html = actualWords.map(function (w, wi) {
-    var tw = (typedWords[wi] || '').toLowerCase();
-    var ok = tw === w.toLowerCase();
-    if (!ok) allOk = false;
-    return '<span class="' + (ok ? 'dt-w-ok' : (tw ? 'dt-w-bad' : 'dt-w-miss')) + '">' + LD.esc(w) + '</span>';
+  var typedWords = (typedText || '').replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
+  var ops = dtWordAlign(actualWords, typedWords);
+  var allOk = ops.every(function (op) { return op.type === 'match'; }) && typedWords.length === actualWords.length;
+  var html = ops.map(function (op) {
+    if (op.type === 'match') return '<span class="dt-w-ok">' + LD.esc(op.typed) + '</span>';
+    if (op.type === 'extra') return '<span class="dt-w-extra">' + LD.esc(op.typed) + '</span>';
+    if (op.type === 'miss') return '<span class="dt-w-miss">' + LD.esc(op.actual) + '</span>';
+    return '<span class="dt-w-miss">' + LD.esc(op.actual) + '</span> <span class="dt-w-bad">' + LD.esc(op.typed) + '</span>';
   }).join(' ');
   return { html: html, allOk: allOk };
 }

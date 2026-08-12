@@ -90,8 +90,12 @@
 .sb-wc-pill.nomatch{background:#fdecec;color:var(--red)}
 .sb-result{min-height:22px;line-height:2.1;word-spacing:3px;margin-bottom:7px;font-weight:700}
 .sb-result .w-correct{color:var(--green);font-weight:700}
-.sb-result .w-wrong{color:var(--red);text-decoration:line-through;font-weight:700}
-.sb-result .w-missing{color:#e67e22;font-weight:800;letter-spacing:1px}
+.sb-result .w-wrong{background:var(--red);color:#fff;padding:1px 6px;border-radius:5px;font-weight:700}
+.sb-result .w-missing{color:var(--grey-600);font-weight:800;letter-spacing:2px;text-decoration:underline;text-decoration-color:#e67e22;text-decoration-thickness:2.5px;text-underline-offset:3px}
+.sb-result .w-extra{color:var(--grey-600);text-decoration:line-through;text-decoration-color:#8e44ad;text-decoration-thickness:2px;font-weight:700}
+.dict-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--grey-600);margin:2px 0 12px}
+.dict-legend span{display:inline-flex;align-items:center;gap:5px}
+.dict-legend b{font-weight:800}
 .sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:17px}
 .sb-input:focus{border-color:var(--blue)}
 .sb-input:disabled{background:#f0f1f4;color:var(--grey-600)}
@@ -104,6 +108,7 @@
 /* Audio bar stays pinned just below the topbar (which is itself sticky at top:0) while the
    student scrolls through sentences below. */
 .audio-sticky{position:sticky;top:57px;z-index:90;background:var(--off-white);padding:10px 20px 12px;margin:0 -20px 14px;border-bottom:1px solid var(--grey-200);box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.audio-reattach{background:#FFF8E6;border:1px dashed #E0B84D;border-radius:10px;padding:10px 12px}
 .dict-banner.hidden{display:none}
 .dict-banner-close{background:none;border:none;color:#5a4600;font-size:14px;cursor:pointer;font-weight:700;line-height:1;flex-shrink:0}
 /* Keyboard Shortcuts modal — shared by Gap-fill and Dictation (identical hotkey scheme) */
@@ -370,6 +375,12 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')">✋ Manual control</button>
       </div>
     </div>
+    <div class="dict-legend">
+      <span><b style="color:var(--green)">green</b> = correct</span>
+      <span><b style="letter-spacing:2px;text-decoration:underline;text-decoration-color:#e67e22;text-decoration-thickness:2.5px">____</b> = missing word</span>
+      <span><b style="background:var(--red);color:#fff;padding:1px 6px;border-radius:5px">wrong</b> = wrong spelling</span>
+      <span><b style="text-decoration:line-through;text-decoration-color:#8e44ad;text-decoration-thickness:2px">extra</b> = word you shouldn't have typed</span>
+    </div>
     <div id="dictation-sentences"></div>
     <button class="btn btn-primary btn-full" id="btn-finish-dictation" onclick="finishDictation()" style="padding:14px;font-size:15px;display:none">🏁 Submit</button>
   </div>
@@ -512,7 +523,7 @@ var App = {
   cefr: null, collocations: [], gloss: {},
   showLevels: { A1: false, A2: false, B1: false, B2: true, C1: true, C2: true },
   posColor: false, listenMode: false,
-  audioBlobUrl: null,
+  audioBlobUrl: null, audioSourceType: null, // 'drive' (persistent, survives resume) | 'local' (blob URL, lost on reload)
   quiz: [], quizAnswers: [], quizPool: [], quizBatchIdx: 0, quizPhase: 'answering', quizAttempts: [], _quizPromise: null,
   gapfill: [], gapfillAnswers: [], gapBlankState: [], gapSegments: [], gapSegIdx: 0,
   gapAudioMode: 'auto', gapPausePoints: [], _gapPausedForCurrentSeg: false,
@@ -745,13 +756,64 @@ function doSplit() {
 function handleAudioFile(e) {
   var f = e.target.files[0]; if (!f) return;
   App.audioBlobUrl = URL.createObjectURL(f);
+  App.audioSourceType = 'local';
   document.getElementById('audio-status').textContent = '✅ ' + f.name;
 }
 function loadDriveAudio() {
   var id = document.getElementById('drive-file-id').value.trim();
   if (!id) return;
   App.audioBlobUrl = 'https://drive.google.com/uc?export=download&id=' + id;
+  App.audioSourceType = 'drive';
   document.getElementById('audio-status').textContent = '✅ Google Drive: ' + id;
+}
+
+// Audio is deliberately NOT persisted server-side (kept simple, no storage/URL management to
+// maintain). So a resumed Gap-fill/Dictation session always starts with no audio in memory —
+// this renders either the <audio> player (if App.audioBlobUrl is set) or an inline prompt asking
+// the student to re-upload the file / re-paste the Drive ID, right where the player would be.
+function ensureAudioUI(rowId, audioElId) {
+  var row = document.getElementById(rowId), audio = document.getElementById(audioElId);
+  if (!row || !audio) return;
+  var prompt = document.getElementById(rowId + '-reattach');
+  row.style.display = 'block';
+  if (App.audioBlobUrl) {
+    audio.src = App.audioBlobUrl;
+    audio.style.display = 'block';
+    if (prompt) prompt.style.display = 'none';
+  } else {
+    audio.style.display = 'none';
+    if (!prompt) {
+      prompt = document.createElement('div');
+      prompt.id = rowId + '-reattach';
+      prompt.className = 'audio-reattach';
+      row.appendChild(prompt);
+    }
+    prompt.style.display = 'block';
+    prompt.innerHTML =
+      '<div style="font-size:12px;color:var(--grey-600);margin-bottom:6px">🔊 Audio isn\'t loaded in this browser tab — re-attach it to keep listening (your typed progress is safe either way).</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+      '<input type="file" accept="audio/*" class="form-input" style="width:auto" onchange="reattachAudioFile(event,' + jsAttrStr(audioElId) + ',' + jsAttrStr(rowId) + ')">' +
+      '<span style="font-size:12px;color:var(--grey-400)">or</span>' +
+      '<input type="text" class="form-input" placeholder="Paste Google Drive File ID" style="width:200px;font-size:12px;font-family:var(--font-mono)" id="' + rowId + '-drive-input">' +
+      '<button class="btn btn-secondary btn-sm" onclick="reattachDriveAudio(' + jsAttrStr(rowId) + ',' + jsAttrStr(audioElId) + ')">Load</button>' +
+      '</div>';
+  }
+}
+function reattachAudioFile(e, audioElId, rowId) {
+  var f = e.target.files[0]; if (!f) return;
+  App.audioBlobUrl = URL.createObjectURL(f);
+  App.audioSourceType = 'local';
+  ensureAudioUI(rowId, audioElId);
+  LD.toast('Audio attached ✓', 'ok', 1500);
+}
+function reattachDriveAudio(rowId, audioElId) {
+  var input = document.getElementById(rowId + '-drive-input');
+  var id = (input && input.value || '').trim();
+  if (!id) return;
+  App.audioBlobUrl = 'https://drive.google.com/uc?export=download&id=' + id;
+  App.audioSourceType = 'drive';
+  ensureAudioUI(rowId, audioElId);
+  LD.toast('Audio attached ✓', 'ok', 1500);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -885,6 +947,7 @@ async function startSession() {
     LD.api('session.saveAnalysis', {
       sessionId: App.sessionId, scriptText: App.rawScript,
       correctedSentences: App.correctedSentences, cefr: App.cefr, collocations: App.collocations
+      // Audio is intentionally NOT sent/persisted — see the re-attach prompt shown on resume instead.
     }).catch(function (e) { console.warn('session.saveAnalysis failed in background:', e); });
     goStudy();
   } catch (err) {
@@ -894,9 +957,7 @@ async function startSession() {
 }
 function goStudy() {
   renderLevelChips(); renderStudyPassage(); renderCefrDist(); renderCollocations();
-  var studyAudio = document.getElementById('study-audio');
-  if (App.audioBlobUrl) { studyAudio.src = App.audioBlobUrl; document.getElementById('study-audio-row').style.display = 'block'; }
-  else { document.getElementById('study-audio-row').style.display = 'none'; }
+  ensureAudioUI('study-audio-row', 'study-audio');
   showScreen('screen-study');
   prefetchQuiz(); // generate the quiz in the background while the student is still studying, so Quiz opens instantly
 }
@@ -1087,9 +1148,7 @@ async function finalizeQuizPass() {
 function goGapFill() {
   buildGapFill();
   showScreen('screen-gapfill');
-  var audio = document.getElementById('gapfill-audio');
-  if (App.audioBlobUrl) { audio.src = App.audioBlobUrl; document.getElementById('gapfill-audio-row').style.display = 'block'; }
-  else document.getElementById('gapfill-audio-row').style.display = 'none';
+  ensureAudioUI('gapfill-audio-row', 'gapfill-audio');
   if (localStorage.getItem('ld_kbd_shortcuts_hidden') !== '1') openShortcutsModal();
   setupGapAudioListeners();
   setGapMode(localStorage.getItem('ld_gap_mode') || 'auto');
@@ -1287,8 +1346,7 @@ function goDictation() {
   App.dictationIdx = 0;
   App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false, firstTryDone: false, firstTryCorrectWords: 0, firstTryTotalWords: 0, attempts: 0 }; });
   showScreen('screen-dictation');
-  var audio = document.getElementById('dict-audio');
-  if (App.audioBlobUrl) audio.src = App.audioBlobUrl; else document.getElementById('dict-audio-row').style.display = 'none';
+  ensureAudioUI('dict-audio-row', 'dict-audio');
   if (localStorage.getItem('ld_kbd_shortcuts_hidden') !== '1') openShortcutsModal();
   setupDictAudioListeners();
   setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
@@ -1391,23 +1449,56 @@ function updateWcPill(i) {
   el.className = 'sb-wc-pill ' + (typedNow === target ? 'match' : 'nomatch');
   el.textContent = '✏️ ' + typedNow + '/' + target + ' words';
 }
-// Renders the colored per-word feedback for the LAST check on sentence i: correct words in
-// green; for a wrong or missing word, the correct answer is masked as asterisks (never revealed
-// directly — the student can still see it once they DO get it right) followed by their actual
-// wrong input struck through, so they see exactly where they went wrong without being handed
-// the answer outright.
+// Word-level alignment via edit-distance (Levenshtein) backtrace, case-insensitive. Plain
+// positional comparison (typedWords[i] vs actualWords[i]) falls apart the moment a student
+// inserts or drops a single word: everything AFTER that point shifts by one and gets flagged
+// wrong even though it was typed correctly, which is both misleading feedback and an inaccurate
+// score. Aligning first means one inserted/missing word only ever shows up as ONE error.
+function wordAlign(actualWords, typedWords) {
+  var n = actualWords.length, m = typedWords.length;
+  var dp = []; for (var i = 0; i <= n; i++) dp.push(new Array(m + 1).fill(0));
+  for (i = 0; i <= n; i++) dp[i][0] = i;
+  for (var j = 0; j <= m; j++) dp[0][j] = j;
+  for (i = 1; i <= n; i++) {
+    for (j = 1; j <= m; j++) {
+      var same = actualWords[i - 1].toLowerCase() === typedWords[j - 1].toLowerCase();
+      dp[i][j] = same ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  var ops = []; i = n; j = m;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && actualWords[i - 1].toLowerCase() === typedWords[j - 1].toLowerCase() && dp[i][j] === dp[i - 1][j - 1]) {
+      ops.push({ type: 'match', actual: actualWords[i - 1], typed: typedWords[j - 1] }); i--; j--;
+    } else if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
+      ops.push({ type: 'sub', actual: actualWords[i - 1], typed: typedWords[j - 1] }); i--; j--;
+    } else if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
+      ops.push({ type: 'miss', actual: actualWords[i - 1], typed: null }); i--;
+    } else if (j > 0 && dp[i][j] === dp[i][j - 1] + 1) {
+      ops.push({ type: 'extra', actual: null, typed: typedWords[j - 1] }); j--;
+    } else if (i > 0) { ops.push({ type: 'miss', actual: actualWords[i - 1], typed: null }); i--; }
+    else { ops.push({ type: 'extra', actual: null, typed: typedWords[j - 1] }); j--; }
+  }
+  ops.reverse();
+  return ops;
+}
+// Renders the colored per-word feedback for the LAST check on sentence i, using one visual
+// language per mistake type so a student can tell at a glance WHAT kind of error they made:
+//   green            = correct
+//   underscored blank = a word is missing here (length hints how long it is, never reveals it —
+//                        the student still sees the real word once they DO get it right)
+//   red highlight     = wrong spelling/word typed in that spot (shown right after its blank)
+//   strikethrough     = an extra word the student typed that isn't in the target at all
 function renderDictResult(i) {
   var el = document.getElementById('sb-result-' + i);
   if (!el) return;
   var ans = App.dictationAnswers[i];
   var actualWords = App.correctedSentences[i].replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
   var typedWords = (ans.lastCheckedTyped || '').replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
-  el.innerHTML = actualWords.map(function (w, wi) {
-    var tw = typedWords[wi];
-    var ok = tw && tw.toLowerCase() === w.toLowerCase();
-    if (ok) return '<span class="w-correct">' + LD.esc(tw) + '</span>';
-    var mask = '<span class="w-missing">' + '*'.repeat(w.length) + '</span>';
-    return tw ? (mask + ' <span class="w-wrong">' + LD.esc(tw) + '</span>') : mask;
+  el.innerHTML = wordAlign(actualWords, typedWords).map(function (op) {
+    if (op.type === 'match') return '<span class="w-correct">' + LD.esc(op.typed) + '</span>';
+    if (op.type === 'extra') return '<span class="w-extra">' + LD.esc(op.typed) + '</span>';
+    var blank = '<span class="w-missing">' + '_'.repeat(op.actual.length) + '</span>';
+    return op.type === 'sub' ? (blank + ' <span class="w-wrong">' + LD.esc(op.typed) + '</span>') : blank;
   }).join(' ');
 }
 function onDictInputKeydown(e, i) {
@@ -1558,8 +1649,10 @@ function checkSentence(i) {
 
   var actualWords = App.correctedSentences[i].replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
   var typedWords = typed.replace(/[.,!?;:"]/g, '').split(/\s+/).filter(Boolean);
-  var correctCount = 0;
-  actualWords.forEach(function (w, wi) { if (typedWords[wi] && typedWords[wi].toLowerCase() === w.toLowerCase()) correctCount++; });
+  // Align rather than compare positionally — see wordAlign() — so an inserted/dropped word only
+  // costs the student credit for that one word instead of cascading through the rest.
+  var alignOps = wordAlign(actualWords, typedWords);
+  var correctCount = alignOps.filter(function (op) { return op.type === 'match'; }).length;
   var allCorrect = correctCount === actualWords.length && typedWords.length === actualWords.length;
 
   if (!ans.firstTryDone) {
@@ -1592,7 +1685,20 @@ function checkSentence(i) {
       }
     }
   } else {
-    if (summaryEl) { summaryEl.className = 'sb-summary bad'; summaryEl.textContent = correctCount + '/' + actualWords.length + ' words (' + pct + '%) — fix errors and try again'; }
+    if (summaryEl) {
+      summaryEl.className = 'sb-summary bad';
+      // Break the mistake down by TYPE (wrong spelling / missing / extra) instead of just a
+      // percentage, so the student can immediately tell what kind of error to look for — matches
+      // the coloring in the diff above (red highlight = wrong, underscore = missing, strikethrough = extra).
+      var subCount = alignOps.filter(function (op) { return op.type === 'sub'; }).length;
+      var missCount = alignOps.filter(function (op) { return op.type === 'miss'; }).length;
+      var extraCount = alignOps.filter(function (op) { return op.type === 'extra'; }).length;
+      var parts = [];
+      if (subCount) parts.push(subCount + ' wrong spelling');
+      if (missCount) parts.push(missCount + ' missing');
+      if (extraCount) parts.push(extraCount + ' extra');
+      summaryEl.textContent = correctCount + '/' + actualWords.length + ' words correct (' + pct + '%) — ' + parts.join(', ') + '. Fix and try again.';
+    }
     inputEl.focus();
   }
 }
@@ -1690,6 +1796,10 @@ async function resumeSession(sessionId, _isRetry) {
     App.cefr = d.CEFRJSON || null;
     App.collocations = d.CollocationJSON || [];
     App.quizAttempts = (d.QuizJSON && d.QuizJSON.attempts) || [];
+    // Audio is never persisted server-side, so it's always empty right after a resume — the
+    // audio row in Gap-fill/Dictation shows a re-attach prompt instead (see ensureAudioUI()).
+    App.audioBlobUrl = null;
+    App.audioSourceType = null;
     if (!d.GapFillJSON) {
       goGapFill();
       LD.toast('Resumed — redo Gap-fill (your Quiz pass is already saved).', 'ok');
@@ -1701,7 +1811,7 @@ async function resumeSession(sessionId, _isRetry) {
     });
     App.dictationIdx = dj.currentSentenceIdx || 0;
     showScreen('screen-dictation');
-    document.getElementById('dict-audio-row').style.display = App.audioBlobUrl ? 'block' : 'none';
+    ensureAudioUI('dict-audio-row', 'dict-audio');
     if (localStorage.getItem('ld_kbd_shortcuts_hidden') !== '1') openShortcutsModal();
     setupDictAudioListeners();
     setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
