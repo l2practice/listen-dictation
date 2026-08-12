@@ -109,7 +109,7 @@
 /* Audio bar stays pinned just below the topbar (which is itself sticky at top:0) while the
    student scrolls through sentences below. */
 .audio-sticky{position:sticky;top:57px;z-index:90;background:var(--off-white);padding:10px 20px 12px;margin:0 -20px 14px;border-bottom:1px solid var(--grey-200);box-shadow:0 2px 8px rgba(0,0,0,.04)}
-.audio-reattach{background:#FFF8E6;border:1px dashed #E0B84D;border-radius:10px;padding:10px 12px}
+.audio-reattach{background:#FFF8E6;border:1px dashed #E0B84D;border-radius:10px;padding:10px 12px;margin-bottom:14px}
 .dict-banner.hidden{display:none}
 .dict-banner-close{background:none;border:none;color:#5a4600;font-size:14px;cursor:pointer;font-weight:700;line-height:1;flex-shrink:0}
 /* Keyboard Shortcuts modal — shared by Gap-fill and Dictation (identical hotkey scheme) */
@@ -280,6 +280,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div class="audio-sticky" id="study-audio-row">
       <audio id="study-audio" controls style="width:100%"></audio>
     </div>
+    <div id="study-audio-row-reattach"></div>
     <div class="card" id="study-toolbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span style="font-size:11px;font-weight:700;color:var(--grey-600)">CEFR:</span>
       <span id="level-chips"></span>
@@ -341,6 +342,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <button class="btn btn-secondary btn-sm" id="btn-gap-mode-manual" onclick="setGapMode('manual')">✋ Manual control</button>
       </div>
     </div>
+    <div id="gapfill-audio-row-reattach"></div>
     <div class="card" style="font-size:12.5px;color:var(--grey-600);margin-bottom:14px">
       🎧 Listen and fill in the blanks <b>two sentences at a time</b>. Fill every blank in the current pair, then press <b>Enter</b> (or the Check button) — the app grades it instantly and marks each blank ✓ correct / ✗ wrong. If anything is wrong, fix it and press <b>Enter</b> again — your progress on earlier sentences is kept. Once the pair is fully correct, it automatically moves on to the next two sentences.
     </div>
@@ -376,6 +378,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')">✋ Manual control</button>
       </div>
     </div>
+    <div id="dict-audio-row-reattach"></div>
     <div class="dict-legend">
       <span><b style="color:var(--green)">green</b> = correct</span>
       <span><b style="background:#FFE9B3;color:#7A4A00;padding:1px 6px;border-radius:5px">wrong</b> = wrong spelling — listen to this spot again</span>
@@ -693,7 +696,12 @@ function onScriptInput() {
   document.getElementById('script-word-count').textContent = n + ' words';
   document.getElementById('btn-split').disabled = n < 10;
 }
-var ABBR = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sr', 'Jr', 'St', 'Mt', 'vs', 'etc', 'approx', 'No', 'pp', 'Fig', 'Co', 'Corp', 'Inc', 'Ltd', 'a.m', 'p.m', 'e.g', 'i.e'];
+var ABBR = [
+  'Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sr', 'Jr', 'St', 'Mt', 'vs', 'etc', 'approx', 'No', 'pp', 'Fig', 'Co', 'Corp', 'Inc', 'Ltd', 'a.m', 'p.m', 'e.g', 'i.e',
+  // added to match the sentence-split rules ported from the sibling app (Language Hub / ArticuWrite)
+  'U.S', 'U.K', 'Ph.D', 'M.A', 'B.A', 'M.D', 'Gen', 'Col', 'Capt', 'Lt', 'Sgt', 'Rev', 'Hon', 'Sen', 'Rep', 'Gov', 'Ave', 'Blvd', 'Rd',
+  'Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Sept', 'Oct', 'Nov', 'Dec'
+];
 // Strips IELTS-transcript artifacts that aren't part of the spoken script: question-number
 // markers like "(Q37)" and "----" divider lines between Parts. Left in place, these break
 // sentence-boundary detection (no capital letter right after the period) and pollute word
@@ -707,36 +715,68 @@ function cleanScriptArtifacts(text) {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
-// Cuts `work` only at VALIDATED boundary positions (terminator punctuation followed by whitespace +
-// an uppercase letter/quote, or end of string) and takes the slice BETWEEN consecutive cuts as one
-// sentence — whatever that slice contains. This guarantees every character of the input ends up in
-// exactly one sentence.
+// Cuts `work` only at VALIDATED boundary positions and takes the slice BETWEEN consecutive cuts
+// as one sentence — whatever that slice contains. This guarantees every character of the input
+// ends up in exactly one sentence (see root-cause note below for why "cut at positions" instead of
+// "match whole sentences" is the safe approach).
 //
-// Root-cause note: the previous implementation used text.match(/regex/g), where each alternative in
+// Boundary rules (ported from the sibling app's smartSplit() improvements, applied here too):
+//  1. Terminator punctuation ([.!?]) followed by whitespace or end-of-string → boundary.
+//     The OLD version additionally required the next visible character to be uppercase (or a
+//     quote) before counting it as a boundary. That "capital letter" heuristic was meant to avoid
+//     false splits, but real transcripts routinely mis-capitalize the next sentence (or a teacher
+//     just pastes lowercase text), and the heuristic would then silently MERGE two sentences
+//     instead of splitting them — the exact "the winding spiral..." bug fixed earlier. Now that
+//     abbreviations AND ellipses are protected via placeholders (below), the heuristic is no
+//     longer needed for safety and is dropped — punctuation alone decides the boundary.
+//  2. A newline on its own is ALSO a boundary, even with no punctuation before it. Some pasted
+//     transcripts are formatted one sentence per line with no terminal period; previously every
+//     newline was collapsed into a plain space up front, so a whole multi-line script with no
+//     punctuation at all would silently become ONE giant "sentence". Newlines are now preserved
+//     through to the boundary-cut step instead of being flattened early.
+//  3. "..." (ellipsis) is protected via a placeholder BEFORE boundary-cutting runs, so it's never
+//     mistaken for one or more sentence-ending periods now that rule 1 no longer requires an
+//     uppercase check to rule that out.
+//  4. Abbreviations (Mr., p.m., U.S., etc. — see ABBR) are protected via placeholder the same way
+//     they always were, with a few more added (U.S., U.K., Ph.D., months, military/political
+//     titles) to match the sibling app's expanded list.
+//
+// Root-cause note: an earlier implementation used text.match(/regex/g), where each alternative in
 // the pattern required a valid boundary lookahead to match at all. When a stretch of text had NO
-// valid boundary in it (e.g. a period followed by a lowercase letter — common in real IELTS
-// transcripts that mis-capitalize a sentence start, like "...in the past. the winding spiral..."),
-// neither alternative could match starting anywhere inside that stretch, and .match(g) SILENTLY
-// DROPS any span of text it can't match — the whole sentence vanished, not just merged. Cutting at
-// explicit boundary positions instead of matching whole sentences makes dropping content impossible:
-// leftover text between two cuts always gets kept, just grouped with its neighbor.
+// valid boundary in it, neither alternative could match starting anywhere inside that stretch, and
+// .match(g) SILENTLY DROPS any span of text it can't match — the whole sentence vanished, not just
+// merged. Cutting at explicit boundary positions instead of matching whole sentences makes
+// dropping content impossible: leftover text between two cuts always gets kept, just grouped with
+// its neighbor.
 function splitSentences(text) {
-  text = text.replace(/\r\n?/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+  // Normalize line endings but do NOT flatten newlines into spaces anymore — see rule 2 above.
+  text = String(text || '').replace(/\r\n?/g, '\n').replace(/[ \t]+/g, ' ').trim();
   if (!text) return [];
   var work = text;
+  work = work.replace(/\.\.\.+|…/g, '§ELLIPSIS§'); // rule 3 — protect before anything else touches periods
+  // Store each abbreviation as "<periods stripped><placeholder>" (e.g. "p.m." -> "pm§20§") and
+  // restore using that SAME stripped form as the search key. A prior version searched for the
+  // ORIGINAL string (with its period still in it, e.g. "p.m§20§") when restoring — which never
+  // matched what was actually stored, so any abbreviation with an internal period (p.m., a.m.,
+  // e.g., i.e., and the newly-added U.S., U.K., Ph.D., ...) silently came back as "pm§20§"
+  // instead of "p.m." in the final sentence. Using .replace(/\./g, '') (strip ALL periods, not
+  // just the first) on both sides keeps store/restore in sync regardless of how many internal
+  // periods an abbreviation has.
   ABBR.forEach(function (a, idx) {
-    var re = new RegExp('\\b' + a.replace('.', '\\.') + '\\.', 'g');
-    work = work.replace(re, a.replace('.', '') + '§' + idx + '§');
+    var stripped = a.replace(/\./g, '');
+    var re = new RegExp('\\b' + a.replace(/\./g, '\\.') + '\\.', 'g');
+    work = work.replace(re, stripped + '§' + idx + '§');
   });
-  var boundaryRe = /[.!?]+(?=\s+[A-Z"“]|\s*$)/g;
+  var boundaryRe = /[.!?]+(?=\s|$)|\n+/g; // rule 1 (no capital-letter lookahead) + rule 2 (newline)
   var cuts = [], m;
   while ((m = boundaryRe.exec(work)) !== null) cuts.push(m.index + m[0].length);
   var parts = [], start = 0;
   cuts.forEach(function (end) { parts.push(work.slice(start, end)); start = end; });
   if (start < work.length) parts.push(work.slice(start)); // trailing text after the last boundary (or no boundary at all)
   return parts.map(function (s) {
-    ABBR.forEach(function (a, idx) { s = s.split(a + '§' + idx + '§').join(a + '.'); });
-    return s.trim();
+    s = s.replace(/§ELLIPSIS§/g, '...');
+    ABBR.forEach(function (a, idx) { s = s.split(a.replace(/\./g, '') + '§' + idx + '§').join(a + '.'); });
+    return s.replace(/\s+/g, ' ').trim();
   }).filter(Boolean);
 }
 function onBookSelectChange() {
@@ -797,33 +837,38 @@ function loadDriveAudio() {
 // Audio is deliberately NOT persisted server-side (kept simple, no storage/URL management to
 // maintain). So a resumed Gap-fill/Dictation session always starts with no audio in memory —
 // this renders either the <audio> player (if App.audioBlobUrl is set) or an inline prompt asking
-// the student to re-upload the file / re-paste the Drive ID, right where the player would be.
+// the student to re-upload the file / re-paste the Drive ID.
+//
+// IMPORTANT: the reattach prompt is rendered into a SEPARATE sibling div (rowId + "-reattach"),
+// NOT appended inside the sticky audio row itself. The row uses position:sticky, and stuffing a
+// variable-height block (file input + text input + button, which wraps on narrower screens)
+// straight into it made the sticky bar's height jump around as content changed — on some screens
+// that was enough to make it stop tracking the scroll properly ("looks fixed at the top and
+// doesn't follow"). Keeping the sticky row's own content constant (just the <audio> element +
+// playback buttons, same as before) and placing the reattach prompt as normal, non-sticky flow
+// content right after it avoids that entirely.
 function ensureAudioUI(rowId, audioElId) {
   var row = document.getElementById(rowId), audio = document.getElementById(audioElId);
+  var promptHost = document.getElementById(rowId + '-reattach');
   if (!row || !audio) return;
-  var prompt = document.getElementById(rowId + '-reattach');
   row.style.display = 'block';
   if (App.audioBlobUrl) {
     audio.src = App.audioBlobUrl;
     audio.style.display = 'block';
-    if (prompt) prompt.style.display = 'none';
+    if (promptHost) promptHost.innerHTML = '';
   } else {
     audio.style.display = 'none';
-    if (!prompt) {
-      prompt = document.createElement('div');
-      prompt.id = rowId + '-reattach';
-      prompt.className = 'audio-reattach';
-      row.appendChild(prompt);
+    if (promptHost) {
+      promptHost.innerHTML =
+        '<div class="audio-reattach">' +
+        '<div style="font-size:12px;color:var(--grey-600);margin-bottom:6px">🔊 Audio isn\'t loaded in this browser tab — re-attach it to keep listening (your typed progress is safe either way).</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        '<input type="file" accept="audio/*" class="form-input" style="width:auto" onchange="reattachAudioFile(event,' + jsAttrStr(audioElId) + ',' + jsAttrStr(rowId) + ')">' +
+        '<span style="font-size:12px;color:var(--grey-400)">or</span>' +
+        '<input type="text" class="form-input" placeholder="Paste Google Drive File ID" style="width:200px;font-size:12px;font-family:var(--font-mono)" id="' + rowId + '-drive-input">' +
+        '<button class="btn btn-secondary btn-sm" onclick="reattachDriveAudio(' + jsAttrStr(rowId) + ',' + jsAttrStr(audioElId) + ')">Load</button>' +
+        '</div></div>';
     }
-    prompt.style.display = 'block';
-    prompt.innerHTML =
-      '<div style="font-size:12px;color:var(--grey-600);margin-bottom:6px">🔊 Audio isn\'t loaded in this browser tab — re-attach it to keep listening (your typed progress is safe either way).</div>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-      '<input type="file" accept="audio/*" class="form-input" style="width:auto" onchange="reattachAudioFile(event,' + jsAttrStr(audioElId) + ',' + jsAttrStr(rowId) + ')">' +
-      '<span style="font-size:12px;color:var(--grey-400)">or</span>' +
-      '<input type="text" class="form-input" placeholder="Paste Google Drive File ID" style="width:200px;font-size:12px;font-family:var(--font-mono)" id="' + rowId + '-drive-input">' +
-      '<button class="btn btn-secondary btn-sm" onclick="reattachDriveAudio(' + jsAttrStr(rowId) + ',' + jsAttrStr(audioElId) + ')">Load</button>' +
-      '</div>';
   }
 }
 function reattachAudioFile(e, audioElId, rowId) {
