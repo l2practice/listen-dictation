@@ -46,6 +46,9 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .hidden{display:none!important}
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+#ld-loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.82);z-index:600;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+#ld-loading-overlay.active{display:flex}
+#ld-loading-text{font-size:13.5px;font-weight:700;color:var(--navy)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── Session Detail overlay (dark theme) ── */
@@ -117,7 +120,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <div><label class="form-label">Class Name</label><input class="form-input" id="new-class-name" placeholder="e.g. DH21NA1"></div>
         <div><label class="form-label">Academic Year</label><input class="form-input" id="new-class-year" placeholder="2025-2026" style="width:110px"></div>
         <div><label class="form-label">Semester</label><input class="form-input" id="new-class-semester" placeholder="Sem 1" style="width:80px"></div>
-        <button class="btn btn-primary" onclick="createClass()">Create Class</button>
+        <button class="btn btn-primary" id="btn-create-class" onclick="createClass()">Create Class</button>
       </div>
       <div id="new-class-result" style="margin-top:10px"></div>
     </div>
@@ -203,9 +206,28 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   </div>
 </div>
 
+<!-- Global loading overlay — shown during any LD.api call so the teacher sees the app is
+     working and doesn't spam-click (which previously created several duplicate classes: each
+     click fired its own request with no visible feedback that the first one was still in
+     flight). Also physically blocks clicks underneath it (full-screen + high z-index). -->
+<div id="ld-loading-overlay">
+  <div class="spinner" style="width:34px;height:34px;border-width:4px"></div>
+  <div id="ld-loading-text">Loading…</div>
+</div>
+
 <script src="ld-common.js"></script>
 <script>
 var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1 };
+var _loadingDepth = 0;
+function showLoading(msg) {
+  _loadingDepth++;
+  document.getElementById('ld-loading-text').textContent = msg || 'Loading…';
+  document.getElementById('ld-loading-overlay').classList.add('active');
+}
+function hideLoading() {
+  _loadingDepth = Math.max(0, _loadingDepth - 1);
+  if (_loadingDepth === 0) document.getElementById('ld-loading-overlay').classList.remove('active');
+}
 
 (function init() {
   var s = LD.session.require('Teacher');
@@ -230,18 +252,35 @@ function switchTab(tab) {
 async function createClass() {
   var name = document.getElementById('new-class-name').value.trim();
   if (!name) { LD.toast('Enter a class name.', 'err'); return; }
-  var r = await LD.api('teacher.createClass', {
-    className: name, academicYear: document.getElementById('new-class-year').value.trim(), semester: document.getElementById('new-class-semester').value.trim()
-  });
-  if (!r.success) { LD.toast(r.error || 'Could not create the class', 'err'); return; }
-  document.getElementById('new-class-result').innerHTML = '✅ Created class <b>' + LD.esc(r.className) + '</b> — class code: <span class="badge badge-gold">' + r.classId + '</span> (share this code with students so they can register)';
-  document.getElementById('new-class-name').value = ''; document.getElementById('new-class-year').value = ''; document.getElementById('new-class-semester').value = '';
-  loadClasses();
+  var btn = document.getElementById('btn-create-class');
+  // Disable the button IN ADDITION to the loading overlay — belt and suspenders against exactly
+  // the bug reported: with no visible feedback while the request was in flight, spam-clicking
+  // "Create Class" fired several separate requests and created multiple duplicate classes.
+  if (btn) { btn.disabled = true; btn.dataset.origText = btn.textContent; btn.textContent = 'Creating…'; }
+  showLoading('Creating class…');
+  try {
+    var r = await LD.api('teacher.createClass', {
+      className: name, academicYear: document.getElementById('new-class-year').value.trim(), semester: document.getElementById('new-class-semester').value.trim()
+    });
+    if (!r.success) { LD.toast(r.error || 'Could not create the class', 'err'); return; }
+    document.getElementById('new-class-result').innerHTML = '✅ Created class <b>' + LD.esc(r.className) + '</b> — class code: <span class="badge badge-gold">' + r.classId + '</span> (share this code with students so they can register)';
+    document.getElementById('new-class-name').value = ''; document.getElementById('new-class-year').value = ''; document.getElementById('new-class-semester').value = '';
+    loadClasses();
+  } catch (e) {
+    LD.toast('Network error: ' + e.message, 'err');
+  } finally {
+    hideLoading();
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.origText || 'Create Class'; }
+  }
 }
 async function loadClasses() {
   var el = document.getElementById('classes-list');
   el.innerHTML = '<span class="spinner"></span> Loading…';
-  var r = await LD.api('teacher.getClasses', {});
+  showLoading('Loading classes…');
+  var r;
+  try { r = await LD.api('teacher.getClasses', {}); }
+  catch (e) { el.innerHTML = '<span style="color:var(--red)">Network error: ' + LD.esc(e.message) + '</span>'; hideLoading(); return; }
+  hideLoading();
   if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(r.error) + '</span>'; return; }
   App.classes = r.data;
   var filterSel = document.getElementById('sess-filter-class');
@@ -258,14 +297,21 @@ async function loadClasses() {
 }
 async function toggleClassStatus(classId, curStatus) {
   var newStatus = curStatus === 'Active' ? 'Archived' : 'Active';
-  var r = await LD.api('teacher.setClassStatus', { classId: classId, status: newStatus });
-  if (r.success) loadClasses(); else LD.toast(r.error || 'Error', 'err');
+  showLoading(newStatus === 'Archived' ? 'Locking class…' : 'Reopening class…');
+  try {
+    var r = await LD.api('teacher.setClassStatus', { classId: classId, status: newStatus });
+    if (r.success) loadClasses(); else LD.toast(r.error || 'Error', 'err');
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 async function viewRoster(classId, className) {
   document.getElementById('roster-title').textContent = '👥 Students in ' + className;
   document.getElementById('roster-card').classList.remove('hidden');
   document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
-  var r = await LD.api('teacher.getRoster', { classId: classId });
+  showLoading('Loading roster…');
+  var r;
+  try { r = await LD.api('teacher.getRoster', { classId: classId }); }
+  catch (e) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--red)">Network error</td></tr>'; hideLoading(); return; }
+  hideLoading();
   if (!r.success) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--red)">Error</td></tr>'; return; }
   document.getElementById('roster-tbody').innerHTML = r.data.length ? r.data.map(function (s) {
     return '<tr><td>' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td><td>' + LD.esc(s.email) + '</td>' +
@@ -274,8 +320,11 @@ async function viewRoster(classId, className) {
   }).join('') : '<tr><td colspan="5" style="color:var(--grey-600)">No students in this class yet.</td></tr>';
 }
 async function toggleStudentStatus(studentId, curStatus) {
-  var r = await LD.api('teacher.archiveStudent', { studentId: studentId, archived: curStatus === 'Active' });
-  if (r.success) { LD.toast('Updated', 'ok'); loadClasses(); } else LD.toast(r.error || 'Error', 'err');
+  showLoading('Updating…');
+  try {
+    var r = await LD.api('teacher.archiveStudent', { studentId: studentId, archived: curStatus === 'Active' });
+    if (r.success) { LD.toast('Updated', 'ok'); loadClasses(); } else LD.toast(r.error || 'Error', 'err');
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 
 // ── SESSIONS DASHBOARD ──
@@ -287,7 +336,11 @@ async function loadSessions() {
     fromDate: document.getElementById('sess-filter-from').value,
     toDate: document.getElementById('sess-filter-to').value
   };
-  var r = await LD.api('teacher.getAllSessions', p);
+  showLoading('Loading sessions…');
+  var r;
+  try { r = await LD.api('teacher.getAllSessions', p); }
+  catch (e) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Network error: ' + LD.esc(e.message) + '</td></tr>'; hideLoading(); return; }
+  hideLoading();
   if (!r.success) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Error: ' + LD.esc(r.error) + '</td></tr>'; return; }
   App.sessions = r.data;
   renderSessionsTable();
@@ -335,7 +388,11 @@ async function openDetail(sessionId) {
   document.getElementById('dt-meta').innerHTML = '';
   document.getElementById('dt-stats').innerHTML = '';
   ['dictation', 'gapfill', 'quiz'].forEach(function (t) { document.getElementById('dt-pane-' + t).innerHTML = ''; });
-  var r = await LD.api('teacher.getSessionDetail', { sessionId: sessionId });
+  showLoading('Loading session detail…');
+  var r;
+  try { r = await LD.api('teacher.getSessionDetail', { sessionId: sessionId }); }
+  catch (e) { document.getElementById('dt-subtitle').textContent = 'Network error: ' + e.message; hideLoading(); return; }
+  hideLoading();
   if (!r.success) { document.getElementById('dt-subtitle').textContent = 'Error: ' + (r.error || ''); return; }
   DetailApp.data = r.data;
   renderDetailHeader();
@@ -495,11 +552,14 @@ function renderQuizDetail() {
 function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSortDir : -1; App.sessSortKey = key; renderSessionsTable(); }
 async function exportCsv() {
   var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value };
-  var r = await LD.api('teacher.exportSessions', p);
-  if (!r.success) { LD.toast(r.error || 'Could not export CSV', 'err'); return; }
-  var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
+  showLoading('Preparing CSV…');
+  try {
+    var r = await LD.api('teacher.exportSessions', p);
+    if (!r.success) { LD.toast(r.error || 'Could not export CSV', 'err'); return; }
+    var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 </script>
 </body>
