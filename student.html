@@ -447,27 +447,92 @@ function updateLdKeyStatus() {
   el.textContent = k ? '✅ saved' : 'no key';
   el.style.color = k ? '#1a7a4a' : '#c00';
 }
-async function callGemini(prompt, maxTokens) {
+function ldSleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function ldExtractJson(raw, label) {
+  if (!raw || !raw.trim()) throw new Error(label + ' returned an empty response');
+  var s = raw.indexOf('{'), e = raw.lastIndexOf('}') + 1;
+  if (s === -1 || e <= s) throw new Error(label + ' returned a non-JSON response'); // guards against the bad-slice bug that used to surface as "Unexpected end of JSON input"
+  try { return JSON.parse(raw.slice(s, e)); }
+  catch (parseErr) { throw new Error(label + ' returned malformed JSON'); }
+}
+// Gemini 2.5 models are being sunset by Google (already unreliable/404-ing for many keys as of
+// mid-2026) — 3.x is the current generation, so it's tried first. 2.5-flash-lite is kept as a
+// last-resort fallback only, in case it still works on a given key.
+async function callGeminiOnly(prompt, maxTokens) {
   var key = getLdKey();
   if (!key) throw new Error('Gemini key required (free at aistudio.google.com)');
-  var models = ['gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+  var models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash-lite'];
+  var lastErr = null;
+  for (var i = 0; i < models.length; i++) {
+    for (var attempt = 0; attempt < 2; attempt++) { // 503 (model overloaded) is transient — retry once before moving on
+      try {
+        var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + key, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: .3, maxOutputTokens: Math.max(maxTokens || 2048, 256), responseMimeType: 'application/json' } })
+        });
+        if (resp.status === 429) { lastErr = new Error('Key quota exceeded (' + models[i] + ')'); break; } // quota won't recover on retry — skip to next model
+        if (resp.status === 503 || resp.status === 404) {
+          lastErr = new Error(models[i] + (resp.status === 503 ? ' is temporarily overloaded (503)' : ' is unavailable (404 — likely deprecated)'));
+          if (resp.status === 503 && attempt === 0) { await ldSleep(900); continue; } // one short retry, then fall through to the next model
+          break;
+        }
+        if (!resp.ok) { var j = await resp.json().catch(function () { return {}; }); lastErr = new Error((j.error && j.error.message) || ('HTTP ' + resp.status + ' from ' + models[i])); break; }
+        var data = await resp.json();
+        var raw = (data.candidates && data.candidates[0] && data.candidates[0].content.parts[0].text) || '';
+        return ldExtractJson(raw, models[i]);
+      } catch (err) { lastErr = err; break; }
+    }
+  }
+  throw lastErr || new Error('All Gemini models failed');
+}
+// ═══════════════════════════════════════════════════════════
+// GROQ — emergency fallback ONLY, used when every Gemini model fails (e.g. all overloaded).
+// Student is prompted for a free Groq key (console.groq.com/keys) the first time it's needed;
+// after that it's remembered like the Gemini key.
+// ═══════════════════════════════════════════════════════════
+var LD_GROQ_KEY = 'ld_groq_key';
+function getGroqKey() { return localStorage.getItem(LD_GROQ_KEY) || ''; }
+function ensureGroqKey() {
+  var k = getGroqKey();
+  if (k) return k;
+  k = prompt('Gemini is unavailable right now. Enter a free Groq API key to continue as a backup (get one at console.groq.com/keys):');
+  if (k && k.trim()) { localStorage.setItem(LD_GROQ_KEY, k.trim()); return k.trim(); }
+  return '';
+}
+async function callGroq(prompt, maxTokens) {
+  var key = ensureGroqKey();
+  if (!key) throw new Error('No Groq key provided');
+  var models = ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b'];
   var lastErr = null;
   for (var i = 0; i < models.length; i++) {
     try {
-      var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + key, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: .3, maxOutputTokens: Math.max(maxTokens || 2048, 256), responseMimeType: 'application/json' } })
+      var resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({ model: models[i], messages: [{ role: 'user', content: prompt }], temperature: .3, max_tokens: Math.max(maxTokens || 2048, 256), response_format: { type: 'json_object' } })
       });
-      if (resp.status === 429) { lastErr = new Error('Key quota exceeded (' + models[i] + ')'); continue; }
-      if (!resp.ok) { var j = await resp.json().catch(function () { return {}; }); lastErr = new Error((j.error && j.error.message) || ('HTTP ' + resp.status)); continue; }
+      if (!resp.ok) { var j = await resp.json().catch(function () { return {}; }); lastErr = new Error((j.error && j.error.message) || ('HTTP ' + resp.status + ' from Groq ' + models[i])); continue; }
       var data = await resp.json();
-      var raw = (data.candidates && data.candidates[0] && data.candidates[0].content.parts[0].text) || '';
-      if (!raw) { lastErr = new Error('AI returned an empty response'); continue; }
-      var s = raw.indexOf('{'), e = raw.lastIndexOf('}') + 1;
-      return JSON.parse(raw.slice(s, e));
+      var raw = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+      return ldExtractJson(raw, 'Groq ' + models[i]);
     } catch (err) { lastErr = err; }
   }
-  throw lastErr || new Error('All AI models failed');
+  throw lastErr || new Error('Groq failed');
+}
+// Public entry point used everywhere in the app: try Gemini (all models + retries) first;
+// only if EVERY Gemini attempt fails does it fall back to Groq.
+async function callGemini(prompt, maxTokens) {
+  try {
+    return await callGeminiOnly(prompt, maxTokens);
+  } catch (geminiErr) {
+    console.warn('All Gemini models failed, falling back to Groq:', geminiErr);
+    try {
+      var result = await callGroq(prompt, maxTokens);
+      LD.toast('Gemini was unavailable — used Groq as a backup for this request.', 'ok', 4000);
+      return result;
+    } catch (groqErr) {
+      throw new Error('Gemini failed (' + geminiErr.message + ') and Groq also failed (' + groqErr.message + ')');
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
