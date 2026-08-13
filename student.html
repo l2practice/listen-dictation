@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LisDictation — Language Hub</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="ld-theme.css">
@@ -438,7 +439,9 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <div style="flex:1"></div>
         <input id="hist-search" oninput="renderHistoryTable()" placeholder="🔍 Search by book name…" class="form-input" style="width:180px;padding:6px 10px">
         <button class="btn btn-secondary btn-sm" onclick="loadHistory()">🔄 Refresh</button>
+        <button class="btn btn-secondary btn-sm" onclick="App.histShowAll=true;loadHistory()">📂 Show all</button>
       </div>
+      <div style="font-size:11px;color:var(--grey-400);margin:-4px 0 8px" id="hist-range-note"></div>
       <div style="overflow:auto">
         <table class="ld-table">
           <thead><tr>
@@ -559,7 +562,7 @@ var App = {
   gapAudioMode: 'auto', gapPausePoints: [], _gapPausedForCurrentSeg: false,
   dictationIdx: 0, dictationAnswers: [], dictationReplaysUsed: [],
   dictMode: 'auto', pausePoints: [], _pausedForCurrentIdx: false,
-  histRows: [], histSortKey: 'startTime', histSortDir: -1
+  histRows: [], histSortKey: 'startTime', histSortDir: -1, histShowAll: false
 };
 
 (function init() {
@@ -2003,11 +2006,15 @@ async function loadInProgress() {
     }).join('');
   } catch (e) {}
 }
+// GAS/Sheets reads the whole sheet on every call (no index) — defaults to the last 7 days so
+// History stays fast (server also enforces this fallback — see studentGetHistory in Code.gs);
+// "Show all" is an explicit opt-in when older sessions are actually needed.
 async function loadHistory() {
   var tbody = document.getElementById('history-tbody');
   tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
+  document.getElementById('hist-range-note').textContent = App.histShowAll ? '' : 'Showing the last 7 days by default — tap "Show all" for older sessions.';
   try {
-    var r = await LD.api('student.getHistory', {});
+    var r = await LD.api('student.getHistory', { showAll: App.histShowAll });
     App.histRows = (r.success && r.data) || [];
     renderHistoryTable();
   } catch (e) { tbody.innerHTML = '<tr><td colspan="8" style="color:var(--red)">Error loading history</td></tr>'; }

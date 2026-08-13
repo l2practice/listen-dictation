@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Teacher Dashboard · LisDictation</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="ld-theme.css">
@@ -154,14 +155,16 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div class="card">
       <div class="toolbar">
         <select class="form-select" id="sess-filter-class" onchange="loadSessions()"><option value="">All classes</option></select>
-        <input type="date" class="form-input" id="sess-filter-from" onchange="loadSessions()">
+        <input type="date" class="form-input" id="sess-filter-from" onchange="App.sessShowAll=false;loadSessions()">
         <span style="font-size:12.5px;color:var(--grey-600)">to</span>
-        <input type="date" class="form-input" id="sess-filter-to" onchange="loadSessions()">
+        <input type="date" class="form-input" id="sess-filter-to" onchange="App.sessShowAll=false;loadSessions()">
         <input class="form-input" id="sess-search" placeholder="🔍 Search by book / student name…" style="width:200px" oninput="renderSessionsTable()">
         <div style="flex:1"></div>
         <button class="btn btn-secondary btn-sm" onclick="loadSessions()">🔄 Refresh</button>
+        <button class="btn btn-secondary btn-sm" onclick="showAllSessions()">📂 Show all (slower)</button>
         <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
       </div>
+      <div style="font-size:11.5px;color:var(--grey-400);padding:0 4px 8px" id="sess-range-note"></div>
       <div style="overflow:auto">
         <table class="ld-table">
           <thead><tr>
@@ -217,7 +220,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
 <script src="ld-common.js"></script>
 <script>
-var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1 };
+var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, sessShowAll: false };
 var _loadingDepth = 0;
 function showLoading(msg) {
   _loadingDepth++;
@@ -328,14 +331,22 @@ async function toggleStudentStatus(studentId, curStatus) {
 }
 
 // ── SESSIONS DASHBOARD ──
+// GAS/Sheets reads the whole sheet on every call (no index) — the more rows + the more people
+// hitting it at once, the slower it gets. Default to the last 7 days (server also enforces this
+// as a fallback — see teacherGetAllSessions in Code.gs) so a normal visit to this tab stays fast;
+// "Show all" is an explicit opt-in for when a teacher really needs the full history.
 async function loadSessions() {
   var tbody = document.getElementById('sessions-tbody');
   tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
+  var fromDate = document.getElementById('sess-filter-from').value;
   var p = {
     classId: document.getElementById('sess-filter-class').value,
-    fromDate: document.getElementById('sess-filter-from').value,
-    toDate: document.getElementById('sess-filter-to').value
+    fromDate: fromDate,
+    toDate: document.getElementById('sess-filter-to').value,
+    showAll: App.sessShowAll
   };
+  document.getElementById('sess-range-note').textContent =
+    (!fromDate && !App.sessShowAll) ? 'Showing the last 7 days by default — pick a date range or "Show all" for older sessions.' : '';
   showLoading('Loading sessions…');
   var r;
   try { r = await LD.api('teacher.getAllSessions', p); }
@@ -344,6 +355,12 @@ async function loadSessions() {
   if (!r.success) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Error: ' + LD.esc(r.error) + '</td></tr>'; return; }
   App.sessions = r.data;
   renderSessionsTable();
+}
+function showAllSessions() {
+  App.sessShowAll = true;
+  document.getElementById('sess-filter-from').value = '';
+  document.getElementById('sess-filter-to').value = '';
+  loadSessions();
 }
 function renderSessionsTable() {
   var q = (document.getElementById('sess-search').value || '').toLowerCase();
@@ -474,6 +491,32 @@ function dtDictWordDiffHtml(actualWords, typedText) {
   }).join(' ');
   return { html: html, allOk: allOk };
 }
+// Was being called from openDetail() but never actually defined — the detail modal would sit on
+// "Loading…" forever and throw "renderDetailHeader is not defined" (ReferenceError) the moment
+// data came back, since the crash happened before any of the panes got a chance to render.
+// dt-meta/dt-stats markup + CSS classes already existed in the HTML (unused, empty divs) — this
+// just fills them in from DetailApp.data, same shape teacherGetSessionDetail() returns.
+function dtNumPct(v) { return (v === '' || v === null || v === undefined) ? '—' : (v + '%'); }
+function renderDetailHeader() {
+  var d = DetailApp.data;
+  document.getElementById('dt-title').textContent = (d.StudentName || 'Student') + ' — ' + (d.BookTestPart || 'Untitled session');
+  document.getElementById('dt-subtitle').textContent = [d.ClassName, LD.fmtDate(d.StartTime), d.DurationMin ? LD.fmtDuration(d.DurationMin) : ''].filter(Boolean).join(' · ');
+  document.getElementById('dt-meta').innerHTML = [
+    ['Student', (d.StudentName || '—') + (d.StudentID ? ' (' + d.StudentID + ')' : '')],
+    ['Class', d.ClassName || '—'],
+    ['Book/Test/Part', d.BookTestPart || '—'],
+    ['Started', d.StartTime ? LD.fmtDate(d.StartTime) : '—'],
+    ['Duration', d.DurationMin ? LD.fmtDuration(d.DurationMin) : '—']
+  ].map(function (kv) {
+    return '<div class="dt-meta-item"><div class="k">' + LD.esc(kv[0]) + '</div><div class="v">' + LD.esc(kv[1]) + '</div></div>';
+  }).join('');
+  document.getElementById('dt-stats').innerHTML = [
+    ['Quiz', dtNumPct(d.QuizScore)], ['Gap-fill', dtNumPct(d.GapFillScore)],
+    ['Dictation', dtNumPct(d.DictationAccuracy)], ['Total Score', dtNumPct(d.TotalScore)]
+  ].map(function (kv) {
+    return '<div class="dt-meta-item"><div class="k">' + LD.esc(kv[0]) + '</div><div class="v">' + LD.esc(kv[1]) + '</div></div>';
+  }).join('');
+}
 // Dictation now requires 100% correct to pass a sentence (mastery gating, same as Gap-fill/Quiz),
 // so the FINAL typed text is always correct once checked — showing only that would hide how the
 // student actually did. We show the first-attempt text (with errors highlighted) whenever it
@@ -551,7 +594,7 @@ function renderQuizDetail() {
 }
 function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSortDir : -1; App.sessSortKey = key; renderSessionsTable(); }
 async function exportCsv() {
-  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value };
+  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value, showAll: App.sessShowAll };
   showLoading('Preparing CSV…');
   try {
     var r = await LD.api('teacher.exportSessions', p);
