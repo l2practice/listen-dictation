@@ -1,609 +1,923 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Teacher Dashboard · LisDictation</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="ld-theme.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%231B7F5E'/%3E%3Ctext x='12' y='17' text-anchor='middle' font-size='13' font-weight='700' fill='%23fff' font-family='system-ui'%3EV%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#1B7F5E">
+<title>Teacher · VocabMaster</title>
+<link rel="stylesheet" href="vm-theme.css">
 <style>
-.topbar{background:linear-gradient(90deg,var(--black) 0%,var(--navy2) 45%,var(--red-dark) 100%);min-height:56px;display:flex;align-items:center;padding:8px 20px;gap:12px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--gold);flex-wrap:wrap}
-.topbar-brand{font-family:var(--font-display);color:var(--white);font-size:1rem;white-space:nowrap}
-.topbar-brand em{color:var(--red-mid);font-style:normal}
-.topbar-app{font-size:13px;color:rgba(255,255,255,.55)}
-.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.topbar-user{font-size:12.5px;color:var(--gold-light);font-weight:600}
-.topbar-btn{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,.85);font-size:12.5px;cursor:pointer;font-family:var(--font-body);font-weight:600}
-.topbar-btn:hover{background:rgba(255,255,255,.2);color:#fff}
-.wrap{width:100%;max-width:1280px;margin:0 auto;padding:22px 20px 60px}
-.tab-strip{display:flex;gap:4px;background:var(--grey-100);border-radius:12px;padding:4px;margin-bottom:18px;max-width:420px}
-.tab-strip-btn{flex:1;padding:9px;border:none;background:transparent;border-radius:9px;font-family:var(--font-body);font-size:13px;font-weight:700;color:var(--grey-600);cursor:pointer}
-.tab-strip-btn.active{background:#fff;color:var(--red);box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.card{background:var(--white);border-radius:var(--radius-lg);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--grey-200);margin-bottom:16px}
-.stat-num{font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--navy)}
-.stat-lbl{font-size:11px;font-weight:700;color:var(--grey-600);text-transform:uppercase;letter-spacing:.04em}
-.card-title{font-family:var(--font-display);font-size:1.05rem;color:var(--black);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer}
-.btn-primary{background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff}
-.btn-secondary{background:var(--grey-100);color:var(--grey-800);border:1.5px solid var(--grey-200)}
-.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.form-input,.form-select{padding:9px 12px;border:1.5px solid var(--grey-200);border-radius:var(--radius);font-family:var(--font-body);font-size:13.5px;outline:none}
-.form-input:focus,.form-select:focus{border-color:var(--red)}
-.form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
-.form-label{display:block;font-size:11px;font-weight:700;color:var(--grey-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-table.ld-table{width:100%;border-collapse:collapse;font-size:13px}
-table.ld-table th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--grey-600);letter-spacing:.05em;text-transform:uppercase;border-bottom:1.5px solid var(--grey-200);cursor:pointer;white-space:nowrap;user-select:none}
-table.ld-table th:hover{color:var(--red)}
-table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font-size:13px;white-space:nowrap}
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
-.badge-green{background:var(--green-light);color:var(--green)}
-.badge-grey{background:var(--grey-100);color:var(--grey-600)}
-.badge-gold{background:#fff3cc;color:#7a5800;font-family:var(--font-mono)}
-.class-card{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--grey-100)}
-.class-card:last-child{border-bottom:none}
-.hidden{display:none!important}
-.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-.spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
-#ld-loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.82);z-index:600;flex-direction:column;align-items:center;justify-content:center;gap:12px}
-#ld-loading-overlay.active{display:flex}
-#ld-loading-text{font-size:13.5px;font-weight:700;color:var(--navy)}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ── Session Detail overlay (dark theme) ── */
-#detail-overlay{position:fixed;inset:0;background:#0d1117;color:#e6edf3;z-index:500;overflow-y:auto;display:none}
-#detail-overlay.show{display:block}
-.dt-topbar{position:sticky;top:0;background:#161b22;border-bottom:1px solid #30363d;padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;z-index:2}
-.dt-topbar h2{font-family:var(--font-display);font-size:1.05rem;color:#fff;margin:0}
-.dt-topbar .dt-sub{font-size:12px;color:#8b949e}
-.dt-close{margin-left:auto;background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer}
-.dt-close:hover{background:#30363d}
-.dt-wrap{max-width:1000px;margin:0 auto;padding:20px 24px 60px}
-.dt-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
-.dt-meta-item{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:10px 14px}
-.dt-meta-item .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#8b949e;margin-bottom:3px}
-.dt-meta-item .v{font-size:13.5px;font-weight:700;color:#e6edf3}
-.dt-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px}
-.dt-stat-card{background:linear-gradient(135deg,#1c2128,#161b22);border:1px solid #30363d;border-radius:12px;padding:14px;text-align:center}
-.dt-stat-card .n{font-size:1.7rem;font-weight:800;color:#fff;font-family:var(--font-display)}
-.dt-stat-card .l{font-size:11px;color:#8b949e;margin-top:2px}
-.dt-tabs{display:flex;gap:4px;background:#161b22;border:1px solid #30363d;border-radius:11px;padding:4px;margin-bottom:16px;max-width:440px}
-.dt-tab-btn{flex:1;padding:9px;border:none;background:transparent;border-radius:8px;font-family:var(--font-body);font-size:12.5px;font-weight:700;color:#8b949e;cursor:pointer}
-.dt-tab-btn.active{background:#c8102e;color:#fff}
-.dt-pane{display:none}
-.dt-pane.active{display:block}
-.dt-sentence{background:#161b22;border:1px solid #30363d;border-left:3px solid #3b4453;border-radius:10px;padding:13px 16px;margin-bottom:10px}
-.dt-sentence.ok{border-left-color:#2ea043}
-.dt-sentence.bad{border-left-color:#c8102e}
-.dt-sentence .sn{font-size:10.5px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-.dt-sentence .target{font-size:12px;color:#8b949e;margin-bottom:6px;line-height:1.6}
-.dt-sentence .typed{font-size:14px;line-height:1.9}
-.dt-w-ok{color:#3fb950;font-weight:700}
-.dt-w-bad{background:#f85149;color:#0d1117;padding:1px 6px;border-radius:5px;font-weight:700}
-.dt-w-miss{color:#8b949e;font-weight:800;letter-spacing:2px;text-decoration:underline;text-decoration-color:#d29922;text-decoration-thickness:2.5px;text-underline-offset:3px}
-.dt-w-extra{color:#8b949e;text-decoration:line-through;text-decoration-color:#a970ff;text-decoration-thickness:2px;font-weight:700}
-.dt-blank{background:rgba(200,16,46,.18);border:1px solid #c8102e;border-radius:5px;padding:0 6px;color:#ff7b8a;font-weight:700}
-.dt-blank.correct{background:rgba(46,160,67,.18);border-color:#2ea043;color:#56d364}
-.dt-q{background:#161b22;border:1px solid #30363d;border-radius:11px;padding:14px 16px;margin-bottom:12px}
-.dt-q-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 9px;border-radius:100px;margin-bottom:8px}
-.dt-q-tag.content{background:rgba(200,16,46,.18);color:#ff7b8a}
-.dt-q-tag.vocab{background:rgba(20,158,140,.18);color:#4dd0c4}
-.dt-q-text{font-size:13.5px;font-weight:700;color:#e6edf3;margin-bottom:9px}
-.dt-opt{padding:7px 11px;border-radius:8px;font-size:13px;margin-bottom:5px;border:1px solid #30363d;color:#8b949e}
-.dt-opt.correct{border-color:#2ea043;background:rgba(46,160,67,.1);color:#56d364;font-weight:700}
-.dt-opt.chosen-wrong{border-color:#c8102e;background:rgba(200,16,46,.1);color:#f85149;font-weight:700}
-.dt-empty{color:#8b949e;font-size:13px;padding:30px;text-align:center}
+#app{min-height:100vh}
+/* Assign form */
+.asgn-section{background:var(--vm-surface);border:1px solid var(--vm-border-2);border-radius:var(--vm-r);padding:20px 22px;margin-bottom:16px}
+.asgn-section h3{font-family:var(--vm-font-display);font-size:1rem;font-weight:700;margin:0 0 14px;color:var(--vm-ink)}
+.asgn-section-dark{background:#0D2B1E;border-radius:var(--vm-r);padding:18px 20px;color:#fff;margin-bottom:16px}
+.asgn-section-dark h3{font-size:.88rem;font-weight:700;margin:0 0 6px;display:flex;align-items:center;gap:7px;color:#fff}
+.asgn-section-dark p{font-size:.76rem;color:#80DFAB;margin:0 0 14px}
+.vm-classes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:22px}
+.vm-class-card{background:var(--vm-surface);border:1.5px solid var(--vm-border-2);border-radius:var(--vm-r);padding:18px 20px;cursor:pointer;transition:border-color .14s,box-shadow .15s,transform .13s;box-shadow:var(--vm-shadow-sm)}
+.vm-class-card:hover{border-color:var(--vm-primary);box-shadow:var(--vm-shadow-lg);transform:translateY(-2px)}
+.vm-class-card.active{border-color:var(--vm-primary);background:var(--vm-primary-lt)}
+.vm-class-name{font-family:var(--vm-font-display);font-weight:700;font-size:.98rem;margin:0 0 4px}
+.vm-class-meta{font-size:.76rem;color:var(--vm-ink-3)}
+.vm-class-id{font-size:.7rem;font-weight:700;color:var(--vm-primary);background:var(--vm-primary-lt);padding:2px 8px;border-radius:10px;display:inline-block;margin-top:6px}
+/* Result table badge */
+.vm-period-note{font-size:.78rem;color:var(--vm-ink-3);margin-left:auto;display:flex;align-items:center;gap:8px}
+.vm-btn-sm{padding:7px 14px;font-size:.82rem}
+/* Loading overlay */
+.vm-overlay{position:fixed;inset:0;background:rgba(13,79,58,.55);z-index:8888;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.vm-overlay.show{display:flex}
+.vm-overlay .vm-spin{width:38px;height:38px;border-width:4px}
+.vm-overlay p{color:#fff;font-size:.95rem;font-weight:600;margin:0}
 </style>
 </head>
 <body>
-<div class="topbar">
-  <div class="topbar-brand">Language <em>Hub</em></div>
-  <div class="topbar-app">🎓 Teacher Dashboard · LisDictation</div>
-  <div class="topbar-right">
-    <span class="topbar-user" id="tb-user"></span>
-    <button class="topbar-btn" onclick="LD.session.logout()">Logout</button>
-  </div>
+<!-- Loading overlay -->
+<div class="vm-overlay" id="globalOverlay">
+  <span class="vm-spin"></span>
+  <p id="overlayMsg">Loading…</p>
 </div>
+<div id="app"></div>
 
-<div class="wrap">
-  <div class="tab-strip">
-    <button class="tab-strip-btn active" id="tab-btn-classes" onclick="switchTab('classes')">🏫 Classes</button>
-    <button class="tab-strip-btn" id="tab-btn-sessions" onclick="switchTab('sessions')">📊 Sessions</button>
-  </div>
+<!-- Create/Edit Assignment Modal -->
+<div class="vm-modal-bg" id="assignModal">
+  <div class="vm-modal" style="max-width:760px">
+    <button class="vm-modal-close" id="assignModalClose">✕</button>
+    <div class="vm-modal-title" id="assignModalTitle">📚 New Assignment</div>
 
-  <!-- ═══ CLASSES ═══ -->
-  <div id="tab-classes">
-    <div class="card">
-      <div class="card-title">➕ Create New Class</div>
-      <div class="form-row">
-        <div><label class="form-label">Class Name</label><input class="form-input" id="new-class-name" placeholder="e.g. DH21NA1"></div>
-        <div><label class="form-label">Academic Year</label><input class="form-input" id="new-class-year" placeholder="2025-2026" style="width:110px"></div>
-        <div><label class="form-label">Semester</label><input class="form-input" id="new-class-semester" placeholder="Sem 1" style="width:80px"></div>
-        <button class="btn btn-primary" id="btn-create-class" onclick="createClass()">Create Class</button>
+    <!-- Basic info -->
+    <div class="asgn-section">
+      <div class="vm-row" style="gap:14px;flex-wrap:wrap">
+        <div class="vm-field" style="flex:2;min-width:200px">
+          <label class="vm-label">Assignment Title <span style="color:var(--vm-danger)">*</span></label>
+          <input class="vm-input" id="af-title" placeholder="VD: Unit 5 – Environment Vocabulary">
+        </div>
+        <div class="vm-field" style="flex:1;min-width:140px">
+          <label class="vm-label">Mode <span style="color:var(--vm-danger)">*</span></label>
+          <select class="vm-input" id="af-mode">
+            <option value="homework">📝 Homework</option>
+            <option value="inclass">🖥️ In-class Review</option>
+          </select>
+        </div>
       </div>
-      <div id="new-class-result" style="margin-top:10px"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">🏫 Class List <button class="btn btn-secondary btn-sm" onclick="loadClasses()">🔄 Refresh</button></div>
-      <div id="classes-list">Loading…</div>
-    </div>
-
-    <div class="card hidden" id="roster-card">
-      <div class="card-title"><span id="roster-title">Students in Class</span><button class="btn btn-secondary btn-sm" onclick="document.getElementById('roster-card').classList.add('hidden')">✕ Close</button></div>
-      <div style="overflow:auto">
-        <table class="ld-table"><thead><tr><th>Student ID</th><th>Full Name</th><th>Email</th><th>Status</th><th></th></tr></thead>
-          <tbody id="roster-tbody"></tbody>
-        </table>
+      <div class="vm-row" style="gap:14px;flex-wrap:wrap">
+        <div class="vm-field" style="flex:1;min-width:160px">
+          <label class="vm-label">Assigned Class <span style="color:var(--vm-danger)">*</span></label>
+          <select class="vm-input" id="af-class"><option value="">-- select class --</option></select>
+        </div>
+        <div class="vm-field" style="flex:1;min-width:140px">
+          <label class="vm-label">Start Date</label>
+          <input class="vm-input" id="af-start" type="date">
+        </div>
+        <div class="vm-field" style="flex:1;min-width:140px">
+          <label class="vm-label">Deadline (leave blank = no limit)</label>
+          <input class="vm-input" id="af-deadline" type="date">
+        </div>
+      </div>
+      <div id="af-goals-wrap" class="vm-field">
+        <label class="vm-label">Required Perfect Scores (Goal)</label>
+        <input class="vm-input" id="af-goals" type="number" min="1" max="20" value="3" style="max-width:120px">
+        <p style="font-size:.76rem;color:var(--vm-ink-3);margin:4px 0 0">Students must achieve 100% this many times to complete the assignment.</p>
       </div>
     </div>
-  </div>
 
-  <!-- ═══ SESSIONS DASHBOARD ═══ -->
-  <div id="tab-sessions" class="hidden">
-    <div class="card" id="sess-stats-card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center;padding:14px 20px">
-      <div><div class="stat-num" id="stat-total">—</div><div class="stat-lbl">Sessions (filtered)</div></div>
-      <div><div class="stat-num" id="stat-completed">—</div><div class="stat-lbl">Completed</div></div>
-      <div><div class="stat-num" id="stat-inprogress">—</div><div class="stat-lbl">In progress</div></div>
-      <div><div class="stat-num" id="stat-avg-quiz">—</div><div class="stat-lbl">Avg Quiz</div></div>
-      <div><div class="stat-num" id="stat-avg-gapfill">—</div><div class="stat-lbl">Avg Gap-fill</div></div>
-      <div><div class="stat-num" id="stat-avg-dictation">—</div><div class="stat-lbl">Avg Dictation</div></div>
-      <div><div class="stat-num" id="stat-avg-total">—</div><div class="stat-lbl">Avg Total Score</div></div>
+    <!-- Reading passage -->
+    <div class="asgn-section">
+      <h3>📖 Reading Passage <span style="font-weight:400;font-size:.82rem;color:var(--vm-ink-3)">(optional — students read before the quiz)</span></h3>
+      <textarea class="vm-input" id="af-reading" rows="4" placeholder="Paste the reading passage here. Students read this before the vocabulary quiz…" style="resize:vertical;line-height:1.6"></textarea>
     </div>
-    <div class="card">
-      <div class="toolbar">
-        <select class="form-select" id="sess-filter-class" onchange="loadSessions()"><option value="">All classes</option></select>
-        <input type="date" class="form-input" id="sess-filter-from" onchange="App.sessShowAll=false;loadSessions()">
-        <span style="font-size:12.5px;color:var(--grey-600)">to</span>
-        <input type="date" class="form-input" id="sess-filter-to" onchange="App.sessShowAll=false;loadSessions()">
-        <input class="form-input" id="sess-search" placeholder="🔍 Search by book / student name…" style="width:200px" oninput="renderSessionsTable()">
-        <div style="flex:1"></div>
-        <button class="btn btn-secondary btn-sm" onclick="loadSessions()">🔄 Refresh</button>
-        <button class="btn btn-secondary btn-sm" onclick="showAllSessions()">📂 Show all (slower)</button>
-        <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
+
+    <!-- Target vocab -->
+    <div class="asgn-section">
+      <h3>📝 Target Vocabulary List <span style="font-weight:400;font-size:.82rem;color:var(--vm-ink-3)">(one word per line, or word = definition)</span></h3>
+      <textarea class="vm-input" id="af-vocab-raw" rows="5" placeholder="environment&#10;sustainable = able to be maintained long-term&#10;biodiversity&#10;conservation" style="resize:vertical;font-family:monospace;font-size:.88rem"></textarea>
+      <p style="font-size:.76rem;color:var(--vm-ink-3);margin:6px 0 0">After adding words, click <b>Analyse Vocabulary</b> to fill in IPA &amp; Vietnamese meanings.</p>
+    </div>
+
+    <!-- AI Analysis -->
+    <div class="asgn-section-dark">
+      <h3>🎓 AI Vocabulary Analysis</h3>
+      <p>AI will fill IPA &amp; Vietnamese for all words. Use your Gemini key (free) to process 100+ words.</p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <input id="af-gemini-key" type="password" placeholder="••••• (key saved)" style="flex:1;min-width:200px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:9px 12px;color:#fff;font-size:.88rem">
+        <button class="vm-btn" id="af-verify-key" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);padding:9px 16px;font-size:.84rem;border-radius:8px">✓ Verify</button>
       </div>
-      <div style="font-size:11.5px;color:var(--grey-400);padding:0 4px 8px" id="sess-range-note"></div>
-      <div style="overflow:auto">
-        <table class="ld-table">
+      <div id="af-key-status" style="font-size:.76rem;margin-bottom:12px;color:#80DFAB"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="vm-btn" id="af-analyze" style="background:#1B7F5E;color:#fff;border:1px solid #2DA67B">✨ Analyse Vocabulary</button>
+        <button class="vm-btn vm-btn-ghost" id="af-parse-only" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#ccc;font-size:.84rem">Parse only (no AI)</button>
+      </div>
+      <div id="af-ai-progress" style="margin-top:10px;font-size:.8rem;color:#80DFAB;display:none">
+        <span class="vm-spin" style="width:13px;height:13px;margin-right:6px"></span> Analysing vocabulary…
+      </div>
+    </div>
+
+    <!-- Vocab Table -->
+    <div class="asgn-section">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <h3 style="margin:0">📋 Vocabulary Table</h3>
+        <button class="vm-btn vm-btn-ghost vm-btn-sm" id="af-add-row">+ Add Row</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="vm-vocab-table" id="af-vocab-table">
           <thead><tr>
-            <th onclick="sessSort('bookTestPart')">Book/Test/Part</th>
-            <th onclick="sessSort('studentId')">Student ID</th>
-            <th onclick="sessSort('studentName')">Student Name</th>
-            <th onclick="sessSort('className')">Class</th>
-            <th onclick="sessSort('startTime')">Date</th>
-            <th onclick="sessSort('durationMin')">Duration</th>
-            <th onclick="sessSort('quizScore')">Quiz</th>
-            <th onclick="sessSort('gapFillScore')">Gap-fill</th>
-            <th onclick="sessSort('dictationAccuracy')">Dictation</th>
-            <th onclick="sessSort('totalScore')">Total Score</th>
-            <th>Detail</th>
+            <th style="min-width:130px">WORD</th>
+            <th style="min-width:100px">IPA</th>
+            <th style="min-width:200px">SYNONYMS / DEFINITION</th>
+            <th style="min-width:160px">VIETNAMESE</th>
+            <th style="width:36px"></th>
           </tr></thead>
-          <tbody id="sessions-tbody"></tbody>
+          <tbody id="af-vocab-tbody">
+            <tr id="af-vocab-empty"><td colspan="5" style="text-align:center;color:var(--vm-ink-3);padding:20px">Use AI Analysis or add rows manually.</td></tr>
+          </tbody>
         </table>
       </div>
-      <div id="sess-count" style="font-size:12px;color:var(--grey-400);margin-top:8px"></div>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px">
+      <button class="vm-btn vm-btn-ghost" id="assignCancel">Cancel</button>
+      <button class="vm-btn vm-btn-primary" id="assignSave">💾 Save Assignment</button>
     </div>
   </div>
 </div>
 
-<!-- ═══ SESSION DETAIL (dark overlay) ═══ -->
-<div id="detail-overlay">
-  <div class="dt-topbar">
-    <h2 id="dt-title">Session Detail</h2>
-    <span class="dt-sub" id="dt-subtitle"></span>
-    <button class="dt-close" onclick="closeDetail()">✕ Close</button>
-  </div>
-  <div class="dt-wrap">
-    <div class="dt-meta" id="dt-meta"></div>
-    <div class="dt-stats" id="dt-stats"></div>
-    <div class="dt-tabs" id="dt-tabs">
-      <button class="dt-tab-btn" id="dt-tab-btn-dictation" onclick="switchDetailTab('dictation')">🎧 Dictation</button>
-      <button class="dt-tab-btn" id="dt-tab-btn-gapfill" onclick="switchDetailTab('gapfill')">🧩 Gap-fill</button>
-      <button class="dt-tab-btn" id="dt-tab-btn-quiz" onclick="switchDetailTab('quiz')">📝 Quiz</button>
+<!-- Create Class Modal -->
+<div class="vm-modal-bg" id="classModal">
+  <div class="vm-modal" style="max-width:420px">
+    <button class="vm-modal-close" id="classModalClose">✕</button>
+    <div class="vm-modal-title">Create New Class</div>
+    <div class="vm-field">
+      <label class="vm-label">Class Name <span style="color:var(--vm-danger)">*</span></label>
+      <input class="vm-input" id="cls-name" placeholder="e.g. IELTS-A 2025-2026">
     </div>
-    <div class="dt-pane" id="dt-pane-dictation"></div>
-    <div class="dt-pane" id="dt-pane-gapfill"></div>
-    <div class="dt-pane" id="dt-pane-quiz"></div>
+    <div class="vm-row">
+      <div class="vm-field">
+        <label class="vm-label">Academic Year</label>
+        <input class="vm-input" id="cls-year" placeholder="2025-2026">
+      </div>
+      <div class="vm-field">
+        <label class="vm-label">Semester</label>
+        <input class="vm-input" id="cls-semester" placeholder="Semester 1">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="vm-btn vm-btn-ghost" id="classCancelBtn">Cancel</button>
+      <button class="vm-btn vm-btn-primary" id="classSaveBtn">Create Class</button>
+    </div>
   </div>
 </div>
 
-<!-- Global loading overlay — shown during any LD.api call so the teacher sees the app is
-     working and doesn't spam-click (which previously created several duplicate classes: each
-     click fired its own request with no visible feedback that the first one was still in
-     flight). Also physically blocks clicks underneath it (full-screen + high z-index). -->
-<div id="ld-loading-overlay">
-  <div class="spinner" style="width:34px;height:34px;border-width:4px"></div>
-  <div id="ld-loading-text">Loading…</div>
+<!-- View Roster Modal -->
+<div class="vm-modal-bg" id="rosterModal">
+  <div class="vm-modal" style="max-width:600px">
+    <button class="vm-modal-close" id="rosterClose">✕</button>
+    <div class="vm-modal-title" id="rosterTitle">Student Roster</div>
+    <div id="rosterContent"><div class="vm-empty"><p>Loading…</p></div></div>
+  </div>
 </div>
 
-<script src="ld-common.js"></script>
+<script src="vm-common.js"></script>
 <script>
-var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, sessShowAll: false };
-var _loadingDepth = 0;
-function showLoading(msg) {
-  _loadingDepth++;
-  document.getElementById('ld-loading-text').textContent = msg || 'Loading…';
-  document.getElementById('ld-loading-overlay').classList.add('active');
+if (typeof VM === 'undefined') { location.href='login.html'; throw new Error('no VM'); }
+
+var sess = VM.session.require('teacher');
+if (!sess) throw new Error('not teacher');
+
+// ── State ───────────────────────────────────────────────────────
+/*── Loading overlay ──*/
+function showOverlay(msg){
+  document.getElementById('overlayMsg').textContent=msg||'Loading…';
+  document.getElementById('globalOverlay').classList.add('show');
 }
-function hideLoading() {
-  _loadingDepth = Math.max(0, _loadingDepth - 1);
-  if (_loadingDepth === 0) document.getElementById('ld-loading-overlay').classList.remove('active');
+function hideOverlay(){ document.getElementById('globalOverlay').classList.remove('show'); }
+
+var state = {
+  classes: [],
+  assignments: [],
+  results: [],
+  resultsFull: false,
+  activeTab: 'overview',
+  filterClass: '',
+  filterMode: '',
+  filterSearch: '',
+  filterAssign: '',
+  sortCol: 'timestamp',
+  sortDir: 'desc',
+  editingAssignId: null,
+  vocabRows: [],      // [{word,ipa,synonyms,vi}]
+};
+
+// ── Navigation ───────────────────────────────────────────────────
+function navItems() {
+  return [
+    { id:'overview', label:'Overview',      icon:'overview' },
+    { id:'classes',  label:'Classes',       icon:'classes'  },
+    { id:'assign',   label:'Assignments',       icon:'assign'   },
+    { id:'results',  label:'Results',       icon:'results'  },
+  ];
 }
 
-(function init() {
-  var s = LD.session.require('Teacher');
-  if (!s) return;
-  document.getElementById('tb-user').textContent = '👤 ' + s.user.fullName;
-  loadClasses();
-})();
+VM.renderShell({
+  mount: 'app', eyebrow: 'VocabMaster', title: 'Overview',
+  user: sess,
+  nav: navItems().map(function(n){ return Object.assign({},n,{active:n.id===state.activeTab}); }),
+  onNav: function(id){ switchTab(id); }
+});
 
-function switchTab(tab) {
-  document.getElementById('tab-classes').classList.toggle('hidden', tab !== 'classes');
-  document.getElementById('tab-sessions').classList.toggle('hidden', tab !== 'sessions');
-  document.getElementById('tab-btn-classes').classList.toggle('active', tab === 'classes');
-  document.getElementById('tab-btn-sessions').classList.toggle('active', tab === 'sessions');
-  // Always refresh on switching into Sessions — previously this only loaded the FIRST time the
-  // tab was opened (guarded by "sessions still empty"), so a teacher who'd already visited it once
-  // kept seeing stale cached data on every later visit and never saw newly-finished Quiz/Gap-fill
-  // work until they happened to click Refresh manually.
-  if (tab === 'sessions') loadSessions();
+function switchTab(id) {
+  state.activeTab = id;
+  VM.setActiveNav(id);
+  var titles = { overview:'Overview', classes:'Classes', assign:'Assignments', results:'Results' };
+  VM.setTitle(titles[id] || id);
+  var content = document.getElementById('vmContent');
+  content.innerHTML = '<div class="vm-empty"><span class="vm-spin-dark" style="width:24px;height:24px;border-width:3px"></span></div>';
+  showOverlay('Loading…');
+  if (id === 'overview') renderOverview();
+  else if (id === 'classes')  renderClasses();
+  else if (id === 'assign')   renderAssignments();
+  else if (id === 'results')  renderResults(false);
 }
 
-// ── CLASSES ──
-async function createClass() {
-  var name = document.getElementById('new-class-name').value.trim();
-  if (!name) { LD.toast('Enter a class name.', 'err'); return; }
-  var btn = document.getElementById('btn-create-class');
-  // Disable the button IN ADDITION to the loading overlay — belt and suspenders against exactly
-  // the bug reported: with no visible feedback while the request was in flight, spam-clicking
-  // "Create Class" fired several separate requests and created multiple duplicate classes.
-  if (btn) { btn.disabled = true; btn.dataset.origText = btn.textContent; btn.textContent = 'Creating…'; }
-  showLoading('Creating class…');
-  try {
-    var r = await LD.api('teacher.createClass', {
-      className: name, academicYear: document.getElementById('new-class-year').value.trim(), semester: document.getElementById('new-class-semester').value.trim()
+// ── Load data ─────────────────────────────────────────────────────
+function loadClasses(cb) {
+  VM.api('class.list', { teacherEmail: sess.email }).then(function(res) {
+    if (res && res.success) state.classes = res.data || [];
+    if (cb) cb();
+  });
+}
+
+function loadAssignments(cb) {
+  var cids = state.classes.map(function(c){ return c.classId; });
+  if (!cids.length) { state.assignments = []; if(cb) cb(); return; }
+  VM.api('assign.list', { classIds: cids }).then(function(res) {
+    if (res && res.success) state.assignments = res.data || [];
+    if (cb) cb();
+  });
+}
+
+function loadResults(full, cb) {
+  var cids = state.classes.map(function(c){ return c.classId; });
+  if (!cids.length) { state.results = []; if(cb) cb(); return; }
+  VM.api('result.getForTeacher', { classIds: cids, full: full }).then(function(res) {
+    if (res && res.success) { state.results = res.data || []; state.resultsFull = full; }
+    if (cb) cb();
+  });
+}
+
+// ── Overview ──────────────────────────────────────────────────────
+function renderOverview() {
+  loadClasses(function() {
+    loadAssignments(function() {
+      loadResults(false, function() {
+        hideOverlay();
+        var content = document.getElementById('vmContent');
+        var totalStu = 0; // estimate from results
+        var stuSet = {};
+        state.results.forEach(function(r){ stuSet[r.studentId]=1; });
+        totalStu = Object.keys(stuSet).length;
+
+        var hwCount = state.assignments.filter(function(a){ return a.mode==='homework'; }).length;
+        var icCount = state.assignments.filter(function(a){ return a.mode==='inclass'; }).length;
+
+        content.innerHTML =
+          '<div id="vmTodaysWord"></div>' +
+          '<div class="vm-kpi-row">' +
+            kpi(state.classes.length,'Classes','') +
+            kpi(hwCount,'Homework','open') +
+            kpi(icCount,'In-class','open') +
+            kpi(totalStu,'Students','active (14 days)') +
+          '</div>' +
+          '<div style="display:flex;gap:12px;margin-bottom:16px">' +
+            '<button class="vm-btn vm-btn-primary" id="ovNewHw">+ New Homework</button>' +
+            '<button class="vm-btn vm-btn-ghost" id="ovNewIc">+ New In-class</button>' +
+            '<button class="vm-btn vm-btn-ghost" id="ovNewCls">+ New Class</button>' +
+          '</div>' +
+          recentResultsTable();
+
+        VM.renderTodaysWord('vmTodaysWord');
+        document.getElementById('ovNewHw').onclick = function(){ openAssignModal(null,'homework'); };
+        document.getElementById('ovNewIc').onclick = function(){ openAssignModal(null,'inclass'); };
+        document.getElementById('ovNewCls').onclick = openClassModal;
+      });
     });
-    if (!r.success) { LD.toast(r.error || 'Could not create the class', 'err'); return; }
-    document.getElementById('new-class-result').innerHTML = '✅ Created class <b>' + LD.esc(r.className) + '</b> — class code: <span class="badge badge-gold">' + r.classId + '</span> (share this code with students so they can register)';
-    document.getElementById('new-class-name').value = ''; document.getElementById('new-class-year').value = ''; document.getElementById('new-class-semester').value = '';
-    loadClasses();
-  } catch (e) {
-    LD.toast('Network error: ' + e.message, 'err');
-  } finally {
-    hideLoading();
-    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.origText || 'Create Class'; }
+  });
+}
+
+function kpi(val, label, sub) {
+  return '<div class="vm-kpi"><div class="vm-kpi-label">'+VM.esc(label)+'</div>' +
+         '<div class="vm-kpi-value">'+VM.esc(String(val))+'</div>' +
+         (sub?'<div class="vm-kpi-sub">'+VM.esc(sub)+'</div>':'') + '</div>';
+}
+
+function recentResultsTable() {
+  var rows = state.results.slice(0,10);
+  if (!rows.length) return '<div class="vm-empty"><p>No results yet.</p></div>';
+  return '<div class="vm-table-wrap">' +
+    '<table class="vm-table"><thead><tr>' +
+    '<th>Time</th><th>Student</th><th>Class</th><th>Assignment</th><th>Score</th>' +
+    '</tr></thead><tbody>' +
+    rows.map(function(r){
+      return '<tr><td>'+VM.esc(VM.fmtDate(r.timestamp))+'</td>' +
+             '<td>'+VM.esc(r.name)+'<br><small style="color:var(--vm-ink-3)">'+VM.esc(r.studentId)+'</small></td>' +
+             '<td>'+VM.esc(r.class)+'</td>' +
+             '<td>'+VM.esc(r.title||r.assignmentId)+'</td>' +
+             '<td class="vm-score '+scoreClass(r.score)+'">'+r.score+'%</td></tr>';
+    }).join('') +
+    '</tbody></table></div>';
+}
+
+function scoreClass(s){ return s>=90?'vm-score-hi':(s>=60?'vm-score-mid':'vm-score-lo'); }
+
+// ── Classes tab ───────────────────────────────────────────────────
+function renderClasses() {
+  loadClasses(function() {
+    hideOverlay();
+    var content = document.getElementById('vmContent');
+    var html =
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">' +
+        '<h2 style="margin:0;font-size:1.1rem">My Classes</h2>' +
+        '<button class="vm-btn vm-btn-primary vm-btn-sm" id="newClassBtn">+ Create New Class</button>' +
+      '</div>';
+
+    if (!state.classes.length) {
+      html += '<div class="vm-empty"><p>No classes yet. Click + New Class to get started.</p></div>';
+    } else {
+      html += '<div class="vm-classes-grid">' +
+        state.classes.map(function(c) {
+          return '<div class="vm-class-card" data-cls="'+VM.esc(c.classId)+'">' +
+            '<div class="vm-class-name">'+VM.esc(c.className)+'</div>' +
+            '<div class="vm-class-meta">'+(c.year?c.year:'')+(c.semester?' · '+c.semester:'')+'</div>' +
+            '<div class="vm-class-id">'+VM.esc(c.classId)+'</div>' +
+            '<div style="margin-top:10px;display:flex;gap:8px">' +
+              '<button class="vm-btn vm-btn-ghost vm-btn-sm" data-roster="'+VM.esc(c.classId)+'">Roster</button>' +
+              '<button class="vm-btn vm-btn-ghost vm-btn-sm" data-archive-cls="'+VM.esc(c.classId)+'">Archive</button>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>';
+    }
+    content.innerHTML = html;
+
+    document.getElementById('newClassBtn').onclick = openClassModal;
+    VM.els('[data-roster]').forEach(function(btn){
+      btn.onclick = function(){ openRoster(btn.getAttribute('data-roster')); };
+    });
+    VM.els('[data-archive-cls]').forEach(function(btn){
+      btn.onclick = function(){
+        var cid = btn.getAttribute('data-archive-cls');
+        if (!confirm('Archive this class? Assignments and results will be kept.')) return;
+        VM.api('class.archive',{classId:cid}).then(function(res){
+          if(res&&res.success){VM.toast('Class archived.','ok');renderClasses();}
+          else VM.toast('Error: '+(res&&res.error),'err');
+        });
+      };
+    });
+  });
+}
+
+function openClassModal() {
+  document.getElementById('cls-name').value = '';
+  document.getElementById('cls-year').value = '';
+  document.getElementById('cls-semester').value = '';
+  document.getElementById('classModal').classList.add('show');
+}
+document.getElementById('classModalClose').onclick = function(){ document.getElementById('classModal').classList.remove('show'); };
+document.getElementById('classCancelBtn').onclick  = function(){ document.getElementById('classModal').classList.remove('show'); };
+document.getElementById('classSaveBtn').onclick = function(){
+  var name = (document.getElementById('cls-name').value||'').trim();
+  if (!name) { VM.toast('Enter class name.','err'); return; }
+  VM.api('class.create',{
+    className:name, year:document.getElementById('cls-year').value.trim(),
+    semester:document.getElementById('cls-semester').value.trim(),
+    teacherEmail:sess.email
+  }).then(function(res){
+    if(res&&res.success){
+      VM.toast('Class created: '+res.data.classId,'ok');
+      document.getElementById('classModal').classList.remove('show');
+      loadClasses(function(){renderClasses();});
+    } else VM.toast('Error: '+(res&&res.error),'err',4000);
+  });
+};
+
+function openRoster(classId) {
+  document.getElementById('rosterTitle').textContent = 'Roster — ' + classId;
+  document.getElementById('rosterContent').innerHTML = '<div class="vm-empty"><p>Loading…</p></div>';
+  document.getElementById('rosterModal').classList.add('show');
+  VM.api('class.roster',{classId:classId}).then(function(res){
+    if (!res || !res.success || !res.data.length) {
+      document.getElementById('rosterContent').innerHTML = '<div class="vm-empty"><p>No students in this class yet.</p></div>';
+      return;
+    }
+    document.getElementById('rosterContent').innerHTML =
+      '<div class="vm-table-wrap"><table class="vm-table"><thead><tr>' +
+      '<th>Student ID</th><th>Name</th><th>Email</th><th></th>' +
+      '</tr></thead><tbody>' +
+      res.data.map(function(s){
+        return '<tr><td>'+VM.esc(s.studentId)+'</td><td>'+VM.esc(s.name)+'</td>' +
+               '<td>'+VM.esc(s.class||'—')+'</td>'+
+               '<td>'+VM.esc(s.email||'—')+'</td>' +
+               '<td style="white-space:nowrap">'+
+               '<button class="vm-btn vm-btn-ghost vm-btn-sm" style="margin-right:4px" data-editstu="'+VM.esc(s.studentId)+'|'+VM.esc(s.name)+'|'+VM.esc(s.class||'')+'|'+VM.esc(s.email||'')+'">Edit</button>'+
+               '<button class="vm-btn vm-btn-danger vm-btn-sm" data-rmstu="'+VM.esc(s.studentId)+'">Remove</button></td></tr>';
+      }).join('') + '</tbody></table></div>';
+    VM.els('[data-editstu]').forEach(function(btn){
+      btn.onclick = function(){
+        var parts = btn.getAttribute('data-editstu').split('|');
+        var sid=parts[0], sname=parts[1], scls=parts[2], semail=parts[3];
+        var newName = prompt('Name:', sname); if(newName===null) return;
+        var newClass = prompt('Class ID:', scls); if(newClass===null) return;
+        var newEmail = prompt('Email:', semail); if(newEmail===null) return;
+        showOverlay('Updating student…');
+        VM.api('student.update',{studentId:sid, name:newName.trim(), class:newClass.trim().toUpperCase(), email:newEmail.trim()}).then(function(r){
+          hideOverlay();
+          if(r&&r.success){VM.toast('Updated.','ok');openRoster(classId);}
+          else VM.toast('Error: '+(r&&r.error),'err');
+        }).catch(function(){hideOverlay();VM.toast('Connection error.','err');});
+      };
+    });
+    VM.els('[data-rmstu]').forEach(function(btn){
+      btn.onclick = function(){
+        if(!confirm('Remove student '+btn.getAttribute('data-rmstu')+' from the system?')) return;
+        showOverlay('Removing student…');
+        VM.api('student.archive',{studentId:btn.getAttribute('data-rmstu')}).then(function(r){
+          hideOverlay();
+          if(r&&r.success){VM.toast('Removed.','ok');openRoster(classId);}
+          else VM.toast('Error.','err');
+        }).catch(function(){hideOverlay();VM.toast('Connection error.','err');});
+      };
+    });
+  });
+}
+document.getElementById('rosterClose').onclick = function(){ document.getElementById('rosterModal').classList.remove('show'); };
+
+// ── Assignments tab ────────────────────────────────────────────────
+function renderAssignments() {
+  loadClasses(function(){
+    loadAssignments(function(){
+      hideOverlay();
+      var content = document.getElementById('vmContent');
+      var html =
+        '<div class="vm-toolbar">' +
+          '<div class="vm-search">'+VM.icon('search')+'<input id="aFilter" placeholder="Search assignments…"></div>' +
+          '<select class="vm-select" id="aClass"><option value="">All classes</option>' +
+            state.classes.map(function(c){return '<option value="'+VM.esc(c.classId)+'">'+VM.esc(c.className)+'</option>';}).join('') +
+          '</select>' +
+          '<select class="vm-select" id="aMode"><option value="">All modes</option>' +
+            '<option value="homework">Homework</option><option value="inclass">In-class</option>' +
+          '</select>' +
+          '<button class="vm-btn vm-btn-primary" id="newAssignBtn">+ New Assignment</button>' +
+        '</div>' +
+        '<div id="assignList"></div>';
+      content.innerHTML = html;
+
+      document.getElementById('newAssignBtn').onclick = function(){ openAssignModal(null,'homework'); };
+      document.getElementById('aFilter').oninput = renderAssignList;
+      document.getElementById('aClass').onchange = renderAssignList;
+      document.getElementById('aMode').onchange  = renderAssignList;
+      renderAssignList();
+    });
+  });
+}
+
+function renderAssignList() {
+  var q   = (document.getElementById('aFilter')||{}).value||'';
+  var cls = (document.getElementById('aClass')||{}).value||'';
+  var mode= (document.getElementById('aMode')||{}).value||'';
+  var filtered = state.assignments.filter(function(a){
+    if(cls && a.classId!==cls) return false;
+    if(mode && a.mode!==mode) return false;
+    if(q && (a.title||'').toLowerCase().indexOf(q.toLowerCase())<0) return false;
+    return true;
+  });
+  var box = document.getElementById('assignList');
+  if (!filtered.length) { box.innerHTML='<div class="vm-empty"><p>No assignments found.</p></div>'; return; }
+
+  box.innerHTML = '<div class="vm-table-wrap"><table class="vm-table"><thead><tr>' +
+    '<th>Title</th><th>Class</th><th>Mode</th><th>Deadline</th><th>Goal</th><th>Words</th><th>Action</th>' +
+    '</tr></thead><tbody>' +
+    filtered.map(function(a){
+      var modeLabel = a.mode==='homework'?'📝 Homework':'🖥️ In-class';
+      return '<tr>' +
+        '<td><b>'+VM.esc(a.title)+'</b></td>' +
+        '<td>'+VM.esc(a.classId)+'</td>' +
+        '<td>'+modeLabel+'</td>' +
+        '<td>'+(a.deadline?VM.esc(a.deadline):'∞')+'</td>' +
+        '<td>'+(a.mode==='homework'?a.requiredGoals:'—')+'</td>' +
+        '<td>'+(a.vocab?a.vocab.length:0)+'</td>' +
+        '<td>' +
+          '<button class="vm-btn vm-btn-ghost vm-btn-sm" data-edit-asgn="'+VM.esc(a.assignmentId)+'">Edit</button> ' +
+          '<button class="vm-btn vm-btn-danger vm-btn-sm" data-del-asgn="'+VM.esc(a.assignmentId)+'">Delete</button>' +
+        '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+
+  VM.els('[data-edit-asgn]').forEach(function(btn){
+    btn.onclick = function(){ var a=state.assignments.find(function(x){return x.assignmentId===btn.getAttribute('data-edit-asgn');}); if(a) openAssignModal(a); };
+  });
+  VM.els('[data-del-asgn]').forEach(function(btn){
+    btn.onclick = function(){
+      if(!confirm('Delete this assignment?')) return;
+      VM.api('assign.delete',{assignmentId:btn.getAttribute('data-del-asgn')}).then(function(r){
+        if(r&&r.success){VM.toast('Deleted.','ok');loadAssignments(renderAssignList);}
+        else VM.toast('Error.','err');
+      });
+    };
+  });
+}
+
+// ── Assignment Modal ───────────────────────────────────────────────
+function populateClassSelect() {
+  var sel = document.getElementById('af-class');
+  sel.innerHTML = '<option value="">-- select class --</option>' +
+    state.classes.map(function(c){
+      return '<option value="'+VM.esc(c.classId)+'">'+VM.esc(c.className)+' ('+VM.esc(c.classId)+')</option>';
+    }).join('');
+}
+
+function openAssignModal(asgn, defaultMode) {
+  state.editingAssignId = asgn ? asgn.assignmentId : null;
+  state.vocabRows = [];
+  document.getElementById('assignModalTitle').textContent = asgn ? '✏️ Edit Assignment' : '📚 New Assignment';
+
+  if (!state.classes.length) {
+    loadClasses(function(){ populateClassSelect(); });
+  } else { populateClassSelect(); }
+
+  document.getElementById('af-title').value    = asgn ? (asgn.title||'') : '';
+  document.getElementById('af-mode').value     = asgn ? (asgn.mode||'homework') : (defaultMode||'homework');
+  document.getElementById('af-class').value    = asgn ? (asgn.classId||'') : '';
+  document.getElementById('af-deadline').value = asgn ? (asgn.deadline||'').slice(0,10) : '';
+  document.getElementById('af-goals').value    = asgn ? (asgn.requiredGoals||3) : 3;
+  document.getElementById('af-reading').value  = asgn ? (asgn.reading||'') : '';
+
+  // Load vocab into raw textarea + table
+  if (asgn && asgn.vocab && asgn.vocab.length) {
+    state.vocabRows = asgn.vocab.slice();
+    document.getElementById('af-vocab-raw').value = asgn.vocab.map(function(v){
+      return v.word + (v.synonyms && v.synonyms.length ? ' = ' + v.synonyms.join(', ') : '');
+    }).join('\n');
+    renderVocabTable();
+  } else {
+    state.vocabRows = [];
+    document.getElementById('af-vocab-raw').value = '';
+    renderVocabTable();
   }
-}
-async function loadClasses() {
-  var el = document.getElementById('classes-list');
-  el.innerHTML = '<span class="spinner"></span> Loading…';
-  showLoading('Loading classes…');
-  var r;
-  try { r = await LD.api('teacher.getClasses', {}); }
-  catch (e) { el.innerHTML = '<span style="color:var(--red)">Network error: ' + LD.esc(e.message) + '</span>'; hideLoading(); return; }
-  hideLoading();
-  if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(r.error) + '</span>'; return; }
-  App.classes = r.data;
-  var filterSel = document.getElementById('sess-filter-class');
-  filterSel.innerHTML = '<option value="">All classes</option>' + r.data.map(function (c) { return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>'; }).join('');
-  el.innerHTML = r.data.length ? r.data.map(function (c) {
-    return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-gold">' + c.ClassID + '</span> ' +
-      '<span class="badge ' + (c.Status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + c.Status + '</span>' +
-      '<div style="font-size:11.5px;color:var(--grey-600);margin-top:2px">' + (c.AcademicYear || '') + ' ' + (c.Semester || '') + ' · ' + c.StudentCount + ' students</div></div>' +
-      '<div style="display:flex;gap:6px">' +
-      '<button class="btn btn-secondary btn-sm" onclick="viewRoster(\'' + c.ClassID + '\',\'' + LD.esc(c.ClassName).replace(/'/g, "\\'") + '\')">👥 Roster</button>' +
-      '<button class="btn btn-secondary btn-sm" onclick="toggleClassStatus(\'' + c.ClassID + '\',\'' + c.Status + '\')">' + (c.Status === 'Active' ? '🔒 Lock' : '🔓 Reopen') + '</button>' +
-      '</div></div>';
-  }).join('') : '<p style="color:var(--grey-600);font-size:13px">No classes yet.</p>';
-}
-async function toggleClassStatus(classId, curStatus) {
-  var newStatus = curStatus === 'Active' ? 'Archived' : 'Active';
-  showLoading(newStatus === 'Archived' ? 'Locking class…' : 'Reopening class…');
-  try {
-    var r = await LD.api('teacher.setClassStatus', { classId: classId, status: newStatus });
-    if (r.success) loadClasses(); else LD.toast(r.error || 'Error', 'err');
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
-}
-async function viewRoster(classId, className) {
-  document.getElementById('roster-title').textContent = '👥 Students in ' + className;
-  document.getElementById('roster-card').classList.remove('hidden');
-  document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
-  showLoading('Loading roster…');
-  var r;
-  try { r = await LD.api('teacher.getRoster', { classId: classId }); }
-  catch (e) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--red)">Network error</td></tr>'; hideLoading(); return; }
-  hideLoading();
-  if (!r.success) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--red)">Error</td></tr>'; return; }
-  document.getElementById('roster-tbody').innerHTML = r.data.length ? r.data.map(function (s) {
-    return '<tr><td>' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td><td>' + LD.esc(s.email) + '</td>' +
-      '<td><span class="badge ' + (s.status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + s.status + '</span></td>' +
-      '<td><button class="btn btn-secondary btn-sm" onclick="toggleStudentStatus(\'' + s.studentId + '\',\'' + s.status + '\')">' + (s.status === 'Active' ? 'Lock' : 'Reopen') + '</button></td></tr>';
-  }).join('') : '<tr><td colspan="5" style="color:var(--grey-600)">No students in this class yet.</td></tr>';
-}
-async function toggleStudentStatus(studentId, curStatus) {
-  showLoading('Updating…');
-  try {
-    var r = await LD.api('teacher.archiveStudent', { studentId: studentId, archived: curStatus === 'Active' });
-    if (r.success) { LD.toast('Updated', 'ok'); loadClasses(); } else LD.toast(r.error || 'Error', 'err');
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
+
+  // Restore saved Gemini key
+  var savedKey = VM.geminiKey.get();
+  document.getElementById('af-gemini-key').value = savedKey ? '••••• (key saved)' : '';
+  document.getElementById('af-key-status').textContent = savedKey ? '✅ Gemini key active — will process ALL words' : '';
+
+  toggleGoalsField();
+  document.getElementById('af-mode').onchange = toggleGoalsField;
+  document.getElementById('assignModal').classList.add('show');
 }
 
-// ── SESSIONS DASHBOARD ──
-// GAS/Sheets reads the whole sheet on every call (no index) — the more rows + the more people
-// hitting it at once, the slower it gets. Default to the last 7 days (server also enforces this
-// as a fallback — see teacherGetAllSessions in Code.gs) so a normal visit to this tab stays fast;
-// "Show all" is an explicit opt-in for when a teacher really needs the full history.
-async function loadSessions() {
-  var tbody = document.getElementById('sessions-tbody');
-  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
-  var fromDate = document.getElementById('sess-filter-from').value;
-  var p = {
-    classId: document.getElementById('sess-filter-class').value,
-    fromDate: fromDate,
-    toDate: document.getElementById('sess-filter-to').value,
-    showAll: App.sessShowAll
-  };
-  document.getElementById('sess-range-note').textContent =
-    (!fromDate && !App.sessShowAll) ? 'Showing the last 7 days by default — pick a date range or "Show all" for older sessions.' : '';
-  showLoading('Loading sessions…');
-  var r;
-  try { r = await LD.api('teacher.getAllSessions', p); }
-  catch (e) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Network error: ' + LD.esc(e.message) + '</td></tr>'; hideLoading(); return; }
-  hideLoading();
-  if (!r.success) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Error: ' + LD.esc(r.error) + '</td></tr>'; return; }
-  App.sessions = r.data;
-  renderSessionsTable();
-}
-function showAllSessions() {
-  App.sessShowAll = true;
-  document.getElementById('sess-filter-from').value = '';
-  document.getElementById('sess-filter-to').value = '';
-  loadSessions();
-}
-function renderSessionsTable() {
-  var q = (document.getElementById('sess-search').value || '').toLowerCase();
-  var rows = App.sessions.filter(function (r) {
-    return !q || String(r.bookTestPart || '').toLowerCase().indexOf(q) >= 0 || String(r.studentName || '').toLowerCase().indexOf(q) >= 0 || String(r.studentId || '').toLowerCase().indexOf(q) >= 0;
-  });
-  rows.sort(function (a, b) { var x = a[App.sessSortKey], y = b[App.sessSortKey]; return x > y ? App.sessSortDir : x < y ? -App.sessSortDir : 0; });
-  document.getElementById('sessions-tbody').innerHTML = rows.length ? rows.map(function (r) {
-    return '<tr><td>' + LD.esc(r.bookTestPart || '—') + '</td><td>' + LD.esc(r.studentId || '—') + '</td><td>' + LD.esc(r.studentName) + '</td><td>' + LD.esc(r.className) + '</td>' +
-      '<td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
-      '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
-      '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td>' +
-      '<td><button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + r.sessionId + '\')">🔍 Detail</button></td></tr>';
-  }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">No sessions found.</td></tr>';
-  document.getElementById('sess-count').textContent = rows.length + ' session(s)';
-  renderSessStats(rows);
-}
-// Summary stats over whatever rows are currently visible (respects the class/date filters AND
-// the search box), so a teacher can see class-wide performance at a glance instead of scanning
-// every row by hand.
-function renderSessStats(rows) {
-  var completed = rows.filter(function (r) { return r.dictationAccuracy != null; }).length;
-  var avg = function (key) {
-    var vals = rows.map(function (r) { return r[key]; }).filter(function (v) { return v != null; });
-    return vals.length ? Math.round(vals.reduce(function (a, b) { return a + Number(b); }, 0) / vals.length) + '%' : '—';
-  };
-  document.getElementById('stat-total').textContent = rows.length;
-  document.getElementById('stat-completed').textContent = completed;
-  document.getElementById('stat-inprogress').textContent = rows.length - completed;
-  document.getElementById('stat-avg-quiz').textContent = avg('quizScore');
-  document.getElementById('stat-avg-gapfill').textContent = avg('gapFillScore');
-  document.getElementById('stat-avg-dictation').textContent = avg('dictationAccuracy');
-  document.getElementById('stat-avg-total').textContent = avg('totalScore');
+function toggleGoalsField(){
+  var isHw = document.getElementById('af-mode').value === 'homework';
+  document.getElementById('af-goals-wrap').style.display = isHw ? '' : 'none';
 }
 
-// ── SESSION DETAIL ──
-var DetailApp = { data: null, activeTab: 'dictation' };
-async function openDetail(sessionId) {
-  document.getElementById('detail-overlay').classList.add('show');
-  document.getElementById('dt-title').textContent = 'Session Detail';
-  document.getElementById('dt-subtitle').textContent = 'Loading…';
-  document.getElementById('dt-meta').innerHTML = '';
-  document.getElementById('dt-stats').innerHTML = '';
-  ['dictation', 'gapfill', 'quiz'].forEach(function (t) { document.getElementById('dt-pane-' + t).innerHTML = ''; });
-  showLoading('Loading session detail…');
-  var r;
-  try { r = await LD.api('teacher.getSessionDetail', { sessionId: sessionId }); }
-  catch (e) { document.getElementById('dt-subtitle').textContent = 'Network error: ' + e.message; hideLoading(); return; }
-  hideLoading();
-  if (!r.success) { document.getElementById('dt-subtitle').textContent = 'Error: ' + (r.error || ''); return; }
-  DetailApp.data = r.data;
-  renderDetailHeader();
-  renderDictationDetail();
-  renderGapFillDetail();
-  renderQuizDetail();
-  var d = r.data;
-  var defaultTab = d.DictationJSON ? 'dictation' : (d.GapFillJSON ? 'gapfill' : 'quiz');
-  switchDetailTab(defaultTab);
-}
-function closeDetail() { document.getElementById('detail-overlay').classList.remove('show'); }
-function switchDetailTab(tab) {
-  DetailApp.activeTab = tab;
-  ['dictation', 'gapfill', 'quiz'].forEach(function (t) {
-    document.getElementById('dt-tab-btn-' + t).classList.toggle('active', t === tab);
-    document.getElementById('dt-pane-' + t).classList.toggle('active', t === tab);
+document.getElementById('assignModalClose').onclick = closeAssignModal;
+document.getElementById('assignCancel').onclick     = closeAssignModal;
+function closeAssignModal(){ document.getElementById('assignModal').classList.remove('show'); }
+
+// Gemini key verify
+document.getElementById('af-verify-key').onclick = function(){
+  var raw = document.getElementById('af-gemini-key').value.trim();
+  if (!raw || raw === '••••• (key saved)') { VM.toast('Enter API key.','warn'); return; }
+  VM.geminiKey.set(raw);
+  document.getElementById('af-key-status').textContent = '⏳ Verifying…';
+  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+encodeURIComponent(raw),{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:'Say "ok" only'}]}],generationConfig:{maxOutputTokens:5}})
+  }).then(function(r){return r.json();}).then(function(){
+    document.getElementById('af-key-status').textContent='✅ Gemini key active — will process ALL words';
+    VM.toast('Key verified!','ok');
+  }).catch(function(){
+    document.getElementById('af-key-status').textContent='❌ Invalid key.';
+    VM.toast('Invalid key.','err');
   });
-}
-function dtWc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
-// Older AI-corrected scripts may still have typographic curly quotes (’ “ ”) baked in from before
-// this was normalized at the source — normalize here too so the teacher's diff view doesn't show
-// false mismatches for sessions analyzed before that fix.
-function normalizeQuotes(s) {
-  return String(s || '')
-    .normalize('NFC')
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')
-    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
-    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
-    .replace(/[\u2013\u2014\u2212\u2011]/g, '-')
-    .replace(/\u2026/g, '')
-    .replace(/\u00A0/g, ' ');
-}
-// Same alignment approach as the student view (see wordAlign() in student.html): plain positional
-// comparison makes a single inserted/dropped word cascade into "wrong" for everything after it,
-// which is both a misleading picture for the teacher and doesn't match what the student actually
-// saw. Aligning first isolates the real mistake. This also fixes a second, separate bug — the old
-// version always rendered the TARGET word (just colored), never the student's actual wrong input,
-// so a teacher couldn't tell what the student typed, only that it was wrong.
-function dtWordAlign(actualWords, typedWords) {
-  var n = actualWords.length, m = typedWords.length;
-  var dp = []; for (var i = 0; i <= n; i++) dp.push(new Array(m + 1).fill(0));
-  for (i = 0; i <= n; i++) dp[i][0] = i;
-  for (var j = 0; j <= m; j++) dp[0][j] = j;
-  for (i = 1; i <= n; i++) {
-    for (j = 1; j <= m; j++) {
-      var same = actualWords[i - 1].toLowerCase() === typedWords[j - 1].toLowerCase();
-      dp[i][j] = same ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+};
+
+// Parse only (no AI) — reuse analyzeVocab's client-side parse, skip AI step
+document.getElementById('af-parse-only').onclick = function(){
+  var raw = document.getElementById('af-vocab-raw').value;
+  if (!raw.trim()) { VM.toast('Enter word list first.','warn'); return; }
+  // Use a fake key so analyzeVocab parses client-side, then AI batch will fail gracefully
+  // Better: call with null key to skip AI entirely
+  var lines = raw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  var rows = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].replace(/^\d+[\.)\s]+/, '').replace(/^[-\u2022\u2013\u2014*]\s*/, '').trim();
+    if (!line) continue;
+    var word='', syn='';
+    var eqIdx=line.indexOf('='), colIdx=line.indexOf(':');
+    var splitIdx=-1;
+    if(eqIdx>=0&&(colIdx<0||eqIdx<=colIdx)) splitIdx=eqIdx;
+    else if(colIdx>=0&&colIdx<40) splitIdx=colIdx;
+    if(splitIdx>=0){ word=line.slice(0,splitIdx).trim(); syn=line.slice(splitIdx+1).trim(); }
+    else { word=line.trim(); }
+    word=word.replace(/\s*[\(\[].+[\)\]]\s*$/, '').replace(/[,;:]+$/, '').trim();
+    if(word) {
+      var syns=syn?syn.split(',').map(function(s){return s.trim();}).filter(Boolean):[];
+      rows.push({word:word, ipa:'', synonyms:syns, vi:'', meaningVi:''});
     }
   }
-  var ops = []; i = n; j = m;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && actualWords[i - 1].toLowerCase() === typedWords[j - 1].toLowerCase() && dp[i][j] === dp[i - 1][j - 1]) {
-      ops.push({ type: 'match', actual: actualWords[i - 1], typed: typedWords[j - 1] }); i--; j--;
-    } else if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
-      ops.push({ type: 'sub', actual: actualWords[i - 1], typed: typedWords[j - 1] }); i--; j--;
-    } else if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
-      ops.push({ type: 'miss', actual: actualWords[i - 1], typed: null }); i--;
-    } else if (j > 0 && dp[i][j] === dp[i][j - 1] + 1) {
-      ops.push({ type: 'extra', actual: null, typed: typedWords[j - 1] }); j--;
-    } else if (i > 0) { ops.push({ type: 'miss', actual: actualWords[i - 1], typed: null }); i--; }
-    else { ops.push({ type: 'extra', actual: null, typed: typedWords[j - 1] }); j--; }
+  state.vocabRows = rows;
+  renderVocabTable();
+  VM.toast('Parsed '+rows.length+' words. IPA & Vietnamese empty — run AI Analyse to fill.','ok', 4000);
+};
+
+// Analyze with AI — 2-phase: parse immediately, enrich in background
+document.getElementById('af-analyze').onclick = function(){
+  var raw = document.getElementById('af-vocab-raw').value;
+  if (!raw.trim()) { VM.toast('Enter word list first.','warn'); return; }
+  var key = VM.geminiKey.get();
+  if (!key) {
+    var typed = document.getElementById('af-gemini-key').value.trim();
+    if (!typed || typed === '\u2022\u2022\u2022\u2022\u2022 (key saved)') { VM.toast('Enter Gemini API key.','warn'); return; }
+    key = typed; VM.geminiKey.set(typed);
   }
-  ops.reverse();
-  return ops;
-}
-// Same convention as the student view: yellow highlight = wrong spelling (shows what THEY typed,
-// not masked — a teacher needs to see the actual mistake), red strikethrough = extra word. Unlike
-// the student view, a missing word is shown as the ACTUAL target word (underlined) rather than a
-// blank — the teacher should always see the real answer, no need to hide it from them.
-function dtDictWordDiffHtml(actualWords, typedText) {
-  var typedWords = normalizeQuotes(typedText).replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
-  var ops = dtWordAlign(actualWords, typedWords);
-  var allOk = ops.every(function (op) { return op.type === 'match'; }) && typedWords.length === actualWords.length;
-  var html = ops.map(function (op) {
-    if (op.type === 'match') return '<span class="dt-w-ok">' + LD.esc(op.typed) + '</span>';
-    if (op.type === 'extra') return '<span class="dt-w-extra">' + LD.esc(op.typed) + '</span>';
-    if (op.type === 'miss') return '<span class="dt-w-miss">' + LD.esc(op.actual) + '</span>';
-    return '<span class="dt-w-bad">' + LD.esc(op.typed) + '</span>'; // sub — the student's own wrong word
-  }).join(' ');
-  return { html: html, allOk: allOk };
-}
-// Was being called from openDetail() but never actually defined — the detail modal would sit on
-// "Loading…" forever and throw "renderDetailHeader is not defined" (ReferenceError) the moment
-// data came back, since the crash happened before any of the panes got a chance to render.
-// dt-meta/dt-stats markup + CSS classes already existed in the HTML (unused, empty divs) — this
-// just fills them in from DetailApp.data, same shape teacherGetSessionDetail() returns.
-function dtNumPct(v) { return (v === '' || v === null || v === undefined) ? '—' : (v + '%'); }
-function renderDetailHeader() {
-  var d = DetailApp.data;
-  document.getElementById('dt-title').textContent = (d.StudentName || 'Student') + ' — ' + (d.BookTestPart || 'Untitled session');
-  document.getElementById('dt-subtitle').textContent = [d.ClassName, LD.fmtDate(d.StartTime), d.DurationMin ? LD.fmtDuration(d.DurationMin) : ''].filter(Boolean).join(' · ');
-  document.getElementById('dt-meta').innerHTML = [
-    ['Student', (d.StudentName || '—') + (d.StudentID ? ' (' + d.StudentID + ')' : '')],
-    ['Class', d.ClassName || '—'],
-    ['Book/Test/Part', d.BookTestPart || '—'],
-    ['Started', d.StartTime ? LD.fmtDate(d.StartTime) : '—'],
-    ['Duration', d.DurationMin ? LD.fmtDuration(d.DurationMin) : '—']
-  ].map(function (kv) {
-    return '<div class="dt-meta-item"><div class="k">' + LD.esc(kv[0]) + '</div><div class="v">' + LD.esc(kv[1]) + '</div></div>';
+  var progressEl = document.getElementById('af-ai-progress');
+  var analyzeBtn = document.getElementById('af-analyze');
+  progressEl.style.display='';
+  analyzeBtn.disabled = true;
+
+  VM.analyzeVocab(raw, key, function(done, total){
+    // onProgress callback — update table after each batch
+    progressEl.innerHTML =
+      '<span class="vm-spin" style="width:13px;height:13px;margin-right:6px"></span>' +
+      ' Analysing ' + done + '/' + total + ' words…';
+    if (state.vocabRows.length) renderVocabTable();
+  }).then(function(rows){
+    state.vocabRows = rows;
+    renderVocabTable();
+    progressEl.style.display='none';
+    analyzeBtn.disabled=false;
+    VM.toast('Analysed ' + rows.length + ' words!','ok');
+  }).catch(function(err){
+    progressEl.style.display='none';
+    analyzeBtn.disabled=false;
+    VM.toast('AI error: '+err.message,'err',5000);
+  });
+};
+
+// Add row
+document.getElementById('af-add-row').onclick = function(){
+  state.vocabRows.push({word:'',ipa:'',synonyms:[],vi:''});
+  renderVocabTable();
+};
+
+function renderVocabTable(){
+  var tbody = document.getElementById('af-vocab-tbody');
+  if (!state.vocabRows.length){
+    tbody.innerHTML='<tr id="af-vocab-empty"><td colspan="5" style="text-align:center;color:var(--vm-ink-3);padding:20px">Use AI Analysis or add rows manually.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.vocabRows.map(function(r,i){
+    return '<tr>' +
+      '<td><input value="'+VM.esc(r.word)+'" data-vi="'+i+'" data-field="word"></td>' +
+      '<td><input value="'+VM.esc(r.ipa||'')+'" data-vi="'+i+'" data-field="ipa" placeholder="/ˈpəʊ.lər/"></td>' +
+      '<td><input value="'+VM.esc((r.synonyms||[]).join(', '))+'" data-vi="'+i+'" data-field="synonyms" placeholder="synonym1, synonym2"></td>' +
+      '<td><input value="'+VM.esc(r.vi||r.meaningVi||'')+'" data-vi="'+i+'" data-field="vi" placeholder="Vietnamese meaning"></td>' +
+      '<td><button class="vm-vocab-del" data-del="'+i+'">✕</button></td>' +
+    '</tr>';
   }).join('');
-  document.getElementById('dt-stats').innerHTML = [
-    ['Quiz', dtNumPct(d.QuizScore)], ['Gap-fill', dtNumPct(d.GapFillScore)],
-    ['Dictation', dtNumPct(d.DictationAccuracy)], ['Total Score', dtNumPct(d.TotalScore)]
-  ].map(function (kv) {
-    return '<div class="dt-meta-item"><div class="k">' + LD.esc(kv[0]) + '</div><div class="v">' + LD.esc(kv[1]) + '</div></div>';
-  }).join('');
+
+  tbody.querySelectorAll('input[data-field]').forEach(function(inp){
+    inp.addEventListener('change',function(){
+      var i=parseInt(inp.getAttribute('data-vi'),10);
+      var f=inp.getAttribute('data-field');
+      if(f==='synonyms') state.vocabRows[i].synonyms=inp.value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+      else state.vocabRows[i][f]=inp.value.trim();
+    });
+  });
+  tbody.querySelectorAll('[data-del]').forEach(function(btn){
+    btn.onclick=function(){
+      state.vocabRows.splice(parseInt(btn.getAttribute('data-del'),10),1);
+      renderVocabTable();
+    };
+  });
 }
-// Dictation now requires 100% correct to pass a sentence (mastery gating, same as Gap-fill/Quiz),
-// so the FINAL typed text is always correct once checked — showing only that would hide how the
-// student actually did. We show the first-attempt text (with errors highlighted) whenever it
-// differs from the final passed text, same idea as Gap-fill's firstTryGiven.
-function renderDictationDetail() {
-  var d = DetailApp.data, pane = document.getElementById('dt-pane-dictation');
-  var dj = d.DictationJSON;
-  var sentences = d.CorrectedScriptJSON || [];
-  if (!dj || !sentences.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Dictation part yet.</div>'; return; }
-  var answers = dj.answers || [];
-  pane.innerHTML = sentences.map(function (s, i) {
-    var st = answers[i] || { typed: '', checked: false };
-    var actualWords = normalizeQuotes(s).replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
-    var firstAttempt = st.firstTryDone ? dtDictWordDiffHtml(actualWords, st.firstTryTyped) : null;
-    var finalRes = dtDictWordDiffHtml(actualWords, st.typed);
-    var showBothLines = firstAttempt && st.firstTryTyped !== st.typed;
-    var attemptsNote = st.attempts > 1 ? (' · ' + st.attempts + ' attempts') : '';
-    return '<div class="dt-sentence ' + (st.checked ? (finalRes.allOk ? 'ok' : 'bad') : '') + '">' +
-      '<div class="sn">Sentence ' + (i + 1) + ' · ' + dtWc(s) + ' words' + attemptsNote + (st.checked ? '' : ' · not checked yet') + '</div>' +
-      '<div class="target">Target: ' + LD.esc(s) + '</div>' +
-      (showBothLines ? '<div class="typed">First attempt: ' + firstAttempt.html + '</div>' : '') +
-      '<div class="typed">' + (showBothLines ? 'Final (passed): ' : 'Typed: ') + finalRes.html + '</div></div>';
-  }).join('');
+
+// Save assignment
+document.getElementById('assignSave').onclick = function(){
+  var title = document.getElementById('af-title').value.trim();
+  var classId = document.getElementById('af-class').value;
+  var mode = document.getElementById('af-mode').value;
+  if (!title) { VM.toast('Enter assignment title.','err'); return; }
+  if (!classId) { VM.toast('Select a class.','err'); return; }
+  if (!state.vocabRows.length) { VM.toast('Add at least 1 word.','err'); return; }
+
+  // Sync any unsaved input changes
+  document.querySelectorAll('#af-vocab-tbody input[data-field]').forEach(function(inp){
+    var i=parseInt(inp.getAttribute('data-vi'),10);
+    var f=inp.getAttribute('data-field');
+    if(!isNaN(i) && state.vocabRows[i]){
+      if(f==='synonyms') state.vocabRows[i].synonyms=inp.value.split(',').map(function(s){return s.trim();}).filter(Boolean);
+      else state.vocabRows[i][f]=inp.value.trim();
+    }
+  });
+
+  var payload = {
+    classId: classId, title: title, mode: mode,
+    reading: document.getElementById('af-reading').value,
+    vocab: state.vocabRows.map(function(r){
+      return { word:r.word, ipa:r.ipa||'', synonyms:r.synonyms||[], vi:r.vi||r.meaningVi||'', meaningVi:r.vi||r.meaningVi||'' };
+    }),
+    deadline: document.getElementById('af-deadline').value || '',
+    requiredGoals: parseInt(document.getElementById('af-goals').value,10)||3,
+  };
+
+  var action = state.editingAssignId ? 'assign.update' : 'assign.create';
+  if (state.editingAssignId) payload.assignmentId = state.editingAssignId;
+
+  document.getElementById('assignSave').disabled = true;
+  showOverlay('Saving assignment… (vocab sent in chunks)');
+  VM.apiLarge(action, payload).then(function(res){
+    document.getElementById('assignSave').disabled = false;
+    if(res&&res.success){
+      VM.toast(state.editingAssignId?'Assignment updated.':'Assignment saved!','ok');
+      closeAssignModal();
+      loadAssignments(function(){ if(state.activeTab==='assign') renderAssignList(); });
+    } else VM.toast('Error: '+(res&&res.error),'err',5000);
+  }).catch(function(){ document.getElementById('assignSave').disabled=false; VM.toast('Connection error.','err'); });
+};
+
+// ── Results tab ────────────────────────────────────────────────────
+function renderResults(full) {
+  loadClasses(function(){
+    loadResults(full, function(){
+      loadAssignments(function(){
+        _renderResultsUI();
+      });
+    });
+  });
 }
-function renderGapFillDetail() {
-  var d = DetailApp.data, pane = document.getElementById('dt-pane-gapfill');
-  var gj = d.GapFillJSON;
-  var sentences = d.CorrectedScriptJSON || [];
-  if (!gj || !gj.answers || !gj.answers.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Gap-fill part yet.</div>'; return; }
-  var bySentence = {};
-  gj.answers.forEach(function (a) { (bySentence[a.sentenceIdx] = bySentence[a.sentenceIdx] || []).push(a); });
-  pane.innerHTML = Object.keys(bySentence).map(function (si) {
-    si = Number(si);
-    var sentence = sentences[si] || '';
-    var parts = sentence.split(/(\s+)/);
-    var blanks = bySentence[si];
-    // firstTryCorrect reflects the student's FIRST attempt (the mastery-learning score); the
-    // student may have retried until correct, so show what they typed the first time, not the
-    // final (always-correct) value — that's the meaningful signal for a teacher reviewing mistakes.
-    var allOk = blanks.every(function (b) { return b.firstTryCorrect; });
-    var out = parts.map(function (w, wi) {
-      var b = blanks.find(function (x) { return x.wordIdx === wi; });
-      if (!b) return LD.esc(w);
-      var ok = !!b.firstTryCorrect;
-      var shown = b.firstTryGiven != null ? b.firstTryGiven : b.given;
-      return '<span class="dt-blank' + (ok ? ' correct' : '') + '">' + LD.esc(shown || '(blank)') + (ok ? '' : ' → ' + LD.esc(b.actual)) + '</span>';
-    }).join('');
-    return '<div class="dt-sentence ' + (allOk ? 'ok' : 'bad') + '"><div class="sn">Sentence ' + (si + 1) + (allOk ? '' : ' · needed a retry') + '</div><div class="typed">' + out + '</div></div>';
-  }).join('');
+
+function _renderResultsUI() {
+  hideOverlay();
+  var content = document.getElementById('vmContent');
+  var assignments = state.assignments;
+
+  content.innerHTML =
+    '<div class="vm-toolbar">' +
+      '<div class="vm-search">'+VM.icon('search')+'<input id="rSearch" placeholder="Search name, Student ID…"></div>' +
+      '<select class="vm-select" id="rClass"><option value="">All classes</option>' +
+        state.classes.map(function(c){return '<option value="'+VM.esc(c.classId)+'">'+VM.esc(c.className)+'</option>';}).join('') +
+      '</select>' +
+      '<select class="vm-select" id="rAssign"><option value="">All assignments</option>' +
+        assignments.map(function(a){return '<option value="'+VM.esc(a.assignmentId)+'">'+VM.esc(a.title)+'</option>';}).join('') +
+      '</select>' +
+      '<select class="vm-select" id="rMode"><option value="">All modes</option>' +
+        '<option value="homework">Homework</option><option value="inclass">In-class</option>' +
+      '</select>' +
+      '<div class="vm-period-note">' +
+        (state.resultsFull
+          ? '<span>📅 All data</span><button class="vm-btn vm-btn-ghost vm-btn-sm" id="rTogglePeriod">Last 14 days</button>'
+          : '<span>📅 Last 14 days</span><button class="vm-btn vm-btn-ghost vm-btn-sm" id="rTogglePeriod">View all</button>') +
+      '</div>' +
+    '</div>' +
+    '<div id="rTableWrap"></div>';
+
+  var sortState = { col:'timestamp', dir:'desc' };
+
+  function filter() {
+    var q    = (document.getElementById('rSearch').value||'').toLowerCase();
+    var cls  = (document.getElementById('rClass').value||'');
+    var asId = (document.getElementById('rAssign').value||'');
+    var mode = (document.getElementById('rMode').value||'');
+    return state.results.filter(function(r){
+      if(cls  && r.class!==cls) return false;
+      if(asId && r.assignmentId!==asId) return false;
+      if(mode && r.mode!==mode) return false;
+      if(q && (r.name||'').toLowerCase().indexOf(q)<0 && (r.studentId||'').toLowerCase().indexOf(q)<0
+            && (r.title||'').toLowerCase().indexOf(q)<0) return false;
+      return true;
+    });
+  }
+
+  function sortRows(rows) {
+    var col=sortState.col, dir=sortState.dir;
+    return rows.slice().sort(function(a,b){
+      var av=a[col]||'', bv=b[col]||'';
+      if(col==='score'||col==='durationSec'||col==='correct'){av=parseFloat(av)||0;bv=parseFloat(bv)||0;}
+      else {av=String(av).toLowerCase();bv=String(bv).toLowerCase();}
+      if(av<bv) return dir==='asc'?-1:1;
+      if(av>bv) return dir==='asc'?1:-1;
+      return 0;
+    });
+  }
+
+  var PAGE=25, page=1;
+
+  function renderTable(){
+    var rows = sortRows(filter());
+    var total= rows.length;
+    var start= (page-1)*PAGE, end=Math.min(start+PAGE,total);
+    var slice= rows.slice(start,end);
+    var wrap = document.getElementById('rTableWrap');
+
+    // Build goal-per-assignment map for homework
+    var goalMap = {}; // assignmentId -> requiredGoals
+    assignments.forEach(function(a){ goalMap[a.assignmentId]=a.requiredGoals||3; });
+    // Aggregate perfect counts per student per assignment (from all loaded results)
+    var perfectMap = {}; // studentId+assignId -> perfectCount
+    state.results.forEach(function(r){
+      if(r.mode!=='homework') return;
+      var k = r.studentId+'__'+r.assignmentId;
+      perfectMap[k] = (perfectMap[k]||0) + (r.isPerfect?1:0);
+    });
+
+    var cols = [
+      {key:'timestamp', label:'Time'},
+      {key:'studentId', label:'Student ID'},
+      {key:'name',      label:'Name'},
+      {key:'class',     label:'Class'},
+      {key:'title',     label:'Assignments'},
+      {key:'mode',      label:'Mode'},
+      {key:'score',     label:'Score'},
+      {key:'correct',   label:'Correct/Total'},
+      {key:'durationSec',label:'Duration'},
+      {key:'attempts',  label:'Attempts'},
+      {key:'goals',     label:'Goals'},
+    ];
+
+    wrap.innerHTML =
+      (total?'<div style="font-size:.8rem;color:var(--vm-ink-3);margin-bottom:8px">'+total+' results</div>':'') +
+      '<div class="vm-table-wrap"><table class="vm-table"><thead><tr>' +
+        cols.slice(0,9).map(function(c){
+          var cls2 = 'sortable';
+          if(sortState.col===c.key) cls2+=' sort-'+(sortState.dir==='asc'?'asc':'desc');
+          return '<th class="'+cls2+'" data-sortcol="'+c.key+'">'+VM.esc(c.label)+'<span class="sa"></span></th>';
+        }).join('') +
+        '<th>Attempts</th><th>Goals</th>' +
+      '</tr></thead><tbody>' +
+      (slice.length ? slice.map(function(r){
+        var pKey = r.studentId+'__'+r.assignmentId;
+        var reqGoal = goalMap[r.assignmentId]||3;
+        var perfCount = perfectMap[pKey]||0;
+        var attemptRows = state.results.filter(function(x){return x.studentId===r.studentId&&x.assignmentId===r.assignmentId;}).length;
+
+        var goalChip = '';
+        if (r.mode==='homework') {
+          var cls2 = perfCount>=reqGoal ? (perfCount>reqGoal?'over':'met') : (perfCount>0?'partial':'none');
+          goalChip = '<span class="vm-goal '+cls2+'">'+perfCount+'/'+reqGoal+'</span>';
+        } else { goalChip='—'; }
+
+        return '<tr>' +
+          '<td>'+VM.esc(VM.fmtDate(r.timestamp))+'</td>' +
+          '<td>'+VM.esc(r.studentId)+'</td>' +
+          '<td>'+VM.esc(r.name)+'</td>' +
+          '<td>'+VM.esc(r.class)+'</td>' +
+          '<td>'+VM.esc(r.title||r.assignmentId)+'</td>' +
+          '<td>'+(r.mode==='homework'?'📝':'🖥️')+' '+VM.esc(r.mode||'')+'</td>' +
+          '<td class="vm-score '+scoreClass(r.score)+'">'+r.score+'%</td>' +
+          '<td>'+VM.esc(r.correct+'/'+r.total)+'</td>' +
+          '<td>'+VM.fmtDuration(r.durationSec)+'</td>' +
+          '<td>'+attemptRows+'</td>' +
+          '<td>'+goalChip+'</td>' +
+        '</tr>';
+      }).join('') : '<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--vm-ink-3)">No data for this period.</td></tr>') +
+      '</tbody></table></div>' +
+      renderPager(total);
+
+    wrap.querySelectorAll('[data-sortcol]').forEach(function(th){
+      th.onclick=function(){
+        var col=th.getAttribute('data-sortcol');
+        if(sortState.col===col) sortState.dir=sortState.dir==='asc'?'desc':'asc';
+        else{sortState.col=col;sortState.dir='asc';}
+        renderTable();
+      };
+    });
+    wrap.querySelectorAll('.vm-page-btn').forEach(function(btn){
+      btn.onclick=function(){var p=parseInt(btn.getAttribute('data-page'),10);if(!isNaN(p)){page=p;renderTable();}};
+    });
+  }
+
+  function renderPager(total){
+    var pages=Math.ceil(total/PAGE); if(pages<=1) return '';
+    var html='<div class="vm-pagination">';
+    html+='<button class="vm-page-btn" data-page="'+(page-1)+'" '+(page<=1?'disabled':'')+'>‹</button>';
+    for(var i=Math.max(1,page-2);i<=Math.min(pages,page+2);i++){
+      html+='<button class="vm-page-btn'+(i===page?' active':'')+'" data-page="'+i+'">'+i+'</button>';
+    }
+    html+='<button class="vm-page-btn" data-page="'+(page+1)+'" '+(page>=pages?'disabled':'')+'>›</button>';
+    return html+'</div>';
+  }
+
+  ['rSearch','rClass','rAssign','rMode'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener(id==='rSearch'?'input':'change',function(){page=1;renderTable();});
+  });
+
+  var toggleBtn = document.getElementById('rTogglePeriod');
+  if (toggleBtn) toggleBtn.onclick = function(){ renderResults(!state.resultsFull); };
+
+  renderTable();
 }
-function renderQuizDetail() {
-  var d = DetailApp.data, pane = document.getElementById('dt-pane-quiz');
-  var qj = d.QuizJSON;
-  var attempts = (qj && qj.attempts) || [];
-  if (!attempts.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Quiz yet.</div>'; return; }
-  // Each attempt is a full 15-question batch (redo-with-fresh-questions design — a wrong
-  // answer means a whole new batch next time, not a per-question retry). Show every attempt
-  // so the teacher can see what tripped the student up before they eventually passed.
-  pane.innerHTML = attempts.map(function (att, ai) {
-    var questions = att.questions || [], answers = att.answers || [];
-    var passed = att.correct === (att.total || questions.length);
-    var header = '<div style="margin:' + (ai ? '18px' : '0') + ' 0 8px;font-size:12.5px;font-weight:700;color:' + (passed ? '#56d364' : '#ff7b8a') + '">' +
-      'Attempt ' + (ai + 1) + ' — ' + att.correct + '/' + (att.total || questions.length) + (passed ? ' ✓ passed' : ' ✗ failed, redid with new questions') + '</div>';
-    var qs = questions.map(function (q, i) {
-      var chosen = answers[i];
-      return '<div class="dt-q"><span class="dt-q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Content' : 'Vocabulary') + '</span>' +
-        '<div class="dt-q-text">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
-        (q.o || []).map(function (o, j) {
-          var cls = j === q.a ? 'correct' : (j === chosen ? 'chosen-wrong' : '');
-          return '<div class="dt-opt ' + cls + '">' + (j === chosen ? '☑ ' : '☐ ') + LD.esc(o) + (j === q.a ? '  ✓' : '') + '</div>';
-        }).join('') + '</div>';
-    }).join('');
-    return header + qs;
-  }).join('');
-}
-function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSortDir : -1; App.sessSortKey = key; renderSessionsTable(); }
-async function exportCsv() {
-  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value, showAll: App.sessShowAll };
-  showLoading('Preparing CSV…');
-  try {
-    var r = await LD.api('teacher.exportSessions', p);
-    if (!r.success) { LD.toast(r.error || 'Could not export CSV', 'err'); return; }
-    var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
-}
+
+// ── Boot ────────────────────────────────────────────────────────────
+switchTab('overview');
 </script>
 </body>
 </html>
