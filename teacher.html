@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Teacher Dashboard · LisDictation</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="ld-theme.css">
@@ -21,6 +22,8 @@
 .tab-strip-btn{flex:1;padding:9px;border:none;background:transparent;border-radius:9px;font-family:var(--font-body);font-size:13px;font-weight:700;color:var(--grey-600);cursor:pointer}
 .tab-strip-btn.active{background:#fff;color:var(--red);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .card{background:var(--white);border-radius:var(--radius-lg);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--grey-200);margin-bottom:16px}
+.stat-num{font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--navy)}
+.stat-lbl{font-size:11px;font-weight:700;color:var(--grey-600);text-transform:uppercase;letter-spacing:.04em}
 .card-title{font-family:var(--font-display);font-size:1.05rem;color:var(--black);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer}
 .btn-primary{background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff}
@@ -44,6 +47,9 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .hidden{display:none!important}
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+#ld-loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.82);z-index:600;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+#ld-loading-overlay.active{display:flex}
+#ld-loading-text{font-size:13.5px;font-weight:700;color:var(--navy)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── Session Detail overlay (dark theme) ── */
@@ -75,8 +81,9 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .dt-sentence .target{font-size:12px;color:#8b949e;margin-bottom:6px;line-height:1.6}
 .dt-sentence .typed{font-size:14px;line-height:1.9}
 .dt-w-ok{color:#3fb950;font-weight:700}
-.dt-w-bad{color:#f85149;font-weight:700;text-decoration:line-through}
-.dt-w-miss{color:#d29922;font-weight:800}
+.dt-w-bad{background:#f85149;color:#0d1117;padding:1px 6px;border-radius:5px;font-weight:700}
+.dt-w-miss{color:#8b949e;font-weight:800;letter-spacing:2px;text-decoration:underline;text-decoration-color:#d29922;text-decoration-thickness:2.5px;text-underline-offset:3px}
+.dt-w-extra{color:#8b949e;text-decoration:line-through;text-decoration-color:#a970ff;text-decoration-thickness:2px;font-weight:700}
 .dt-blank{background:rgba(200,16,46,.18);border:1px solid #c8102e;border-radius:5px;padding:0 6px;color:#ff7b8a;font-weight:700}
 .dt-blank.correct{background:rgba(46,160,67,.18);border-color:#2ea043;color:#56d364}
 .dt-q{background:#161b22;border:1px solid #30363d;border-radius:11px;padding:14px 16px;margin-bottom:12px}
@@ -114,7 +121,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <div><label class="form-label">Class Name</label><input class="form-input" id="new-class-name" placeholder="e.g. DH21NA1"></div>
         <div><label class="form-label">Academic Year</label><input class="form-input" id="new-class-year" placeholder="2025-2026" style="width:110px"></div>
         <div><label class="form-label">Semester</label><input class="form-input" id="new-class-semester" placeholder="Sem 1" style="width:80px"></div>
-        <button class="btn btn-primary" onclick="createClass()">Create Class</button>
+        <button class="btn btn-primary" id="btn-create-class" onclick="createClass()">Create Class</button>
       </div>
       <div id="new-class-result" style="margin-top:10px"></div>
     </div>
@@ -136,17 +143,28 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
   <!-- ═══ SESSIONS DASHBOARD ═══ -->
   <div id="tab-sessions" class="hidden">
+    <div class="card" id="sess-stats-card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center;padding:14px 20px">
+      <div><div class="stat-num" id="stat-total">—</div><div class="stat-lbl">Sessions (filtered)</div></div>
+      <div><div class="stat-num" id="stat-completed">—</div><div class="stat-lbl">Completed</div></div>
+      <div><div class="stat-num" id="stat-inprogress">—</div><div class="stat-lbl">In progress</div></div>
+      <div><div class="stat-num" id="stat-avg-quiz">—</div><div class="stat-lbl">Avg Quiz</div></div>
+      <div><div class="stat-num" id="stat-avg-gapfill">—</div><div class="stat-lbl">Avg Gap-fill</div></div>
+      <div><div class="stat-num" id="stat-avg-dictation">—</div><div class="stat-lbl">Avg Dictation</div></div>
+      <div><div class="stat-num" id="stat-avg-total">—</div><div class="stat-lbl">Avg Total Score</div></div>
+    </div>
     <div class="card">
       <div class="toolbar">
         <select class="form-select" id="sess-filter-class" onchange="loadSessions()"><option value="">All classes</option></select>
-        <input type="date" class="form-input" id="sess-filter-from" onchange="loadSessions()">
+        <input type="date" class="form-input" id="sess-filter-from" onchange="App.sessShowAll=false;loadSessions()">
         <span style="font-size:12.5px;color:var(--grey-600)">to</span>
-        <input type="date" class="form-input" id="sess-filter-to" onchange="loadSessions()">
+        <input type="date" class="form-input" id="sess-filter-to" onchange="App.sessShowAll=false;loadSessions()">
         <input class="form-input" id="sess-search" placeholder="🔍 Search by book / student name…" style="width:200px" oninput="renderSessionsTable()">
         <div style="flex:1"></div>
         <button class="btn btn-secondary btn-sm" onclick="loadSessions()">🔄 Refresh</button>
+        <button class="btn btn-secondary btn-sm" onclick="showAllSessions()">📂 Show all (slower)</button>
         <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
       </div>
+      <div style="font-size:11.5px;color:var(--grey-400);padding:0 4px 8px" id="sess-range-note"></div>
       <div style="overflow:auto">
         <table class="ld-table">
           <thead><tr>
@@ -191,15 +209,35 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   </div>
 </div>
 
+<!-- Global loading overlay — shown during any LD.api call so the teacher sees the app is
+     working and doesn't spam-click (which previously created several duplicate classes: each
+     click fired its own request with no visible feedback that the first one was still in
+     flight). Also physically blocks clicks underneath it (full-screen + high z-index). -->
+<div id="ld-loading-overlay">
+  <div class="spinner" style="width:34px;height:34px;border-width:4px"></div>
+  <div id="ld-loading-text">Loading…</div>
+</div>
+
 <script src="ld-common.js"></script>
 <script>
-var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1 };
+var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, sessShowAll: false };
+var _loadingDepth = 0;
+function showLoading(msg) {
+  _loadingDepth++;
+  document.getElementById('ld-loading-text').textContent = msg || 'Loading…';
+  document.getElementById('ld-loading-overlay').classList.add('active');
+}
+function hideLoading() {
+  _loadingDepth = Math.max(0, _loadingDepth - 1);
+  if (_loadingDepth === 0) document.getElementById('ld-loading-overlay').classList.remove('active');
+}
 
 (function init() {
   var s = LD.session.require('Teacher');
   if (!s) return;
   document.getElementById('tb-user').textContent = '👤 ' + s.user.fullName;
   loadClasses();
+  LD.idle.init(); // auto sign-out after 2h idle — nothing to save/checkpoint on this side
 })();
 
 function switchTab(tab) {
@@ -207,25 +245,46 @@ function switchTab(tab) {
   document.getElementById('tab-sessions').classList.toggle('hidden', tab !== 'sessions');
   document.getElementById('tab-btn-classes').classList.toggle('active', tab === 'classes');
   document.getElementById('tab-btn-sessions').classList.toggle('active', tab === 'sessions');
-  if (tab === 'sessions' && !App.sessions.length) loadSessions();
+  // Always refresh on switching into Sessions — previously this only loaded the FIRST time the
+  // tab was opened (guarded by "sessions still empty"), so a teacher who'd already visited it once
+  // kept seeing stale cached data on every later visit and never saw newly-finished Quiz/Gap-fill
+  // work until they happened to click Refresh manually.
+  if (tab === 'sessions') loadSessions();
 }
 
 // ── CLASSES ──
 async function createClass() {
   var name = document.getElementById('new-class-name').value.trim();
   if (!name) { LD.toast('Enter a class name.', 'err'); return; }
-  var r = await LD.api('teacher.createClass', {
-    className: name, academicYear: document.getElementById('new-class-year').value.trim(), semester: document.getElementById('new-class-semester').value.trim()
-  });
-  if (!r.success) { LD.toast(r.error || 'Could not create the class', 'err'); return; }
-  document.getElementById('new-class-result').innerHTML = '✅ Created class <b>' + LD.esc(r.className) + '</b> — class code: <span class="badge badge-gold">' + r.classId + '</span> (share this code with students so they can register)';
-  document.getElementById('new-class-name').value = ''; document.getElementById('new-class-year').value = ''; document.getElementById('new-class-semester').value = '';
-  loadClasses();
+  var btn = document.getElementById('btn-create-class');
+  // Disable the button IN ADDITION to the loading overlay — belt and suspenders against exactly
+  // the bug reported: with no visible feedback while the request was in flight, spam-clicking
+  // "Create Class" fired several separate requests and created multiple duplicate classes.
+  if (btn) { btn.disabled = true; btn.dataset.origText = btn.textContent; btn.textContent = 'Creating…'; }
+  showLoading('Creating class…');
+  try {
+    var r = await LD.api('teacher.createClass', {
+      className: name, academicYear: document.getElementById('new-class-year').value.trim(), semester: document.getElementById('new-class-semester').value.trim()
+    });
+    if (!r.success) { LD.toast(r.error || 'Could not create the class', 'err'); return; }
+    document.getElementById('new-class-result').innerHTML = '✅ Created class <b>' + LD.esc(r.className) + '</b> — class code: <span class="badge badge-gold">' + r.classId + '</span> (share this code with students so they can register)';
+    document.getElementById('new-class-name').value = ''; document.getElementById('new-class-year').value = ''; document.getElementById('new-class-semester').value = '';
+    loadClasses();
+  } catch (e) {
+    LD.toast('Network error: ' + e.message, 'err');
+  } finally {
+    hideLoading();
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.origText || 'Create Class'; }
+  }
 }
 async function loadClasses() {
   var el = document.getElementById('classes-list');
   el.innerHTML = '<span class="spinner"></span> Loading…';
-  var r = await LD.api('teacher.getClasses', {});
+  showLoading('Loading classes…');
+  var r;
+  try { r = await LD.api('teacher.getClasses', {}); }
+  catch (e) { el.innerHTML = '<span style="color:var(--red)">Network error: ' + LD.esc(e.message) + '</span>'; hideLoading(); return; }
+  hideLoading();
   if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(r.error) + '</span>'; return; }
   App.classes = r.data;
   var filterSel = document.getElementById('sess-filter-class');
@@ -242,14 +301,21 @@ async function loadClasses() {
 }
 async function toggleClassStatus(classId, curStatus) {
   var newStatus = curStatus === 'Active' ? 'Archived' : 'Active';
-  var r = await LD.api('teacher.setClassStatus', { classId: classId, status: newStatus });
-  if (r.success) loadClasses(); else LD.toast(r.error || 'Error', 'err');
+  showLoading(newStatus === 'Archived' ? 'Locking class…' : 'Reopening class…');
+  try {
+    var r = await LD.api('teacher.setClassStatus', { classId: classId, status: newStatus });
+    if (r.success) loadClasses(); else LD.toast(r.error || 'Error', 'err');
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 async function viewRoster(classId, className) {
   document.getElementById('roster-title').textContent = '👥 Students in ' + className;
   document.getElementById('roster-card').classList.remove('hidden');
   document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
-  var r = await LD.api('teacher.getRoster', { classId: classId });
+  showLoading('Loading roster…');
+  var r;
+  try { r = await LD.api('teacher.getRoster', { classId: classId }); }
+  catch (e) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--red)">Network error</td></tr>'; hideLoading(); return; }
+  hideLoading();
   if (!r.success) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--red)">Error</td></tr>'; return; }
   document.getElementById('roster-tbody').innerHTML = r.data.length ? r.data.map(function (s) {
     return '<tr><td>' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td><td>' + LD.esc(s.email) + '</td>' +
@@ -258,23 +324,44 @@ async function viewRoster(classId, className) {
   }).join('') : '<tr><td colspan="5" style="color:var(--grey-600)">No students in this class yet.</td></tr>';
 }
 async function toggleStudentStatus(studentId, curStatus) {
-  var r = await LD.api('teacher.archiveStudent', { studentId: studentId, archived: curStatus === 'Active' });
-  if (r.success) { LD.toast('Updated', 'ok'); loadClasses(); } else LD.toast(r.error || 'Error', 'err');
+  showLoading('Updating…');
+  try {
+    var r = await LD.api('teacher.archiveStudent', { studentId: studentId, archived: curStatus === 'Active' });
+    if (r.success) { LD.toast('Updated', 'ok'); loadClasses(); } else LD.toast(r.error || 'Error', 'err');
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 
 // ── SESSIONS DASHBOARD ──
+// GAS/Sheets reads the whole sheet on every call (no index) — the more rows + the more people
+// hitting it at once, the slower it gets. Default to the last 7 days (server also enforces this
+// as a fallback — see teacherGetAllSessions in Code.gs) so a normal visit to this tab stays fast;
+// "Show all" is an explicit opt-in for when a teacher really needs the full history.
 async function loadSessions() {
   var tbody = document.getElementById('sessions-tbody');
   tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
+  var fromDate = document.getElementById('sess-filter-from').value;
   var p = {
     classId: document.getElementById('sess-filter-class').value,
-    fromDate: document.getElementById('sess-filter-from').value,
-    toDate: document.getElementById('sess-filter-to').value
+    fromDate: fromDate,
+    toDate: document.getElementById('sess-filter-to').value,
+    showAll: App.sessShowAll
   };
-  var r = await LD.api('teacher.getAllSessions', p);
+  document.getElementById('sess-range-note').textContent =
+    (!fromDate && !App.sessShowAll) ? 'Showing the last 7 days by default — pick a date range or "Show all" for older sessions.' : '';
+  showLoading('Loading sessions…');
+  var r;
+  try { r = await LD.api('teacher.getAllSessions', p); }
+  catch (e) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Network error: ' + LD.esc(e.message) + '</td></tr>'; hideLoading(); return; }
+  hideLoading();
   if (!r.success) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Error: ' + LD.esc(r.error) + '</td></tr>'; return; }
   App.sessions = r.data;
   renderSessionsTable();
+}
+function showAllSessions() {
+  App.sessShowAll = true;
+  document.getElementById('sess-filter-from').value = '';
+  document.getElementById('sess-filter-to').value = '';
+  loadSessions();
 }
 function renderSessionsTable() {
   var q = (document.getElementById('sess-search').value || '').toLowerCase();
@@ -290,6 +377,24 @@ function renderSessionsTable() {
       '<td><button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + r.sessionId + '\')">🔍 Detail</button></td></tr>';
   }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">No sessions found.</td></tr>';
   document.getElementById('sess-count').textContent = rows.length + ' session(s)';
+  renderSessStats(rows);
+}
+// Summary stats over whatever rows are currently visible (respects the class/date filters AND
+// the search box), so a teacher can see class-wide performance at a glance instead of scanning
+// every row by hand.
+function renderSessStats(rows) {
+  var completed = rows.filter(function (r) { return r.dictationAccuracy != null; }).length;
+  var avg = function (key) {
+    var vals = rows.map(function (r) { return r[key]; }).filter(function (v) { return v != null; });
+    return vals.length ? Math.round(vals.reduce(function (a, b) { return a + Number(b); }, 0) / vals.length) + '%' : '—';
+  };
+  document.getElementById('stat-total').textContent = rows.length;
+  document.getElementById('stat-completed').textContent = completed;
+  document.getElementById('stat-inprogress').textContent = rows.length - completed;
+  document.getElementById('stat-avg-quiz').textContent = avg('quizScore');
+  document.getElementById('stat-avg-gapfill').textContent = avg('gapFillScore');
+  document.getElementById('stat-avg-dictation').textContent = avg('dictationAccuracy');
+  document.getElementById('stat-avg-total').textContent = avg('totalScore');
 }
 
 // ── SESSION DETAIL ──
@@ -301,7 +406,11 @@ async function openDetail(sessionId) {
   document.getElementById('dt-meta').innerHTML = '';
   document.getElementById('dt-stats').innerHTML = '';
   ['dictation', 'gapfill', 'quiz'].forEach(function (t) { document.getElementById('dt-pane-' + t).innerHTML = ''; });
-  var r = await LD.api('teacher.getSessionDetail', { sessionId: sessionId });
+  showLoading('Loading session detail…');
+  var r;
+  try { r = await LD.api('teacher.getSessionDetail', { sessionId: sessionId }); }
+  catch (e) { document.getElementById('dt-subtitle').textContent = 'Network error: ' + e.message; hideLoading(); return; }
+  hideLoading();
   if (!r.success) { document.getElementById('dt-subtitle').textContent = 'Error: ' + (r.error || ''); return; }
   DetailApp.data = r.data;
   renderDetailHeader();
@@ -321,27 +430,98 @@ function switchDetailTab(tab) {
   });
 }
 function dtWc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
+// Older AI-corrected scripts may still have typographic curly quotes (’ “ ”) baked in from before
+// this was normalized at the source — normalize here too so the teacher's diff view doesn't show
+// false mismatches for sessions analyzed before that fix.
+function normalizeQuotes(s) {
+  return String(s || '')
+    .normalize('NFC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u2013\u2014\u2212\u2011]/g, '-')
+    .replace(/\u2026/g, '')
+    .replace(/\u00A0/g, ' ');
+}
+// Same alignment approach as the student view (see wordAlign() in student.html): plain positional
+// comparison makes a single inserted/dropped word cascade into "wrong" for everything after it,
+// which is both a misleading picture for the teacher and doesn't match what the student actually
+// saw. Aligning first isolates the real mistake. This also fixes a second, separate bug — the old
+// version always rendered the TARGET word (just colored), never the student's actual wrong input,
+// so a teacher couldn't tell what the student typed, only that it was wrong.
+function dtWordAlign(actualWords, typedWords) {
+  var n = actualWords.length, m = typedWords.length;
+  var dp = []; for (var i = 0; i <= n; i++) dp.push(new Array(m + 1).fill(0));
+  for (i = 0; i <= n; i++) dp[i][0] = i;
+  for (var j = 0; j <= m; j++) dp[0][j] = j;
+  for (i = 1; i <= n; i++) {
+    for (j = 1; j <= m; j++) {
+      var same = actualWords[i - 1].toLowerCase() === typedWords[j - 1].toLowerCase();
+      dp[i][j] = same ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  var ops = []; i = n; j = m;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && actualWords[i - 1].toLowerCase() === typedWords[j - 1].toLowerCase() && dp[i][j] === dp[i - 1][j - 1]) {
+      ops.push({ type: 'match', actual: actualWords[i - 1], typed: typedWords[j - 1] }); i--; j--;
+    } else if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
+      ops.push({ type: 'sub', actual: actualWords[i - 1], typed: typedWords[j - 1] }); i--; j--;
+    } else if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
+      ops.push({ type: 'miss', actual: actualWords[i - 1], typed: null }); i--;
+    } else if (j > 0 && dp[i][j] === dp[i][j - 1] + 1) {
+      ops.push({ type: 'extra', actual: null, typed: typedWords[j - 1] }); j--;
+    } else if (i > 0) { ops.push({ type: 'miss', actual: actualWords[i - 1], typed: null }); i--; }
+    else { ops.push({ type: 'extra', actual: null, typed: typedWords[j - 1] }); j--; }
+  }
+  ops.reverse();
+  return ops;
+}
+// Same convention as the student view: yellow highlight = wrong spelling (shows what THEY typed,
+// not masked — a teacher needs to see the actual mistake), red strikethrough = extra word. Unlike
+// the student view, a missing word is shown as the ACTUAL target word (underlined) rather than a
+// blank — the teacher should always see the real answer, no need to hide it from them.
+function dtDictWordDiffHtml(actualWords, typedText) {
+  var typedWords = normalizeQuotes(typedText).replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
+  var ops = dtWordAlign(actualWords, typedWords);
+  var allOk = ops.every(function (op) { return op.type === 'match'; }) && typedWords.length === actualWords.length;
+  var html = ops.map(function (op) {
+    if (op.type === 'match') return '<span class="dt-w-ok">' + LD.esc(op.typed) + '</span>';
+    if (op.type === 'extra') return '<span class="dt-w-extra">' + LD.esc(op.typed) + '</span>';
+    if (op.type === 'miss') return '<span class="dt-w-miss">' + LD.esc(op.actual) + '</span>';
+    return '<span class="dt-w-bad">' + LD.esc(op.typed) + '</span>'; // sub — the student's own wrong word
+  }).join(' ');
+  return { html: html, allOk: allOk };
+}
+// Was being called from openDetail() but never actually defined — the detail modal would sit on
+// "Loading…" forever and throw "renderDetailHeader is not defined" (ReferenceError) the moment
+// data came back, since the crash happened before any of the panes got a chance to render.
+// dt-meta/dt-stats markup + CSS classes already existed in the HTML (unused, empty divs) — this
+// just fills them in from DetailApp.data, same shape teacherGetSessionDetail() returns.
+function dtNumPct(v) { return (v === '' || v === null || v === undefined) ? '—' : (v + '%'); }
 function renderDetailHeader() {
   var d = DetailApp.data;
-  document.getElementById('dt-title').textContent = d.StudentName + ' — ' + (d.BookTestPart || 'Untitled');
-  document.getElementById('dt-subtitle').textContent = d.SessionID;
-  var durMin = d.DurationMin != null && d.DurationMin !== '' ? d.DurationMin + ' min' : '—';
+  document.getElementById('dt-title').textContent = (d.StudentName || 'Student') + ' — ' + (d.BookTestPart || 'Untitled session');
+  document.getElementById('dt-subtitle').textContent = [d.ClassName, LD.fmtDate(d.StartTime), d.DurationMin ? LD.fmtDuration(d.DurationMin) : ''].filter(Boolean).join(' · ');
   document.getElementById('dt-meta').innerHTML = [
-    ['Student', d.StudentName + ' (' + d.StudentID + ')'],
-    ['Class', d.ClassName],
-    ['Book / Test / Part', d.BookTestPart || '—'],
-    ['Start time', LD.fmtDate(d.StartTime)],
-    ['Submit time', d.EndTime ? LD.fmtDate(d.EndTime) : '— (in progress)'],
-    ['Duration', durMin]
-  ].map(function (kv) { return '<div class="dt-meta-item"><div class="k">' + kv[0] + '</div><div class="v">' + LD.esc(String(kv[1])) + '</div></div>'; }).join('');
-
+    ['Student', (d.StudentName || '—') + (d.StudentID ? ' (' + d.StudentID + ')' : '')],
+    ['Class', d.ClassName || '—'],
+    ['Book/Test/Part', d.BookTestPart || '—'],
+    ['Started', d.StartTime ? LD.fmtDate(d.StartTime) : '—'],
+    ['Duration', d.DurationMin ? LD.fmtDuration(d.DurationMin) : '—']
+  ].map(function (kv) {
+    return '<div class="dt-meta-item"><div class="k">' + LD.esc(kv[0]) + '</div><div class="v">' + LD.esc(kv[1]) + '</div></div>';
+  }).join('');
   document.getElementById('dt-stats').innerHTML = [
-    ['Quiz', d.QuizScore != null && d.QuizScore !== '' ? d.QuizScore + '%' : '—'],
-    ['Gap-fill', d.GapFillScore != null && d.GapFillScore !== '' ? d.GapFillScore + '%' : '—'],
-    ['Dictation', d.DictationAccuracy != null && d.DictationAccuracy !== '' ? d.DictationAccuracy + '%' : '—'],
-    ['Total', d.TotalScore != null && d.TotalScore !== '' ? d.TotalScore + '%' : '—']
-  ].map(function (kv) { return '<div class="dt-stat-card"><div class="n">' + kv[1] + '</div><div class="l">' + kv[0] + '</div></div>'; }).join('');
+    ['Quiz', dtNumPct(d.QuizScore)], ['Gap-fill', dtNumPct(d.GapFillScore)],
+    ['Dictation', dtNumPct(d.DictationAccuracy)], ['Total Score', dtNumPct(d.TotalScore)]
+  ].map(function (kv) {
+    return '<div class="dt-meta-item"><div class="k">' + LD.esc(kv[0]) + '</div><div class="v">' + LD.esc(kv[1]) + '</div></div>';
+  }).join('');
 }
+// Dictation now requires 100% correct to pass a sentence (mastery gating, same as Gap-fill/Quiz),
+// so the FINAL typed text is always correct once checked — showing only that would hide how the
+// student actually did. We show the first-attempt text (with errors highlighted) whenever it
+// differs from the final passed text, same idea as Gap-fill's firstTryGiven.
 function renderDictationDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-dictation');
   var dj = d.DictationJSON;
@@ -350,19 +530,16 @@ function renderDictationDetail() {
   var answers = dj.answers || [];
   pane.innerHTML = sentences.map(function (s, i) {
     var st = answers[i] || { typed: '', checked: false };
-    var actualWords = s.replace(/[.,!?;:"]/g, '').split(/\s+/);
-    var typedWords = (st.typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/);
-    var allOk = true;
-    var html = actualWords.map(function (w, wi) {
-      var tw = (typedWords[wi] || '').toLowerCase();
-      var ok = tw === w.toLowerCase();
-      if (!ok) allOk = false;
-      return '<span class="' + (ok ? 'dt-w-ok' : (tw ? 'dt-w-bad' : 'dt-w-miss')) + '">' + LD.esc(w) + '</span>';
-    }).join(' ');
-    return '<div class="dt-sentence ' + (st.checked ? (allOk ? 'ok' : 'bad') : '') + '">' +
-      '<div class="sn">Sentence ' + (i + 1) + ' · ' + dtWc(s) + ' words' + (st.checked ? '' : ' · not checked yet') + '</div>' +
+    var actualWords = normalizeQuotes(s).replace(/[.,!?;:"]/g, '').replace(/-/g, ' ').split(/\s+/).filter(Boolean);
+    var firstAttempt = st.firstTryDone ? dtDictWordDiffHtml(actualWords, st.firstTryTyped) : null;
+    var finalRes = dtDictWordDiffHtml(actualWords, st.typed);
+    var showBothLines = firstAttempt && st.firstTryTyped !== st.typed;
+    var attemptsNote = st.attempts > 1 ? (' · ' + st.attempts + ' attempts') : '';
+    return '<div class="dt-sentence ' + (st.checked ? (finalRes.allOk ? 'ok' : 'bad') : '') + '">' +
+      '<div class="sn">Sentence ' + (i + 1) + ' · ' + dtWc(s) + ' words' + attemptsNote + (st.checked ? '' : ' · not checked yet') + '</div>' +
       '<div class="target">Target: ' + LD.esc(s) + '</div>' +
-      '<div class="typed">Typed: ' + html + '</div></div>';
+      (showBothLines ? '<div class="typed">First attempt: ' + firstAttempt.html + '</div>' : '') +
+      '<div class="typed">' + (showBothLines ? 'Final (passed): ' : 'Typed: ') + finalRes.html + '</div></div>';
   }).join('');
 }
 function renderGapFillDetail() {
@@ -394,26 +571,39 @@ function renderGapFillDetail() {
 function renderQuizDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-quiz');
   var qj = d.QuizJSON;
-  if (!qj || !qj.questions || !qj.questions.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Quiz yet.</div>'; return; }
-  var answers = qj.answers || [];
-  pane.innerHTML = qj.questions.map(function (q, i) {
-    var chosen = answers[i];
-    return '<div class="dt-q"><span class="dt-q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Content' : 'Vocabulary') + '</span>' +
-      '<div class="dt-q-text">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
-      (q.o || []).map(function (o, j) {
-        var cls = j === q.a ? 'correct' : (j === chosen ? 'chosen-wrong' : '');
-        return '<div class="dt-opt ' + cls + '">' + (j === chosen ? '☑ ' : '☐ ') + LD.esc(o) + (j === q.a ? '  ✓' : '') + '</div>';
-      }).join('') + '</div>';
+  var attempts = (qj && qj.attempts) || [];
+  if (!attempts.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Quiz yet.</div>'; return; }
+  // Each attempt is a full 15-question batch (redo-with-fresh-questions design — a wrong
+  // answer means a whole new batch next time, not a per-question retry). Show every attempt
+  // so the teacher can see what tripped the student up before they eventually passed.
+  pane.innerHTML = attempts.map(function (att, ai) {
+    var questions = att.questions || [], answers = att.answers || [];
+    var passed = att.correct === (att.total || questions.length);
+    var header = '<div style="margin:' + (ai ? '18px' : '0') + ' 0 8px;font-size:12.5px;font-weight:700;color:' + (passed ? '#56d364' : '#ff7b8a') + '">' +
+      'Attempt ' + (ai + 1) + ' — ' + att.correct + '/' + (att.total || questions.length) + (passed ? ' ✓ passed' : ' ✗ failed, redid with new questions') + '</div>';
+    var qs = questions.map(function (q, i) {
+      var chosen = answers[i];
+      return '<div class="dt-q"><span class="dt-q-tag ' + (q.type === 'content' ? 'content' : 'vocab') + '">' + (q.type === 'content' ? 'Content' : 'Vocabulary') + '</span>' +
+        '<div class="dt-q-text">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
+        (q.o || []).map(function (o, j) {
+          var cls = j === q.a ? 'correct' : (j === chosen ? 'chosen-wrong' : '');
+          return '<div class="dt-opt ' + cls + '">' + (j === chosen ? '☑ ' : '☐ ') + LD.esc(o) + (j === q.a ? '  ✓' : '') + '</div>';
+        }).join('') + '</div>';
+    }).join('');
+    return header + qs;
   }).join('');
 }
 function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSortDir : -1; App.sessSortKey = key; renderSessionsTable(); }
 async function exportCsv() {
-  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value };
-  var r = await LD.api('teacher.exportSessions', p);
-  if (!r.success) { LD.toast(r.error || 'Could not export CSV', 'err'); return; }
-  var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
+  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value, showAll: App.sessShowAll };
+  showLoading('Preparing CSV…');
+  try {
+    var r = await LD.api('teacher.exportSessions', p);
+    if (!r.success) { LD.toast(r.error || 'Could not export CSV', 'err'); return; }
+    var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
+  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); } finally { hideLoading(); }
 }
 </script>
 </body>
