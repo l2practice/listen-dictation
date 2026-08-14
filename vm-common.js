@@ -8,7 +8,7 @@
 
   // ── CONFIG ─────────────────────────────────────
   // Replace with your deployed GAS /exec URL
-  var GAS = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
+  var GAS = 'https://script.google.com/macros/s/AKfycbwe50uEyLe_oi__V_3eJ6JMfmbTqBbwR7u1md0JIGTGrILLOWoYSBCbqraXDltClqaf/exec';
 
   var VM = {
     GAS: GAS,
