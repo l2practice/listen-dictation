@@ -153,18 +153,43 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <div><div class="stat-num" id="stat-avg-total">—</div><div class="stat-lbl">Avg Total Score</div></div>
     </div>
     <div class="card">
+      <!-- Every field here is a filter that GATES the fetch — nothing loads from Sheets until the
+           teacher presses "Load Results". Class + at least one of Book/Test/Part are required
+           (loadSessions() validates this before calling the API at all); date range defaults to
+           the last 14 days unless "All results" is checked. See loadSessions() in the script below. -->
       <div class="toolbar">
-        <select class="form-select" id="sess-filter-class" onchange="loadSessions()"><option value="">All classes</option></select>
-        <input type="date" class="form-input" id="sess-filter-from" onchange="App.sessShowAll=false;loadSessions()">
+        <select class="form-select" id="sess-filter-class"><option value="">— Select class (required) —</option></select>
+        <select class="form-select" id="sess-filter-book">
+          <option value="">All books</option>
+          <option>Cam11</option><option>Cam12</option><option>Cam13</option><option>Cam14</option>
+          <option>Cam15</option><option>Cam16</option><option>Cam17</option><option>Cam18</option>
+          <option>Cam19</option><option>Cam20</option><option>Cam21</option>
+        </select>
+        <select class="form-select" id="sess-filter-test">
+          <option value="">All tests</option>
+          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+          <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+          <option>11</option><option>12</option><option>13</option><option>14</option><option>15</option>
+        </select>
+        <select class="form-select" id="sess-filter-part">
+          <option value="">All parts</option>
+          <option>1</option><option>2</option><option>3</option><option>4</option>
+          <option>5</option><option>6</option><option>7</option><option>8</option>
+        </select>
+        <input type="date" class="form-input" id="sess-filter-from">
         <span style="font-size:12.5px;color:var(--grey-600)">to</span>
-        <input type="date" class="form-input" id="sess-filter-to" onchange="App.sessShowAll=false;loadSessions()">
-        <input class="form-input" id="sess-search" placeholder="🔍 Search by book / student name…" style="width:200px" oninput="renderSessionsTable()">
+        <input type="date" class="form-input" id="sess-filter-to">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--grey-600);white-space:nowrap">
+          <input type="checkbox" id="sess-filter-all" onchange="onAllResultsToggle()"> All results
+        </label>
+        <input class="form-input" id="sess-search" placeholder="🔍 Filter loaded results…" style="width:170px" oninput="renderSessionsTable()">
         <div style="flex:1"></div>
-        <button class="btn btn-secondary btn-sm" onclick="loadSessions()">🔄 Refresh</button>
-        <button class="btn btn-secondary btn-sm" onclick="showAllSessions()">📂 Show all (slower)</button>
+        <button class="btn btn-primary btn-sm" onclick="loadSessions()">▶ Load Results</button>
         <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
       </div>
-      <div style="font-size:11.5px;color:var(--grey-400);padding:0 4px 8px" id="sess-range-note"></div>
+      <div style="font-size:11.5px;color:var(--grey-400);padding:0 4px 8px">
+        Select a Class and at least one of Book / Test / Part, then press <b>Load Results</b>. Default range is the last 14 days — check "All results" to ignore dates.
+      </div>
       <div style="overflow:auto">
         <table class="ld-table">
           <thead><tr>
@@ -180,7 +205,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <th onclick="sessSort('totalScore')">Total Score</th>
             <th>Detail</th>
           </tr></thead>
-          <tbody id="sessions-tbody"></tbody>
+          <tbody id="sessions-tbody"><tr><td colspan="11" style="text-align:center;color:var(--grey-400);padding:26px 10px">Choose a Class + (Book, Test, or Part), then press <b>Load Results</b>.</td></tr></tbody>
         </table>
       </div>
       <div id="sess-count" style="font-size:12px;color:var(--grey-400);margin-top:8px"></div>
@@ -220,7 +245,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
 <script src="ld-common.js"></script>
 <script>
-var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, sessShowAll: false };
+var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1 };
 var _loadingDepth = 0;
 function showLoading(msg) {
   _loadingDepth++;
@@ -238,6 +263,12 @@ function hideLoading() {
   document.getElementById('tb-user').textContent = '👤 ' + s.user.fullName;
   loadClasses();
   LD.idle.init(); // auto sign-out after 2h idle — nothing to save/checkpoint on this side
+  // Default date range = last 14 days. Set once at load so it's visible immediately, but this does
+  // NOT trigger a fetch — Sessions only ever loads when the teacher presses "Load Results" (see
+  // loadSessions() below).
+  var to = new Date(), from = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  document.getElementById('sess-filter-to').value = to.toISOString().slice(0, 10);
+  document.getElementById('sess-filter-from').value = from.toISOString().slice(0, 10);
 })();
 
 function switchTab(tab) {
@@ -245,11 +276,14 @@ function switchTab(tab) {
   document.getElementById('tab-sessions').classList.toggle('hidden', tab !== 'sessions');
   document.getElementById('tab-btn-classes').classList.toggle('active', tab === 'classes');
   document.getElementById('tab-btn-sessions').classList.toggle('active', tab === 'sessions');
-  // Always refresh on switching into Sessions — previously this only loaded the FIRST time the
-  // tab was opened (guarded by "sessions still empty"), so a teacher who'd already visited it once
-  // kept seeing stale cached data on every later visit and never saw newly-finished Quiz/Gap-fill
-  // work until they happened to click Refresh manually.
-  if (tab === 'sessions') loadSessions();
+  // Deliberately does NOT auto-load Sessions — GAS/Sheets has no index, so an unscoped fetch (no
+  // class + no book/test/part) is exactly the "read the whole sheet" antipattern we're avoiding.
+  // The teacher must pick filters and press "Load Results" — see loadSessions().
+}
+function onAllResultsToggle() {
+  var all = document.getElementById('sess-filter-all').checked;
+  document.getElementById('sess-filter-from').disabled = all;
+  document.getElementById('sess-filter-to').disabled = all;
 }
 
 // ── CLASSES ──
@@ -288,7 +322,9 @@ async function loadClasses() {
   if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(r.error) + '</span>'; return; }
   App.classes = r.data;
   var filterSel = document.getElementById('sess-filter-class');
-  filterSel.innerHTML = '<option value="">All classes</option>' + r.data.map(function (c) { return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>'; }).join('');
+  var prevVal = filterSel.value;
+  filterSel.innerHTML = '<option value="">— Select class (required) —</option>' + r.data.map(function (c) { return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>'; }).join('');
+  if (prevVal) filterSel.value = prevVal; // loadClasses() can be called again later (e.g. after creating a class) — don't reset a filter the teacher already picked
   el.innerHTML = r.data.length ? r.data.map(function (c) {
     return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-gold">' + c.ClassID + '</span> ' +
       '<span class="badge ' + (c.Status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + c.Status + '</span>' +
@@ -333,21 +369,36 @@ async function toggleStudentStatus(studentId, curStatus) {
 
 // ── SESSIONS DASHBOARD ──
 // GAS/Sheets reads the whole sheet on every call (no index) — the more rows + the more people
-// hitting it at once, the slower it gets. Default to the last 7 days (server also enforces this
-// as a fallback — see teacherGetAllSessions in Code.gs) so a normal visit to this tab stays fast;
-// "Show all" is an explicit opt-in for when a teacher really needs the full history.
+// hitting it at once, the slower it gets, and an unscoped query (no class, no book/test/part) is
+// exactly the pattern to avoid. So this only ever fetches when explicitly triggered ("Load
+// Results"), and only once Class + at least one of Book/Test/Part are chosen. Date range defaults
+// to the last 14 days unless "All results" is checked.
 async function loadSessions() {
+  var classId = document.getElementById('sess-filter-class').value;
+  var book = document.getElementById('sess-filter-book').value;
+  var test = document.getElementById('sess-filter-test').value;
+  var part = document.getElementById('sess-filter-part').value;
+  var all = document.getElementById('sess-filter-all').checked;
+
+  if (!classId) { LD.toast('Please select a Class first.', 'err'); return; }
+  if (!book && !test && !part) { LD.toast('Select at least one of Book, Test, or Part.', 'err'); return; }
+
+  var p = { classId: classId, book: book, test: test, part: part };
+  if (all) {
+    p.all = true;
+  } else {
+    var fromEl = document.getElementById('sess-filter-from'), toEl = document.getElementById('sess-filter-to');
+    if (!fromEl.value || !toEl.value) {
+      var to = new Date(), from = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+      fromEl.value = from.toISOString().slice(0, 10);
+      toEl.value = to.toISOString().slice(0, 10);
+    }
+    p.fromDate = fromEl.value;
+    p.toDate = toEl.value;
+  }
+
   var tbody = document.getElementById('sessions-tbody');
   tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
-  var fromDate = document.getElementById('sess-filter-from').value;
-  var p = {
-    classId: document.getElementById('sess-filter-class').value,
-    fromDate: fromDate,
-    toDate: document.getElementById('sess-filter-to').value,
-    showAll: App.sessShowAll
-  };
-  document.getElementById('sess-range-note').textContent =
-    (!fromDate && !App.sessShowAll) ? 'Showing the last 7 days by default — pick a date range or "Show all" for older sessions.' : '';
   showLoading('Loading sessions…');
   var r;
   try { r = await LD.api('teacher.getAllSessions', p); }
@@ -356,12 +407,6 @@ async function loadSessions() {
   if (!r.success) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Error: ' + LD.esc(r.error) + '</td></tr>'; return; }
   App.sessions = r.data;
   renderSessionsTable();
-}
-function showAllSessions() {
-  App.sessShowAll = true;
-  document.getElementById('sess-filter-from').value = '';
-  document.getElementById('sess-filter-to').value = '';
-  loadSessions();
 }
 function renderSessionsTable() {
   var q = (document.getElementById('sess-search').value || '').toLowerCase();
@@ -595,7 +640,16 @@ function renderQuizDetail() {
 }
 function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSortDir : -1; App.sessSortKey = key; renderSessionsTable(); }
 async function exportCsv() {
-  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value, showAll: App.sessShowAll };
+  var classId = document.getElementById('sess-filter-class').value;
+  var book = document.getElementById('sess-filter-book').value;
+  var test = document.getElementById('sess-filter-test').value;
+  var part = document.getElementById('sess-filter-part').value;
+  var all = document.getElementById('sess-filter-all').checked;
+  if (!classId) { LD.toast('Please select a Class first.', 'err'); return; }
+  if (!book && !test && !part) { LD.toast('Select at least one of Book, Test, or Part.', 'err'); return; }
+  var p = { classId: classId, book: book, test: test, part: part };
+  if (all) p.all = true;
+  else { p.fromDate = document.getElementById('sess-filter-from').value; p.toDate = document.getElementById('sess-filter-to').value; }
   showLoading('Preparing CSV…');
   try {
     var r = await LD.api('teacher.exportSessions', p);
