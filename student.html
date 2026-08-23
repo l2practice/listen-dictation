@@ -97,7 +97,11 @@
 .dict-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--grey-600);margin:2px 0 12px}
 .dict-legend span{display:inline-flex;align-items:center;gap:5px}
 .dict-legend b{font-weight:800}
-.sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:17px}
+/* Was a single-line <input> — long sentences scrolled off the right edge instead of wrapping,
+   so fixing a mistake mid-sentence meant holding the arrow key for ages to reach it. Now a
+   <textarea> that wraps and grows with content (see autoGrowTextarea()) so the whole typed
+   sentence is always visible and directly clickable/editable. */
+.sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:17px;line-height:1.5;resize:none;overflow:hidden;min-height:44px}
 .sb-input:focus{border-color:var(--blue)}
 .sb-input:disabled{background:#f0f1f4;color:var(--grey-600)}
 .sb-hint{background:#EEF6FF;border:1px solid #B9DDFF;border-radius:8px;padding:9px 11px;margin-top:8px;font-size:13.5px;line-height:1.5}
@@ -1514,7 +1518,7 @@ function renderDictation() {
       '<span class="sb-wc-pill ' + (match ? 'match' : 'nomatch') + '" id="sb-wc-' + i + '">✏️ ' + typedNow + '/' + target + ' words</span>' +
       '</div>' +
       '<div class="sb-result" id="sb-result-' + i + '"></div>' +
-      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '" ' + (disabled ? 'disabled' : '') + ' oninput="onDictInput(' + i + ',this.value)" onkeydown="onDictInputKeydown(event,' + i + ')" ' + ANTI_PASTE_ATTRS + '>' +
+      '<textarea class="sb-input" id="sb-input-' + i + '" rows="1" placeholder="Type what you hear…" ' + (disabled ? 'disabled' : '') + ' oninput="onDictInput(' + i + ',this.value);autoGrowTextarea(this)" onkeydown="onDictInputKeydown(event,' + i + ')" ' + ANTI_PASTE_ATTRS + '>' + LD.esc(st.typed) + '</textarea>' +
       '<div class="sb-hint" id="sb-hint-' + i + '" style="display:none"></div>' +
       '<div class="sb-controls">' +
       '<span class="sb-summary" id="sb-summary-' + i + '"></span>' +
@@ -1526,6 +1530,10 @@ function renderDictation() {
       '</span></div></div>';
   }).join('');
   document.getElementById('dictation-sentences').innerHTML = html;
+  // Freshly-rendered textareas start at their CSS min-height regardless of how much text is
+  // already in them (resumed session, or re-rendered after a failed Check) — size each one to
+  // its actual content right away instead of waiting for the next keystroke.
+  document.querySelectorAll('.sb-input').forEach(autoGrowTextarea);
   var done = App.dictationAnswers.filter(function (a) { return a.checked; }).length;
   var pct = Math.round(done / total * 100);
   document.getElementById('dict-progress-fill').style.width = pct + '%';
@@ -1540,6 +1548,14 @@ function onDictInput(i, v) {
   App.dictationAnswers[i].typed = v;
   updateWcPill(i);
   updateWordTotal();
+}
+// sb-input is a <textarea> so long sentences wrap instead of scrolling off-screen — this grows
+// it to fit whatever's typed (reset height to 'auto' first so it can also SHRINK back down after
+// a Reset/Edit removes text, not just grow).
+function autoGrowTextarea(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
 }
 function updateWcPill(i) {
   var el = document.getElementById('sb-wc-' + i);
@@ -1602,8 +1618,14 @@ function renderDictResult(i) {
   }).join(' ');
 }
 function onDictInputKeydown(e, i) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!App.dictationAnswers[i].checked) checkSentence(i); }
-  // Shift+Enter is NOT handled here — it bubbles up to the shared shortcut handler ("Next sentence").
+  // sb-input is now a <textarea> (was <input>) so it can wrap long sentences — but that means a
+  // plain <input>'s "Enter never inserts a newline" behavior no longer comes for free. Always
+  // preventDefault() on Enter (with or without Shift) so it's never typed into the answer, while
+  // still letting Shift+Enter bubble up to the shared shortcut handler ("Next sentence").
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (!e.shiftKey && !App.dictationAnswers[i].checked) checkSentence(i);
+  }
 }
 function updateWordTotal() {
   var targetTotal = App.correctedSentences.reduce(function (a, s) { return a + dictTokenize(s).length; }, 0);
