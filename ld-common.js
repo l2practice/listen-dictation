@@ -7,7 +7,7 @@
 (function (global) {
   'use strict';
 
-  var GAS = 'https://script.google.com/macros/s/AKfycbz9rtnIpl25VANVCwR6GUO9qksFWfSDYY8SZb8_h2xDCqesBXo3NuNykOGA-d-oPDvf/exec';
+  var GAS = 'https://script.google.com/macros/s/AKfycbyCXx64UE2VQEHLltLtbEfUQisd-hQr3Z7zJFO0B8VAu07u9bqArp5JxmxxY6osirrT/exec';
 
   var LD = {
     GAS: GAS,
