@@ -137,17 +137,30 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <!-- ═══ SESSIONS DASHBOARD ═══ -->
   <div id="tab-sessions" class="hidden">
     <div class="card">
-      <div class="toolbar">
-        <select class="form-select" id="sess-filter-class" onchange="loadSessions()"><option value="">All classes</option></select>
-        <input type="date" class="form-input" id="sess-filter-from" onchange="loadSessions()">
+      <div class="toolbar" style="gap:8px;flex-wrap:wrap">
+        <select class="form-select" id="sess-filter-class" style="min-width:140px">
+          <option value="">All classes</option>
+        </select>
+        <select class="form-select" id="sess-filter-book" style="min-width:120px">
+          <option value="">All books</option>
+        </select>
+        <select class="form-select" id="sess-filter-test" style="min-width:100px">
+          <option value="">All tests</option>
+        </select>
+        <select class="form-select" id="sess-filter-part" style="min-width:90px">
+          <option value="">All parts</option>
+        </select>
+        <input type="date" class="form-input" id="sess-filter-from">
         <span style="font-size:12.5px;color:var(--grey-600)">to</span>
-        <input type="date" class="form-input" id="sess-filter-to" onchange="loadSessions()">
-        <input class="form-input" id="sess-search" placeholder="🔍 Search by book / student name…" style="width:200px" oninput="renderSessionsTable()">
+        <input type="date" class="form-input" id="sess-filter-to">
+        <button class="btn btn-primary btn-sm" onclick="loadSessions()" id="btn-load-sessions">▶ Load Results</button>
         <div style="flex:1"></div>
-        <button class="btn btn-secondary btn-sm" onclick="loadSessions()">🔄 Refresh</button>
+        <input class="form-input" id="sess-search" placeholder="🔍 Filter loaded results…" style="width:180px" oninput="renderSessionsTable()">
         <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
-        <button class="btn btn-secondary btn-sm" id="btn-purge" onclick="purgeOldDetails()" title="Xóa script/quiz/gapfill/dictation của bài làm cũ hơn 21 ngày. Điểm số vẫn giữ nguyên." style="color:var(--red);border-color:var(--red)">🗑 Clear old data</button>
+        <button class="btn btn-secondary btn-sm" id="btn-purge" onclick="showPurgeDialog()" title="Xóa chi tiết script/quiz/dictation theo khoảng ngày. Điểm số giữ nguyên." style="color:var(--red);border-color:var(--red)">🗑 Clear old data</button>
       </div>
+      <p style="font-size:11.5px;color:var(--grey-400);margin-bottom:10px">Select a Class and at least one of Book / Test / Part, then press <b>Load Results</b>. Default range is the last 14 days — check 'All results' to ignore dates.</p>
+      <div id="sess-stats" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:13px"></div>
       <div style="overflow:auto">
         <table class="ld-table">
           <thead><tr>
@@ -163,10 +176,31 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <th onclick="sessSort('totalScore')">Total Score</th>
             <th>Detail</th>
           </tr></thead>
-          <tbody id="sessions-tbody"></tbody>
+          <tbody id="sessions-tbody"><tr><td colspan="11" style="text-align:center;color:var(--grey-400);padding:30px">Select filters above and press Load Results.</td></tr></tbody>
         </table>
       </div>
       <div id="sess-count" style="font-size:12px;color:var(--grey-400);margin-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- Purge dialog -->
+  <div class="ld-modal-bg" id="purge-modal">
+    <div class="ld-auth-card" style="max-width:420px">
+      <div class="ld-auth-title" style="font-size:1.1rem">🗑 Clear Old Session Details</div>
+      <p class="ld-auth-sub">Xóa nội dung chi tiết (script, quiz, gap-fill, dictation) của các bài làm trong khoảng ngày chọn. <b>Điểm số và thông tin sinh viên vẫn giữ nguyên.</b></p>
+      <div class="ld-field">
+        <label class="ld-label">Từ ngày</label>
+        <input class="ld-input" type="date" id="purge-from">
+      </div>
+      <div class="ld-field">
+        <label class="ld-label">Đến ngày</label>
+        <input class="ld-input" type="date" id="purge-to">
+      </div>
+      <p style="font-size:11.5px;color:var(--grey-600);margin-bottom:14px">Để trống cả hai → xóa tất cả bài cũ hơn 21 ngày.</p>
+      <button class="ld-btn ld-btn-primary" id="btn-purge-confirm" onclick="doPurge()">🗑 Xóa chi tiết</button>
+      <div style="text-align:center;margin-top:10px">
+        <a href="#" onclick="document.getElementById('purge-modal').classList.remove('show');return false" style="font-size:12.5px;color:var(--grey-600);text-decoration:none">Hủy</a>
+      </div>
     </div>
   </div>
 </div>
@@ -200,7 +234,7 @@ var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1
   var s = LD.session.require('Teacher');
   if (!s) return;
   document.getElementById('tb-user').textContent = '👤 ' + s.user.fullName;
-  loadClasses();
+  loadClasses(); // luôn load classes khi vào trang để dropdown lớp có dữ liệu
 })();
 
 function switchTab(tab) {
@@ -208,7 +242,8 @@ function switchTab(tab) {
   document.getElementById('tab-sessions').classList.toggle('hidden', tab !== 'sessions');
   document.getElementById('tab-btn-classes').classList.toggle('active', tab === 'classes');
   document.getElementById('tab-btn-sessions').classList.toggle('active', tab === 'sessions');
-  if (tab === 'sessions' && !App.sessions.length) loadSessions();
+  // Không auto-load sessions — để GV chọn lớp/ngày rồi bấm Load Results thủ công,
+  // tránh gọi getAllSessions với payload rỗng (trả toàn bộ sheet, chậm).
 }
 
 // ── CLASSES ──
@@ -229,8 +264,11 @@ async function loadClasses() {
   var r = await LD.api('teacher.getClasses', {});
   if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(r.error) + '</span>'; return; }
   App.classes = r.data;
+  // Populate class dropdown trong Sessions tab
   var filterSel = document.getElementById('sess-filter-class');
-  filterSel.innerHTML = '<option value="">All classes</option>' + r.data.map(function (c) { return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>'; }).join('');
+  filterSel.innerHTML = '<option value="">All classes</option>' + r.data.map(function (c) {
+    return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>';
+  }).join('');
   el.innerHTML = r.data.length ? r.data.map(function (c) {
     return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-gold">' + c.ClassID + '</span> ' +
       '<span class="badge ' + (c.Status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + c.Status + '</span>' +
@@ -240,6 +278,28 @@ async function loadClasses() {
       '<button class="btn btn-secondary btn-sm" onclick="toggleClassStatus(\'' + c.ClassID + '\',\'' + c.Status + '\')">' + (c.Status === 'Active' ? '🔒 Lock' : '🔓 Reopen') + '</button>' +
       '</div></div>';
   }).join('') : '<p style="color:var(--grey-600);font-size:13px">No classes yet.</p>';
+}
+
+// Populate Book/Test/Part dropdowns từ dữ liệu sessions đã load
+function populateBookTestPartDropdowns(sessions) {
+  var books = {}, tests = {}, parts = {};
+  sessions.forEach(function (s) {
+    var btp = String(s.bookTestPart || '');
+    var seg = btp.split(/[-_/]/).map(function (x) { return x.trim(); });
+    if (seg[0]) books[seg[0]] = true;
+    if (seg[1]) tests[seg[1]] = true;
+    if (seg[2]) parts[seg[2]] = true;
+  });
+  function fill(id, vals) {
+    var cur = document.getElementById(id).value;
+    var opts = '<option value="">All</option>' + Object.keys(vals).sort().map(function (v) {
+      return '<option value="' + LD.esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + LD.esc(v) + '</option>';
+    }).join('');
+    document.getElementById(id).innerHTML = opts;
+  }
+  fill('sess-filter-book', books);
+  fill('sess-filter-test', tests);
+  fill('sess-filter-part', parts);
 }
 async function toggleClassStatus(classId, curStatus) {
   var newStatus = curStatus === 'Active' ? 'Archived' : 'Active';
@@ -265,24 +325,56 @@ async function toggleStudentStatus(studentId, curStatus) {
 
 // ── SESSIONS DASHBOARD ──
 async function loadSessions() {
+  var btn = document.getElementById('btn-load-sessions');
   var tbody = document.getElementById('sessions-tbody');
-  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)"><span class="spinner"></span> Loading…</td></tr>';
+  btn.disabled = true;
   var p = {
-    classId: document.getElementById('sess-filter-class').value,
+    classId:  document.getElementById('sess-filter-class').value,
     fromDate: document.getElementById('sess-filter-from').value,
-    toDate: document.getElementById('sess-filter-to').value
+    toDate:   document.getElementById('sess-filter-to').value
   };
   var r = await LD.api('teacher.getAllSessions', p);
-  if (!r.success) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Error: ' + LD.esc(r.error) + '</td></tr>'; return; }
+  btn.disabled = false;
+  if (!r.success) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Network error: ' + LD.esc(r.error) + '</td></tr>'; return; }
   App.sessions = r.data;
+  populateBookTestPartDropdowns(r.data);
   renderSessionsTable();
 }
 function renderSessionsTable() {
-  var q = (document.getElementById('sess-search').value || '').toLowerCase();
-  var rows = App.sessions.filter(function (r) {
-    return !q || String(r.bookTestPart || '').toLowerCase().indexOf(q) >= 0 || String(r.studentName || '').toLowerCase().indexOf(q) >= 0 || String(r.studentId || '').toLowerCase().indexOf(q) >= 0;
+  var q     = (document.getElementById('sess-search').value || '').toLowerCase();
+  var book  = document.getElementById('sess-filter-book').value;
+  var test  = document.getElementById('sess-filter-test').value;
+  var part  = document.getElementById('sess-filter-part').value;
+  var rows  = App.sessions.filter(function (r) {
+    var btp = String(r.bookTestPart || '');
+    var seg = btp.split(/[-_/]/).map(function (x) { return x.trim(); });
+    if (book && seg[0] !== book) return false;
+    if (test && seg[1] !== test) return false;
+    if (part && seg[2] !== part) return false;
+    return !q || btp.toLowerCase().indexOf(q) >= 0 || String(r.studentName || '').toLowerCase().indexOf(q) >= 0 || String(r.studentId || '').toLowerCase().indexOf(q) >= 0;
   });
   rows.sort(function (a, b) { var x = a[App.sessSortKey], y = b[App.sessSortKey]; return x > y ? App.sessSortDir : x < y ? -App.sessSortDir : 0; });
+
+  // Stats bar
+  var completed = rows.filter(function (r) { return r.totalScore != null && r.totalScore !== ''; });
+  var avg = function (key) {
+    var vals = rows.filter(function (r) { return r[key] != null && r[key] !== ''; }).map(function (r) { return Number(r[key]); });
+    return vals.length ? Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length) : null;
+  };
+  var statsEl = document.getElementById('sess-stats');
+  statsEl.innerHTML = [
+    ['Sessions (filtered)', rows.length],
+    ['Completed', completed.length],
+    ['In Progress', rows.length - completed.length],
+    ['Avg Quiz', avg('quizScore') != null ? avg('quizScore') + '%' : '—'],
+    ['Avg Gap-fill', avg('gapFillScore') != null ? avg('gapFillScore') + '%' : '—'],
+    ['Avg Dictation', avg('dictationAccuracy') != null ? avg('dictationAccuracy') + '%' : '—'],
+    ['Avg Total', avg('totalScore') != null ? avg('totalScore') + '%' : '—']
+  ].map(function (kv) {
+    return '<div style="background:var(--grey-100);border-radius:8px;padding:6px 12px;white-space:nowrap"><span style="font-size:10px;color:var(--grey-600);display:block;text-transform:uppercase;letter-spacing:.05em">' + kv[0] + '</span><b>' + kv[1] + '</b></div>';
+  }).join('');
+
   document.getElementById('sessions-tbody').innerHTML = rows.length ? rows.map(function (r) {
     return '<tr><td>' + LD.esc(r.bookTestPart || '—') + '</td><td>' + LD.esc(r.studentId || '—') + '</td><td>' + LD.esc(r.studentName) + '</td><td>' + LD.esc(r.className) + '</td>' +
       '<td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
@@ -416,13 +508,22 @@ async function exportCsv() {
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
 }
-async function purgeOldDetails() {
-  if (!confirm('Xóa toàn bộ nội dung chi tiết (script, quiz, gap-fill, dictation) của các bài làm cũ hơn 21 ngày?\n\nĐiểm số và thông tin sinh viên vẫn được giữ nguyên.\nHành động này KHÔNG thể hoàn tác.')) return;
-  var btn = document.getElementById('btn-purge');
-  btn.disabled = true; btn.textContent = '⏳ Đang xóa…';
-  var r = await LD.api('teacher.purgeOldDetails', {});
-  btn.disabled = false; btn.innerHTML = '🗑 Clear old data';
-  if (r && r.success) LD.toast('Đã xóa chi tiết của ' + r.purged + ' bài làm cũ.', 'ok', 4000);
+function showPurgeDialog() {
+  // Mặc định: đến ngày 21 ngày trước (để trống từ ngày = xóa từ đầu)
+  var d21 = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000);
+  document.getElementById('purge-from').value = '';
+  document.getElementById('purge-to').value = d21.toISOString().slice(0, 10);
+  document.getElementById('purge-modal').classList.add('show');
+}
+async function doPurge() {
+  var from = document.getElementById('purge-from').value;
+  var to   = document.getElementById('purge-to').value;
+  var btn  = document.getElementById('btn-purge-confirm');
+  btn.disabled = true; btn.innerHTML = '<span class="ld-spin"></span> Đang xóa…';
+  var r = await LD.api('teacher.purgeOldDetails', { fromDate: from, toDate: to });
+  btn.disabled = false; btn.textContent = '🗑 Xóa chi tiết';
+  document.getElementById('purge-modal').classList.remove('show');
+  if (r && r.success) LD.toast('Đã xóa chi tiết của ' + r.purged + ' bài làm.', 'ok', 4000);
   else LD.toast((r && r.error) || 'Lỗi khi xóa.', 'err');
 }
 </script>
