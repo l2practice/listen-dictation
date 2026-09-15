@@ -136,18 +136,44 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
   <!-- ═══ SESSIONS DASHBOARD ═══ -->
   <div id="tab-sessions" class="hidden">
+    <!-- Filter card — GV phải chọn filter TRƯỚC, data không tự load -->
     <div class="card">
-      <div class="toolbar">
-        <select class="form-select" id="sess-filter-class" onchange="loadSessions()"><option value="">All classes</option></select>
-        <input type="date" class="form-input" id="sess-filter-from" onchange="loadSessions()">
-        <span style="font-size:12.5px;color:var(--grey-600)">to</span>
-        <input type="date" class="form-input" id="sess-filter-to" onchange="loadSessions()">
-        <input class="form-input" id="sess-search" placeholder="🔍 Search by book / student name…" style="width:200px" oninput="renderSessionsTable()">
-        <div style="flex:1"></div>
-        <button class="btn btn-secondary btn-sm" onclick="loadSessions()">🔄 Refresh</button>
-        <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
+      <div class="card-title">🔍 Load Results
+        <span style="font-size:11px;color:var(--grey-400);font-weight:400">Chọn ít nhất 1 điều kiện rồi bấm Load</span>
       </div>
-      <div style="overflow:auto">
+      <div class="toolbar" style="margin-bottom:10px">
+        <div>
+          <label class="form-label">Lớp</label>
+          <select class="form-select" id="sess-filter-class" style="min-width:140px"><option value="">— Tất cả lớp —</option></select>
+        </div>
+        <div>
+          <label class="form-label">Book</label>
+          <select class="form-select" id="sess-filter-book" style="min-width:110px"><option value="">— Tất cả book —</option></select>
+        </div>
+        <div>
+          <label class="form-label">Từ ngày</label>
+          <input type="date" class="form-input" id="sess-filter-from">
+        </div>
+        <span style="font-size:12.5px;color:var(--grey-600);align-self:flex-end;padding-bottom:2px">→</span>
+        <div>
+          <label class="form-label">Đến ngày</label>
+          <input type="date" class="form-input" id="sess-filter-to">
+        </div>
+        <div style="align-self:flex-end">
+          <button class="btn btn-primary btn-sm" id="btn-load-sessions" onclick="loadFilteredSessions()">📊 Load Results</button>
+        </div>
+        <div style="flex:1"></div>
+        <div style="align-self:flex-end;display:flex;gap:6px">
+          <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
+          <button class="btn btn-secondary btn-sm" style="color:var(--red);border-color:var(--red)" onclick="openClearModal()">🗑 Clear Data</button>
+        </div>
+      </div>
+      <input class="form-input" id="sess-search" placeholder="🔍 Lọc nhanh theo tên SV / book…" style="width:100%;max-width:320px;margin-bottom:12px" oninput="renderSessionsTable()">
+      <!-- Trạng thái ban đầu: chờ GV chọn filter -->
+      <div id="sess-placeholder" style="text-align:center;padding:40px 20px;color:var(--grey-400);font-size:13.5px">
+        👆 Chọn lớp / ngày / book rồi bấm <b>Load Results</b> để xem kết quả.
+      </div>
+      <div id="sess-table-wrap" style="display:none;overflow:auto">
         <table class="ld-table">
           <thead><tr>
             <th onclick="sessSort('bookTestPart')">Book/Test/Part</th>
@@ -166,6 +192,40 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         </table>
       </div>
       <div id="sess-count" style="font-size:12px;color:var(--grey-400);margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CLEAR DATA MODAL ═══ -->
+<div class="ld-modal-bg" id="clearModal">
+  <div class="ld-auth-card" style="max-width:460px">
+    <div class="ld-auth-title" style="font-size:1.1rem;color:var(--red)">🗑 Clear Session Data</div>
+    <p class="ld-auth-sub" style="text-align:left;margin-bottom:16px">
+      Xoá nội dung chi tiết (script, JSON phân tích) của các sessions trong khoảng thời gian chọn.<br>
+      <b>Điểm số và thông tin làm bài vẫn được giữ nguyên.</b>
+    </p>
+    <div class="ld-field">
+      <label class="ld-label">Lớp (để trống = tất cả lớp)</label>
+      <select class="ld-input" id="clear-class" style="height:auto;padding:10px 13px">
+        <option value="">— Tất cả lớp —</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="ld-field">
+        <label class="ld-label">Từ ngày</label>
+        <input class="ld-input" type="date" id="clear-from">
+      </div>
+      <div class="ld-field">
+        <label class="ld-label">Đến ngày</label>
+        <input class="ld-input" type="date" id="clear-to">
+      </div>
+    </div>
+    <div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:10px;padding:10px 14px;font-size:12.5px;color:#856404;margin-bottom:16px">
+      ⚠️ Thao tác này <b>không thể hoàn tác</b>. Dữ liệu script và bài làm chi tiết sẽ bị xoá vĩnh viễn. Điểm số được giữ lại.
+    </div>
+    <button class="ld-btn ld-btn-primary" id="btn-confirm-clear" style="background:linear-gradient(135deg,#c8102e,#9b0b22)" onclick="confirmClear()">🗑 Xác nhận Clear</button>
+    <div style="text-align:center;margin-top:12px">
+      <a href="#" id="clear-cancel" onclick="closeClearModal();return false" style="font-size:12.5px;color:var(--grey-600);text-decoration:none">Huỷ</a>
     </div>
   </div>
 </div>
@@ -193,7 +253,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
 <script src="ld-common.js"></script>
 <script>
-var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1 };
+var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false };
 
 (function init() {
   var s = LD.session.require('Teacher');
@@ -207,7 +267,8 @@ function switchTab(tab) {
   document.getElementById('tab-sessions').classList.toggle('hidden', tab !== 'sessions');
   document.getElementById('tab-btn-classes').classList.toggle('active', tab === 'classes');
   document.getElementById('tab-btn-sessions').classList.toggle('active', tab === 'sessions');
-  if (tab === 'sessions' && !App.sessions.length) loadSessions();
+  // Khi GV mở tab Sessions lần đầu: chỉ load filter options (lớp + book), KHÔNG load toàn bộ sessions
+  if (tab === 'sessions' && !App.filterOptionsLoaded) loadFilterOptions();
 }
 
 // ── CLASSES ──
@@ -228,8 +289,7 @@ async function loadClasses() {
   var r = await LD.api('teacher.getClasses', {});
   if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(r.error) + '</span>'; return; }
   App.classes = r.data;
-  var filterSel = document.getElementById('sess-filter-class');
-  filterSel.innerHTML = '<option value="">All classes</option>' + r.data.map(function (c) { return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>'; }).join('');
+  // filter options sẽ được merge vào khi GV mở tab Sessions (loadFilterOptions)
   el.innerHTML = r.data.length ? r.data.map(function (c) {
     return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-gold">' + c.ClassID + '</span> ' +
       '<span class="badge ' + (c.Status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + c.Status + '</span>' +
@@ -263,23 +323,70 @@ async function toggleStudentStatus(studentId, curStatus) {
 }
 
 // ── SESSIONS DASHBOARD ──
-async function loadSessions() {
-  var tbody = document.getElementById('sessions-tbody');
-  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Loading…</td></tr>';
-  var p = {
-    classId: document.getElementById('sess-filter-class').value,
-    fromDate: document.getElementById('sess-filter-from').value,
-    toDate: document.getElementById('sess-filter-to').value
-  };
-  var r = await LD.api('teacher.getAllSessions', p);
-  if (!r.success) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Error: ' + LD.esc(r.error) + '</td></tr>'; return; }
+
+// Bước 1: Load filter options (nhẹ) — chỉ lấy danh sách lớp + book
+async function loadFilterOptions() {
+  try {
+    var r = await LD.api('teacher.getFilterOptions', {});
+    if (!r.success) return;
+    App.filterOptionsLoaded = true;
+
+    var classSel = document.getElementById('sess-filter-class');
+    var clearSel = document.getElementById('clear-class');
+    var bookSel = document.getElementById('sess-filter-book');
+
+    // Populate lớp từ filter options (ưu tiên) + merge từ Classes đã load
+    var classMap = {};
+    (r.classes || []).forEach(function(c){ classMap[c.classId] = c.className; });
+    App.classes.forEach(function(c){ if (!classMap[c.ClassID]) classMap[c.ClassID] = c.ClassName; });
+
+    var classOpts = Object.keys(classMap).sort(function(a,b){ return classMap[a].localeCompare(classMap[b]); })
+      .map(function(id){ return '<option value="' + id + '">' + LD.esc(classMap[id]) + '</option>'; }).join('');
+    classSel.innerHTML = '<option value="">— Tất cả lớp —</option>' + classOpts;
+    clearSel.innerHTML = '<option value="">— Tất cả lớp —</option>' + classOpts;
+
+    // Populate book
+    bookSel.innerHTML = '<option value="">— Tất cả book —</option>' +
+      (r.books || []).map(function(b){ return '<option value="' + LD.esc(b) + '">' + LD.esc(b) + '</option>'; }).join('');
+  } catch(e) {}
+}
+
+// Bước 2: Load sessions theo filter — chỉ chạy khi GV bấm nút Load
+async function loadFilteredSessions() {
+  var classId = document.getElementById('sess-filter-class').value;
+  var fromDate = document.getElementById('sess-filter-from').value;
+  var toDate = document.getElementById('sess-filter-to').value;
+  var bookFilter = document.getElementById('sess-filter-book').value;
+
+  if (!classId && !fromDate && !bookFilter) {
+    LD.toast('Vui lòng chọn ít nhất lớp, ngày bắt đầu, hoặc book.', 'err'); return;
+  }
+
+  var btn = document.getElementById('btn-load-sessions');
+  btn.disabled = true; var orig = btn.textContent; btn.innerHTML = '<span class="spinner"></span> Loading…';
+  document.getElementById('sess-placeholder').innerHTML = '<span class="spinner"></span> Đang tải…';
+  document.getElementById('sess-placeholder').style.display = 'block';
+  document.getElementById('sess-table-wrap').style.display = 'none';
+
+  var r = await LD.api('teacher.getFilteredSessions', { classId: classId, fromDate: fromDate, toDate: toDate, bookFilter: bookFilter });
+  btn.disabled = false; btn.textContent = orig;
+
+  if (!r.success) {
+    document.getElementById('sess-placeholder').innerHTML = '<span style="color:var(--red)">⚠️ ' + LD.esc(r.error) + '</span>';
+    return;
+  }
   App.sessions = r.data;
+  document.getElementById('sess-placeholder').style.display = 'none';
+  document.getElementById('sess-table-wrap').style.display = 'block';
   renderSessionsTable();
 }
+
 function renderSessionsTable() {
   var q = (document.getElementById('sess-search').value || '').toLowerCase();
   var rows = App.sessions.filter(function (r) {
-    return !q || String(r.bookTestPart || '').toLowerCase().indexOf(q) >= 0 || String(r.studentName || '').toLowerCase().indexOf(q) >= 0 || String(r.studentId || '').toLowerCase().indexOf(q) >= 0;
+    return !q || String(r.bookTestPart || '').toLowerCase().indexOf(q) >= 0
+      || String(r.studentName || '').toLowerCase().indexOf(q) >= 0
+      || String(r.studentId || '').toLowerCase().indexOf(q) >= 0;
   });
   rows.sort(function (a, b) { var x = a[App.sessSortKey], y = b[App.sessSortKey]; return x > y ? App.sessSortDir : x < y ? -App.sessSortDir : 0; });
   document.getElementById('sessions-tbody').innerHTML = rows.length ? rows.map(function (r) {
@@ -288,9 +395,49 @@ function renderSessionsTable() {
       '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
       '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td>' +
       '<td><button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + r.sessionId + '\')">🔍 Detail</button></td></tr>';
-  }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">No sessions found.</td></tr>';
+  }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Không có kết quả.</td></tr>';
   document.getElementById('sess-count').textContent = rows.length + ' session(s)';
 }
+
+// ── CLEAR DATA ──
+function openClearModal() {
+  // Sync ngày từ filter nếu có
+  var f = document.getElementById('sess-filter-from').value;
+  var t = document.getElementById('sess-filter-to').value;
+  if (f) document.getElementById('clear-from').value = f;
+  if (t) document.getElementById('clear-to').value = t;
+  // Sync class
+  var cls = document.getElementById('sess-filter-class').value;
+  if (cls) document.getElementById('clear-class').value = cls;
+  document.getElementById('clearModal').classList.add('show');
+}
+function closeClearModal() { document.getElementById('clearModal').classList.remove('show'); }
+async function confirmClear() {
+  var fromDate = document.getElementById('clear-from').value;
+  var toDate = document.getElementById('clear-to').value;
+  if (!fromDate || !toDate) { LD.toast('Vui lòng chọn cả ngày bắt đầu và ngày kết thúc.', 'err'); return; }
+  if (fromDate > toDate) { LD.toast('Ngày bắt đầu phải trước ngày kết thúc.', 'err'); return; }
+
+  var classId = document.getElementById('clear-class').value;
+  var classLabel = classId ? (document.getElementById('clear-class').options[document.getElementById('clear-class').selectedIndex].text) : 'tất cả lớp';
+  var msg = 'Xác nhận xoá dữ liệu chi tiết từ ' + fromDate + ' đến ' + toDate + '\nLớp: ' + classLabel + '\n\n⚠️ Điểm số được giữ lại. Thao tác không hoàn tác được!';
+  if (!confirm(msg)) return;
+
+  var btn = document.getElementById('btn-confirm-clear');
+  btn.disabled = true; var orig = btn.textContent; btn.innerHTML = '<span class="ld-spin"></span> Đang xoá…';
+
+  var r = await LD.api('teacher.clearSessionData', { fromDate: fromDate, toDate: toDate, classId: classId });
+  btn.disabled = false; btn.textContent = orig;
+
+  if (!r.success) { LD.toast(r.error || 'Lỗi khi clear.', 'err'); return; }
+  LD.toast(r.message || ('Đã clear ' + r.cleared + ' sessions.'), 'ok', 5000);
+  closeClearModal();
+  // Refresh bảng nếu đang hiển thị
+  if (App.sessions.length) loadFilteredSessions();
+}
+
+// Cũ giữ lại để không break export — export dùng filter hiện tại
+async function loadSessions() { return loadFilteredSessions(); }
 
 // ── SESSION DETAIL ──
 var DetailApp = { data: null, activeTab: 'dictation' };
