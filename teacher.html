@@ -143,12 +143,24 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         </select>
         <select class="form-select" id="sess-filter-book" style="min-width:120px">
           <option value="">All books</option>
+          <option>Cam11</option><option>Cam12</option><option>Cam13</option>
+          <option>Cam14</option><option>Cam15</option><option>Cam16</option>
+          <option>Cam17</option><option>Cam18</option><option>Cam19</option>
+          <option>Cam20</option><option>Other</option>
         </select>
         <select class="form-select" id="sess-filter-test" style="min-width:100px">
           <option value="">All tests</option>
+          <option>Test1</option><option>Test2</option><option>Test3</option>
+          <option>Test4</option><option>Test5</option><option>Test6</option>
+          <option>Test7</option><option>Test8</option><option>Test9</option>
+          <option>Test10</option>
         </select>
         <select class="form-select" id="sess-filter-part" style="min-width:90px">
           <option value="">All parts</option>
+          <option>Part1</option><option>Part2</option><option>Part3</option>
+          <option>Part4</option><option>Part5</option><option>Part6</option>
+          <option>Part7</option><option>Part8</option><option>Part9</option>
+          <option>Part10</option><option>Part11</option><option>Part12</option>
         </select>
         <input type="date" class="form-input" id="sess-filter-from">
         <span style="font-size:12.5px;color:var(--grey-600)">to</span>
@@ -281,26 +293,6 @@ async function loadClasses() {
 }
 
 // Populate Book/Test/Part dropdowns từ dữ liệu sessions đã load
-function populateBookTestPartDropdowns(sessions) {
-  var books = {}, tests = {}, parts = {};
-  sessions.forEach(function (s) {
-    var btp = String(s.bookTestPart || '');
-    var seg = btp.split(/[-_/]/).map(function (x) { return x.trim(); });
-    if (seg[0]) books[seg[0]] = true;
-    if (seg[1]) tests[seg[1]] = true;
-    if (seg[2]) parts[seg[2]] = true;
-  });
-  function fill(id, vals) {
-    var cur = document.getElementById(id).value;
-    var opts = '<option value="">All</option>' + Object.keys(vals).sort().map(function (v) {
-      return '<option value="' + LD.esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + LD.esc(v) + '</option>';
-    }).join('');
-    document.getElementById(id).innerHTML = opts;
-  }
-  fill('sess-filter-book', books);
-  fill('sess-filter-test', tests);
-  fill('sess-filter-part', parts);
-}
 async function toggleClassStatus(classId, curStatus) {
   var newStatus = curStatus === 'Active' ? 'Archived' : 'Active';
   var r = await LD.api('teacher.setClassStatus', { classId: classId, status: newStatus });
@@ -338,7 +330,6 @@ async function loadSessions() {
   btn.disabled = false;
   if (!r.success) { tbody.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Network error: ' + LD.esc(r.error) + '</td></tr>'; return; }
   App.sessions = r.data;
-  populateBookTestPartDropdowns(r.data);
   renderSessionsTable();
 }
 function renderSessionsTable() {
@@ -347,12 +338,11 @@ function renderSessionsTable() {
   var test  = document.getElementById('sess-filter-test').value;
   var part  = document.getElementById('sess-filter-part').value;
   var rows  = App.sessions.filter(function (r) {
-    var btp = String(r.bookTestPart || '');
-    var seg = btp.split(/[-_/]/).map(function (x) { return x.trim(); });
-    if (book && seg[0] !== book) return false;
-    if (test && seg[1] !== test) return false;
-    if (part && seg[2] !== part) return false;
-    return !q || btp.toLowerCase().indexOf(q) >= 0 || String(r.studentName || '').toLowerCase().indexOf(q) >= 0 || String(r.studentId || '').toLowerCase().indexOf(q) >= 0;
+    var btp = String(r.bookTestPart || '').toLowerCase();
+    if (book && btp.indexOf(book.toLowerCase()) < 0) return false;
+    if (test && btp.indexOf(test.toLowerCase()) < 0) return false;
+    if (part && btp.indexOf(part.toLowerCase()) < 0) return false;
+    return !q || btp.indexOf(q) >= 0 || String(r.studentName || '').toLowerCase().indexOf(q) >= 0 || String(r.studentId || '').toLowerCase().indexOf(q) >= 0;
   });
   rows.sort(function (a, b) { var x = a[App.sessSortKey], y = b[App.sessSortKey]; return x > y ? App.sessSortDir : x < y ? -App.sessSortDir : 0; });
 
