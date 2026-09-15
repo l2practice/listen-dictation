@@ -343,12 +343,15 @@ async function loadSessions() {
 }
 function renderSessionsTable() {
   var q     = (document.getElementById('sess-search').value || '').toLowerCase();
-  var book  = document.getElementById('sess-filter-book').value;
+  var bookSel = document.getElementById('sess-filter-book').value;
+  var book = bookSel === '__other__' ? (document.getElementById('sess-filter-book-other').value || '').toLowerCase() : bookSel.toLowerCase();
+  var _bookOther = document.getElementById('sess-filter-book-other');
+  if (_bookOther) _bookOther.style.display = bookSel === '__other__' ? 'inline-block' : 'none';
   var test  = document.getElementById('sess-filter-test').value;
   var part  = document.getElementById('sess-filter-part').value;
   var rows  = App.sessions.filter(function (r) {
     var btp = String(r.bookTestPart || '').toLowerCase();
-    if (book && btp.indexOf(book.toLowerCase()) < 0) return false;
+    if (book && btp.indexOf(book) < 0) return false;
     if (test && btp.indexOf(test.toLowerCase()) < 0) return false;
     if (part && btp.indexOf(part.toLowerCase()) < 0) return false;
     return !q || btp.indexOf(q) >= 0 || String(r.studentName || '').toLowerCase().indexOf(q) >= 0 || String(r.studentId || '').toLowerCase().indexOf(q) >= 0;
