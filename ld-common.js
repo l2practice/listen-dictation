@@ -7,7 +7,7 @@
 (function (global) {
   'use strict';
 
-  var GAS = 'https://script.google.com/macros/s/AKfycbx_6TG3sHHlUUTGTUYHdY5rCKYyUOvjDzutIluYbigGftDRcUHzMn0LVhhQlr_Db-YP/exec';
+  var GAS = 'https://script.google.com/macros/s/AKfycbzByaIjPqA1nKLEFtyGIsDTUiGaE4HA0rb0TEiA5oXj6LqANjc4Wa2EZHO3gOyNZXyH/exec';
 
   var LD = {
     GAS: GAS,
@@ -35,7 +35,7 @@
     var s = LD.session.get();
     return new Promise(function (resolve, reject) {
       var cb = 'ldcb_' + (++_jsonpId) + '_' + Date.now();
-      var timer = setTimeout(function () { cleanup(); reject(new Error('JSONP timeout')); }, 45000);
+      var timer = setTimeout(function () { cleanup(); reject(new Error('JSONP timeout')); }, 30000);
       global[cb] = function (data) { cleanup(); resolve(data); };
       function cleanup() {
         clearTimeout(timer);
