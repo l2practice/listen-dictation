@@ -139,18 +139,18 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <!-- Filter card — GV phải chọn filter TRƯỚC, data không tự load -->
     <div class="card">
       <div class="card-title">🔍 Load Results
-        <span style="font-size:11px;color:var(--grey-400);font-weight:400">Chọn điều kiện rồi bấm Load</span>
+        <span style="font-size:11px;color:var(--grey-400);font-weight:400">Select and Load</span>
       </div>
       <!-- Row 1: Lớp + Book + Test + Part -->
       <div class="toolbar" style="margin-bottom:8px;gap:8px;flex-wrap:wrap">
         <div>
           <label class="form-label">Lớp</label>
-          <select class="form-select" id="sess-filter-class" style="min-width:140px"><option value="">— Tất cả lớp —</option></select>
+          <select class="form-select" id="sess-filter-class" style="min-width:140px"><option value="">— All classes —</option></select>
         </div>
         <div>
           <label class="form-label">Book</label>
           <select class="form-select" id="sess-filter-book" style="min-width:100px">
-            <option value="">— Tất cả —</option>
+            <option value="">— All results —</option>
             <option>Cam11</option><option>Cam12</option><option>Cam13</option><option>Cam14</option>
             <option>Cam15</option><option>Cam16</option><option>Cam17</option><option>Cam18</option>
             <option>Cam19</option><option>Cam20</option><option>Cam21</option><option>Cam22</option>
@@ -161,7 +161,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <div>
           <label class="form-label">Test</label>
           <select class="form-select" id="sess-filter-test" style="min-width:80px">
-            <option value="">— Tất cả —</option>
+            <option value="">— All results —</option>
             <option>1</option><option>2</option><option>3</option><option>4</option>
             <option>5</option><option>6</option><option>7</option><option>8</option>
             <option>9</option><option>10</option><option>11</option><option>12</option>
@@ -170,7 +170,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <div>
           <label class="form-label">Part</label>
           <select class="form-select" id="sess-filter-part" style="min-width:80px">
-            <option value="">— Tất cả —</option>
+            <option value="">— All results —</option>
             <option>1</option><option>2</option><option>3</option><option>4</option>
             <option>5</option><option>6</option><option>7</option><option>8</option>
           </select>
@@ -179,7 +179,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <!-- Row 2: Thời gian + nút Load + Export + Clear -->
       <div class="toolbar" style="gap:8px;flex-wrap:wrap">
         <div>
-          <label class="form-label">Thời gian</label>
+          <label class="form-label">Time Range</label>
           <select class="form-select" id="sess-time-preset" onchange="applyTimePreset()" style="min-width:140px">
             <option value="all">All results</option>
             <option value="7">Last 7 days</option>
@@ -190,11 +190,11 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         </div>
         <div id="sess-custom-range" style="display:none;display:flex;gap:6px;align-items:flex-end">
           <div>
-            <label class="form-label">Từ</label>
+            <label class="form-label">From</label>
             <input type="date" class="form-input" id="sess-filter-from" style="width:130px">
           </div>
           <div>
-            <label class="form-label">Đến</label>
+            <label class="form-label">To</label>
             <input type="date" class="form-input" id="sess-filter-to" style="width:130px">
           </div>
         </div>
@@ -208,11 +208,11 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         </div>
       </div>
       <div style="margin-top:10px">
-        <input class="form-input" id="sess-search" placeholder="🔍 Lọc nhanh theo tên SV / book…" style="width:100%;max-width:300px" oninput="renderSessionsTable()">
+        <input class="form-input" id="sess-search" placeholder="🔍 Filter by Student's name/ book…" style="width:100%;max-width:300px" oninput="renderSessionsTable()">
       </div>
       <!-- Trạng thái ban đầu -->
       <div id="sess-placeholder" style="text-align:center;padding:40px 20px;color:var(--grey-400);font-size:13.5px">
-        👆 Chọn điều kiện rồi bấm <b>Load Results</b> để xem kết quả.
+        👆 Select and click <b>Load Results</b> to see the results.
       </div>
       <div id="sess-table-wrap" style="display:none;overflow:auto">
         <table class="ld-table">
@@ -246,12 +246,12 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       Điểm số và thông tin làm bài vẫn được giữ nguyên.
     </p>
     <div id="clear-preview" style="background:var(--grey-100);border-radius:10px;padding:12px 16px;font-size:12.5px;margin-bottom:14px;color:var(--grey-800)">
-      <span class="spinner"></span> Đang kiểm tra…
+      <span class="spinner"></span> Loading…
     </div>
     <div class="ld-field">
       <label class="ld-label">Lớp (để trống = tất cả lớp)</label>
       <select class="ld-input" id="clear-class" style="height:auto;padding:10px 13px">
-        <option value="">— Tất cả lớp —</option>
+        <option value="">— All classes —</option>
       </select>
     </div>
     <div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:10px;padding:10px 14px;font-size:12.5px;color:#856404;margin-bottom:16px">
@@ -370,7 +370,7 @@ async function loadFilterOptions() {
     }).join('');
     ['sess-filter-class', 'clear-class'].forEach(function(id){
       var el = document.getElementById(id);
-      if (el) el.innerHTML = '<option value="">— Tất cả lớp —</option>' + classOpts;
+      if (el) el.innerHTML = '<option value="">— All classes —</option>' + classOpts;
     });
   } catch(e) {}
 }
@@ -483,7 +483,7 @@ async function confirmClear() {
   var classId = document.getElementById('clear-class').value;
   var classLabel = classId
     ? document.getElementById('clear-class').options[document.getElementById('clear-class').selectedIndex].text
-    : 'tất cả lớp';
+    : 'all classes';
   // Tính to = hôm nay - 30 ngày = cutoff
   var cutoff = new Date(Date.now() - 30 * 86400000);
   var fromDate = '2000-01-01'; // epoch — lấy tất cả cũ hơn 30 ngày
