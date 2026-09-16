@@ -60,7 +60,10 @@ if (typeof LD === 'undefined') {
   throw new Error('ld-common.js not loaded');
 }
 
-// already logged in — go straight to the right home page
+// Migration: xoá session cũ còn sót lại trong localStorage (từ phiên bản trước dùng localStorage)
+try { localStorage.removeItem('ld_session'); } catch(e) {}
+
+// already logged in (trong cùng tab) — go straight to the right home page
 (function () {
   var s = LD.session.get();
   if (s && s.user && s.user.role) location.href = s.user.role === 'Teacher' ? LD.TEACHER_HOME : LD.STUDENT_HOME;
