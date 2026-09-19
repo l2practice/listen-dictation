@@ -468,7 +468,28 @@ function onScriptInput() {
   document.getElementById('btn-split').disabled = n < 10;
 }
 var ABBR = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sr', 'Jr', 'St', 'Mt', 'vs', 'etc', 'approx', 'No', 'pp', 'Fig', 'Co', 'Corp', 'Inc', 'Ltd', 'a.m', 'p.m', 'e.g', 'i.e'];
+
+// Làm sạch script trước khi tách câu — rule-based, không cần AI
+function preprocessScript(text) {
+  // 1. Chuẩn hoá line endings
+  text = text.replace(/\r\n?/g, '\n');
+
+  // 2. Xoá nhãn đáp án: (Q1)→(Q40), (1)→(99), [1], (A)(B)(C)(D)
+  text = text.replace(/[\(\[]\s*Q?\d{1,2}[A-D]?\s*[\)\]]/gi, '');
+
+  // 3. Xoá tên người nói + dấu hai chấm ở đầu dòng/đầu script
+  //    VD: "PHIL:" "Lucy:" "Man A:" "Narrator:" "Woman 1:"
+  //    Giới hạn 4 từ tối đa để không xoá nhầm câu bình thường có dấu ":"
+  text = text.replace(/(^|\n)[ \t]*([A-Z][A-Za-z0-9]*([ \t]+[A-Z][A-Za-z0-9]*){0,3})[ \t]*:/g, '$1');
+
+  // 4. Dọn khoảng trắng thừa
+  text = text.replace(/[ \t]+/g, ' ').replace(/\n{2,}/g, '\n').trim();
+
+  return text;
+}
+
 function splitSentences(text) {
+  text = preprocessScript(text);
   text = text.replace(/\r\n?/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
   if (!text) return [];
   var work = text;
@@ -476,7 +497,7 @@ function splitSentences(text) {
     var re = new RegExp('\\b' + a.replace('.', '\\.') + '\\.', 'g');
     work = work.replace(re, a.replace('.', '') + '§' + idx + '§');
   });
-  var parts = work.match(/[^.!?]+[.!?]+(?=\s+[A-Z"“]|\s*$)|[^.!?]+$/g) || [work];
+  var parts = work.match(/[^.!?]+[.!?]+(?=\s+[A-Z""]|\s*$)|[^.!?]+$/g) || [work];
   return parts.map(function (s) {
     ABBR.forEach(function (a, idx) { s = s.split(a + '§' + idx + '§').join(a + '.'); });
     return s.trim();
