@@ -312,7 +312,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   </div>
   <div class="wrap">
     <div id="dict-shortcuts-banner" class="dict-banner">
-      <span>⌨️ <b>Enter</b> = Check this sentence &nbsp;·&nbsp; <b>Ctrl+→</b> = Jump to next unchecked &nbsp;·&nbsp; <b>Ctrl+Space</b> = Play / Pause audio &nbsp;·&nbsp; 🎯 Auto-pause estimates each sentence's end from word count — switch to Manual for full control.</span>
+      <span>⌨️ <b>Enter</b> = Check &nbsp;·&nbsp; <b>Ctrl+→</b> = Next unchecked &nbsp;·&nbsp; <b>Ctrl+Space</b> = Play/Pause &nbsp;·&nbsp; <b>Ctrl+,</b> = ◀ −5s &nbsp;·&nbsp; <b>Ctrl+.</b> = ▶ +5s</span>
       <button class="dict-banner-close" onclick="toggleShortcutsBanner(false)">✕</button>
     </div>
     <div style="margin-bottom:12px" id="dict-audio-row">
@@ -1087,10 +1087,21 @@ function toggleShortcutsBanner(show) {
   localStorage.setItem('ld_dict_shortcuts_hidden', willShow ? '0' : '1');
 }
 document.addEventListener('keydown', function (e) {
-  var scr = document.getElementById('screen-dictation');
-  if (!scr || !scr.classList.contains('active')) return;
-  if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); var a = document.getElementById('dict-audio'); if (a) { if (a.paused) a.play(); else a.pause(); } }
-  if (e.ctrlKey && e.key === 'ArrowRight') { e.preventDefault(); jumpToNextUnchecked(); }
+  // ── Dictation shortcuts ──────────────────────────────────
+  var dictScr = document.getElementById('screen-dictation');
+  if (dictScr && dictScr.classList.contains('active')) {
+    if (e.ctrlKey && e.code === 'Space')    { e.preventDefault(); var a = document.getElementById('dict-audio'); if (a) { if (a.paused) a.play(); else a.pause(); } }
+    if (e.ctrlKey && e.key === 'ArrowRight'){ e.preventDefault(); jumpToNextUnchecked(); }
+    if (e.ctrlKey && (e.key === ',' || e.key === '<')) { e.preventDefault(); var a = document.getElementById('dict-audio'); if (a) a.currentTime = Math.max(0, a.currentTime - 5); }
+    if (e.ctrlKey && (e.key === '.' || e.key === '>')) { e.preventDefault(); var a = document.getElementById('dict-audio'); if (a) a.currentTime = Math.min(a.duration || 0, a.currentTime + 5); }
+  }
+  // ── Gap-fill shortcuts ───────────────────────────────────
+  var gapScr = document.getElementById('screen-gapfill');
+  if (gapScr && gapScr.classList.contains('active')) {
+    if (e.ctrlKey && e.code === 'Space')    { e.preventDefault(); var a = document.getElementById('gapfill-audio'); if (a) { if (a.paused) a.play(); else a.pause(); } }
+    if (e.ctrlKey && (e.key === ',' || e.key === '<')) { e.preventDefault(); var a = document.getElementById('gapfill-audio'); if (a) a.currentTime = Math.max(0, a.currentTime - 5); }
+    if (e.ctrlKey && (e.key === '.' || e.key === '>')) { e.preventDefault(); var a = document.getElementById('gapfill-audio'); if (a) a.currentTime = Math.min(a.duration || 0, a.currentTime + 5); }
+  }
 });
 function jumpToNextUnchecked() {
   for (var i = 0; i < App.dictationAnswers.length; i++) if (!App.dictationAnswers[i].checked) { jumpTo(i); return; }
@@ -1106,28 +1117,45 @@ function jumpTo(i) {
   document.getElementById('sb-input-' + i).focus();
 }
 function checkSentence(i) {
-  var typed = (document.getElementById('sb-input-' + i).value || '').trim();
+  var inputEl = document.getElementById('sb-input-' + i);
+  var typed = (inputEl ? inputEl.value : '').trim();
   App.dictationAnswers[i].typed = typed;
-  App.dictationAnswers[i].checked = true;
-  var actualWords = App.correctedSentences[i].replace(/[.,!?;:"]/g, '').split(/\s+/);
-  var typedWords = typed.replace(/[.,!?;:"]/g, '').split(/\s+/);
-  var html = actualWords.map(function (w, wi) {
-    var tw = (typedWords[wi] || '').toLowerCase();
-    var ok = tw === w.toLowerCase();
-    return '<span class="' + (ok ? 'w-correct' : (tw ? 'w-wrong' : 'w-missing')) + '">' + LD.esc(w) + '</span>';
+
+  var actualWords = App.correctedSentences[i].replace(/[.,!?;:"'-]/g, '').toLowerCase().split(/\s+/).filter(Boolean);
+  var typedWords  = typed.replace(/[.,!?;:"'-]/g, '').toLowerCase().split(/\s+/).filter(Boolean);
+
+  // Build result HTML against the original (display) words
+  var displayWords = App.correctedSentences[i].split(/\s+/).filter(Boolean);
+  var allCorrect = true;
+  var html = displayWords.map(function (w, wi) {
+    var cleanActual = w.replace(/[.,!?;:"'-]/g, '').toLowerCase();
+    var cleanTyped  = (typedWords[wi] || '').toLowerCase();
+    var ok = cleanTyped === cleanActual;
+    if (!ok) allCorrect = false;
+    return '<span class="' + (ok ? 'w-correct' : (cleanTyped ? 'w-wrong' : 'w-missing')) + '">' + LD.esc(w) + '</span>';
   }).join(' ');
+
+  // Show result inline (always) — but DON'T lock the input if there are errors
   document.getElementById('sb-result-' + i).innerHTML = html;
-  if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
-  App._pausedForCurrentIdx = false;
-  renderDictation();
-  var nextInput = document.getElementById('sb-input-' + App.dictationIdx);
-  if (nextInput && !nextInput.disabled) nextInput.focus();
-  // Auto mode: resume playback automatically so the student doesn't need to hit play again.
-  if (App.dictMode === 'auto') {
-    var audio = document.getElementById('dict-audio');
-    if (audio && audio.paused && App.dictationIdx < App.correctedSentences.length) {
-      setTimeout(function () { audio.play().catch(function () {}); }, 500);
+
+  if (allCorrect) {
+    // Fully correct → lock this sentence and advance
+    App.dictationAnswers[i].checked = true;
+    if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
+    App._pausedForCurrentIdx = false;
+    renderDictation();
+    var nextInput = document.getElementById('sb-input-' + App.dictationIdx);
+    if (nextInput && !nextInput.disabled) nextInput.focus();
+    // Auto mode: resume playback
+    if (App.dictMode === 'auto') {
+      var audio = document.getElementById('dict-audio');
+      if (audio && audio.paused && App.dictationIdx < App.correctedSentences.length) {
+        setTimeout(function () { audio.play().catch(function () {}); }, 500);
+      }
     }
+  } else {
+    // Has errors → keep input enabled, keep focus so student can fix
+    if (inputEl) inputEl.focus();
   }
 }
 async function saveDictationAndExit() {
