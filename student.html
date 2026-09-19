@@ -438,7 +438,7 @@ function updateLdKeyStatus() {
 async function callGemini(prompt, maxTokens) {
   var key = getLdKey();
   if (!key) throw new Error('Gemini key required (free at aistudio.google.com)');
-  var models = ['gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+  var models = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash-lite'];
   var lastErr = null;
   for (var i = 0; i < models.length; i++) {
     try {
