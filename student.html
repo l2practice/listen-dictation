@@ -167,10 +167,17 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
           <div id="ld-key-widget" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:10px 13px">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:.72rem;font-weight:700;color:#555;white-space:nowrap">🔑 Gemini Key</span>
-              <input type="password" id="ld-gemini-key" style="flex:1;padding:6px 10px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:.82rem;font-family:monospace;outline:none" placeholder="AIza… (free key from aistudio.google.com)" oninput="onLdKeyInput(this.value)">
+              <input type="password" id="ld-gemini-key" style="flex:1;padding:6px 10px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:.82rem;font-family:monospace;outline:none" placeholder="AIza… (free · aistudio.google.com)" oninput="onLdKeyInput(this.value)">
               <span id="ld-key-status" style="font-size:.68rem;font-weight:700;white-space:nowrap;color:#888">no key</span>
-              <a href="https://aistudio.google.com/apikey" target="_blank" style="font-size:.68rem;color:#1a3a8c;font-weight:700;white-space:nowrap">Get key →</a>
+              <a href="https://aistudio.google.com/apikey" target="_blank" style="font-size:.68rem;color:#1a3a8c;font-weight:700;white-space:nowrap">Get →</a>
             </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:.72rem;font-weight:700;color:#555;white-space:nowrap">🟠 Groq Key</span>
+              <input type="password" id="ld-groq-key" style="flex:1;padding:6px 10px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:.82rem;font-family:monospace;outline:none" placeholder="gsk_… (free backup · console.groq.com)" oninput="onGroqKeyInput(this.value)">
+              <span id="ld-groq-status" style="font-size:.68rem;font-weight:700;white-space:nowrap;color:#888">no key</span>
+              <a href="https://console.groq.com/keys" target="_blank" style="font-size:.68rem;color:#1a3a8c;font-weight:700;white-space:nowrap">Get →</a>
+            </div>
+            <div style="font-size:.68rem;color:#888;margin-top:2px">Nếu Gemini lỗi, app tự dùng Groq làm backup. Chỉ cần 1 trong 2 key là đủ.</div>
           </div>
           <button class="btn btn-primary btn-full" id="btn-analyze" onclick="runAnalyzeScript()">🤖 Analyze Script</button>
           <div id="analyze-status" style="font-size:12.5px;color:var(--grey-600);margin-top:8px"></div>
@@ -382,7 +389,11 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// GEMINI + GROQ KEYS
+// ═══════════════════════════════════════════════════════════
 var LD_GEMINI_KEY = 'ld_gemini_key';
+var LD_GROQ_KEY   = 'ld_groq_key';
 var App = {
   session: null, sessionId: null,
   bookTestPart: '', maxReplays: 2,
@@ -408,7 +419,10 @@ var App = {
   var cls = document.getElementById('tb-class-setup'); if (cls) cls.textContent = '· ' + (s.user.className || '');
   var k = localStorage.getItem(LD_GEMINI_KEY);
   if (k) document.getElementById('ld-gemini-key').value = k;
+  var kg = localStorage.getItem(LD_GROQ_KEY);
+  if (kg) document.getElementById('ld-groq-key').value = kg;
   updateLdKeyStatus();
+  updateGroqKeyStatus();
   checkInProgressHint();
 
   // Resume from History (?resume=SESSIONID) — only Dictation is resumable
@@ -435,27 +449,117 @@ function updateLdKeyStatus() {
   el.textContent = k ? '✅ saved' : 'no key';
   el.style.color = k ? '#1a7a4a' : '#c00';
 }
+function onGroqKeyInput(v) { v = v.trim(); v ? localStorage.setItem(LD_GROQ_KEY, v) : localStorage.removeItem(LD_GROQ_KEY); updateGroqKeyStatus(); }
+function getGroqKey() { return (document.getElementById('ld-groq-key') && document.getElementById('ld-groq-key').value.trim()) || localStorage.getItem(LD_GROQ_KEY) || ''; }
+function updateGroqKeyStatus() {
+  var el = document.getElementById('ld-groq-status'); if (!el) return;
+  var k = getGroqKey();
+  el.textContent = k ? '✅ saved' : 'no key';
+  el.style.color = k ? '#1a7a4a' : '#888';
+}
+
+// ── Gemini (Google AI Studio) ──────────────────────────────
 async function callGemini(prompt, maxTokens) {
   var key = getLdKey();
-  if (!key) throw new Error('Gemini key required (free at aistudio.google.com)');
-  var models = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash-lite'];
+  if (!key) throw new Error('NO_GEMINI_KEY');
+  var models = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
   var lastErr = null;
   for (var i = 0; i < models.length; i++) {
     try {
       var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + key, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: .3, maxOutputTokens: Math.max(maxTokens || 2048, 256), responseMimeType: 'application/json' } })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: Math.max(maxTokens || 4096, 1024),
+            response_mime_type: 'application/json'   // snake_case — đúng với Gemini 3.x API
+          }
+        })
       });
-      if (resp.status === 429) { lastErr = new Error('Key quota exceeded (' + models[i] + ')'); continue; }
-      if (!resp.ok) { var j = await resp.json().catch(function () { return {}; }); lastErr = new Error((j.error && j.error.message) || ('HTTP ' + resp.status)); continue; }
+      if (resp.status === 429) { lastErr = new Error('Gemini quota exceeded (' + models[i] + ')'); continue; }
+      if (!resp.ok) {
+        var j = await resp.json().catch(function () { return {}; });
+        lastErr = new Error((j.error && j.error.message) || ('Gemini HTTP ' + resp.status + ' on ' + models[i]));
+        continue;
+      }
       var data = await resp.json();
-      var raw = (data.candidates && data.candidates[0] && data.candidates[0].content.parts[0].text) || '';
-      if (!raw) { lastErr = new Error('AI returned an empty response'); continue; }
+      var candidate = data.candidates && data.candidates[0];
+      if (!candidate) { lastErr = new Error('Gemini: no candidates returned (' + models[i] + ')'); continue; }
+      // Kiểm tra finish reason — MAX_TOKENS nghĩa là response bị cắt, JSON sẽ không parse được
+      if (candidate.finishReason === 'MAX_TOKENS') { lastErr = new Error('Gemini: response truncated — script too long for ' + models[i]); continue; }
+      if (candidate.finishReason === 'SAFETY') { lastErr = new Error('Gemini: blocked by safety filter (' + models[i] + ')'); continue; }
+      var raw = (candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text) || '';
+      if (!raw) { lastErr = new Error('Gemini: empty text in response (' + models[i] + ')'); continue; }
+      // Extract JSON — bỏ qua markdown fence nếu model vẫn wrap
+      var s = raw.indexOf('{'), e = raw.lastIndexOf('}') + 1;
+      if (s < 0 || e <= s) { lastErr = new Error('Gemini: response is not JSON (' + models[i] + '): ' + raw.slice(0, 80)); continue; }
+      try {
+        return JSON.parse(raw.slice(s, e));
+      } catch (parseErr) {
+        lastErr = new Error('Gemini: JSON parse failed (' + models[i] + '): ' + parseErr.message);
+        continue;
+      }
+    } catch (err) { lastErr = err; }
+  }
+  throw lastErr || new Error('All Gemini models failed');
+}
+
+// ── Groq (OpenAI-compatible, free tier) ───────────────────
+async function callGroq(prompt, maxTokens) {
+  var key = getGroqKey();
+  if (!key) throw new Error('NO_GROQ_KEY');
+  // Groq free models — thứ tự theo capability
+  var models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+  var lastErr = null;
+  for (var i = 0; i < models.length; i++) {
+    try {
+      var resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({
+          model: models[i],
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant. Always respond with valid JSON only, no markdown, no explanation.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: Math.max(maxTokens || 2048, 256),
+          response_format: { type: 'json_object' }
+        })
+      });
+      if (resp.status === 429) { lastErr = new Error('Groq quota exceeded (' + models[i] + ')'); continue; }
+      if (!resp.ok) { var j = await resp.json().catch(function () { return {}; }); lastErr = new Error((j.error && j.error.message) || ('Groq HTTP ' + resp.status)); continue; }
+      var data = await resp.json();
+      var raw = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+      if (!raw) { lastErr = new Error('Groq returned empty response'); continue; }
       var s = raw.indexOf('{'), e = raw.lastIndexOf('}') + 1;
       return JSON.parse(raw.slice(s, e));
     } catch (err) { lastErr = err; }
   }
-  throw lastErr || new Error('All AI models failed');
+  throw lastErr || new Error('All Groq models failed');
+}
+
+// ── callAI: thử Gemini trước, fallback Groq nếu fail ──────
+async function callAI(prompt, maxTokens) {
+  var hasGemini = !!getLdKey();
+  var hasGroq   = !!getGroqKey();
+  if (!hasGemini && !hasGroq) throw new Error('Cần ít nhất 1 API key (Gemini hoặc Groq) để dùng tính năng AI.');
+
+  // Thử Gemini nếu có key
+  if (hasGemini) {
+    try { return await callGemini(prompt, maxTokens); }
+    catch (e) {
+      if (!hasGroq) throw e; // không có Groq → throw luôn
+      // Có Groq → log lỗi Gemini rồi fallback
+      console.warn('[LisDictation] Gemini failed, switching to Groq:', e.message);
+      document.getElementById('analyze-status').textContent = '⚠️ Gemini lỗi, đang thử Groq…';
+    }
+  }
+
+  // Groq fallback
+  return await callGroq(prompt, maxTokens);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -560,7 +664,7 @@ async function runAnalyzeScript() {
       'SENTENCES:\n' + numbered + '\n\n' +
       'WORDS TO TRANSLATE (' + hardWords.length + ' words, already filtered by CEFR level): ' + hardWords.join(', ') + '\n\n' +
       'Return ONLY this JSON: {"corrected":["sentence 0 fixed",...],"collocations":[["phrase","Vietnamese meaning"]],"gloss":[["word","Vietnamese meaning","/ipa/"]]}';
-    var res = await callGemini(prompt, 6144);
+    var res = await callAI(prompt, 6144);
     App.correctedSentences = (res.corrected && res.corrected.length === App.sentences.length) ? res.corrected : App.sentences.slice();
     App.collocations = (res.collocations || []).map(function (c) { return { en: c[0] || '', vi: c[1] || '' }; }).filter(function (c) { return c.en; });
     App.gloss = {};
@@ -711,7 +815,7 @@ async function goQuiz() {
       'DIFFICULT WORDS (B2+): ' + hardWords.slice(0, 40).join(', ') + '\n' +
       'COLLOCATIONS: ' + App.collocations.map(function (c) { return c.en; }).join(', ') + '\n\n' +
       'Return ONLY this JSON: {"questions":[{"type":"content|vocab","q":"question text","o":["A","B","C","D"],"a":0,"e":"short explanation"}]} — the "questions" array must have exactly 15 items, exactly 5 with type=content and exactly 10 with type=vocab. Everything in English.';
-    var res = await callGemini(prompt, 6144);
+    var res = await callAI(prompt, 6144);
     App.quiz = (res.questions || []).slice(0, 15);
     App.quizAnswers = new Array(App.quiz.length).fill(-1);
     document.getElementById('quiz-loading').classList.add('hidden');
