@@ -118,7 +118,12 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .lv-chip.lv-C1{background:rgba(236,72,153,.14);color:#EC4899}
 .lv-chip.lv-C2{background:rgba(220,38,38,.14);color:#DC2626}
 .btn-secondary.active{background:var(--red);color:#fff;border-color:var(--red)}
-/* ── Dup-session overlay ─────────────────────────────────── */
+/* ── Resume loading overlay ──────────────────────────────── */
+.resume-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.resume-overlay.hidden{display:none}
+.resume-overlay .ro-card{background:#fff;border-radius:16px;padding:28px 32px;text-align:center;min-width:220px}
+.resume-overlay .ro-card h4{font-family:var(--font-display);margin:10px 0 4px;color:var(--navy2)}
+.resume-overlay .ro-card p{font-size:13px;color:var(--grey-600);margin:0}
 .dup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center}
 .dup-overlay.hidden{display:none}
 .dup-modal{background:#fff;border-radius:16px;width:min(400px,92vw);padding:28px 24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
@@ -304,6 +309,15 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <!-- Sticky audio bar — listen while answering -->
   <div style="position:sticky;top:56px;z-index:90;background:var(--white);border-bottom:1.5px solid var(--grey-200);padding:8px 20px;box-shadow:0 2px 6px rgba(0,0,0,.08)" id="quiz-audio-bar">
     <audio id="quiz-audio" controls style="width:100%;height:36px"></audio>
+    <div id="quiz-audio-upload-row" style="display:none;margin-top:8px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:8px 12px;font-size:12.5px">
+      <span style="color:#7a5800;font-weight:700">📂 No audio — add file to listen while answering:</span>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+        <input type="file" id="quiz-audio-file-input" accept="audio/*" style="font-size:12px" onchange="handleScreenAudioFile('quiz',event)">
+        <span style="color:#888">or</span>
+        <input type="text" id="quiz-drive-id" placeholder="Google Drive File ID" style="flex:1;padding:5px 9px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:12px;font-family:var(--font-mono)">
+        <button class="btn btn-secondary btn-sm" onclick="loadScreenDriveAudio('quiz')">Load</button>
+      </div>
+    </div>
   </div>
   <div class="wrap" style="padding-top:14px">
     <div id="quiz-loading" class="card hidden" style="text-align:center;padding:40px"><span class="spinner"></span> Generating quiz with AI…</div>
@@ -331,6 +345,15 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <span class="ios-track"><span class="ios-thumb"></span></span>
         <span>Auto-pause</span>
       </label>
+    </div>
+    <div id="gapfill-audio-upload-row" style="display:none;margin-top:8px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:8px 12px;font-size:12.5px">
+      <span style="color:#7a5800;font-weight:700">📂 No audio — add file to listen while filling:</span>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+        <input type="file" id="gapfill-audio-file-input" accept="audio/*" style="font-size:12px" onchange="handleScreenAudioFile('gapfill',event)">
+        <span style="color:#888">or</span>
+        <input type="text" id="gapfill-drive-id" placeholder="Google Drive File ID" style="flex:1;padding:5px 9px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:12px;font-family:var(--font-mono)">
+        <button class="btn btn-secondary btn-sm" onclick="loadScreenDriveAudio('gapfill')">Load</button>
+      </div>
     </div>
   </div>
   <div class="wrap" style="padding-top:14px">
@@ -365,19 +388,30 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <button class="btn btn-secondary btn-sm" onclick="saveDictationAndExit()">💾 Save &amp; Exit</button>
     </div>
   </div>
-  <div class="wrap">
-    <div style="margin-bottom:12px" id="dict-audio-row">
-      <audio id="dict-audio" controls style="width:100%"></audio>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px">
-        <label class="ios-toggle" title="Auto-pause dựa trên khoảng lặng của audio">
-          <input type="checkbox" id="chk-dict-autopause" onchange="toggleDictAutoPause(this.checked)">
-          <span class="ios-track"><span class="ios-thumb"></span></span>
-          <span id="lbl-dict-autopause">Auto-pause</span>
-        </label>
-        <button class="btn btn-secondary btn-sm" id="btn-mode-auto" onclick="setDictMode('auto')">🎯 Per sentence</button>
-        <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')">✋ Manual</button>
+  <!-- Sticky audio bar — stays visible when scrolling -->
+  <div style="position:sticky;top:56px;z-index:90;background:var(--white);border-bottom:1.5px solid var(--grey-200);padding:10px 20px;box-shadow:0 2px 6px rgba(0,0,0,.08)" id="dict-audio-row">
+    <audio id="dict-audio" controls style="width:100%"></audio>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px">
+      <label class="ios-toggle" title="Auto-pause dựa trên khoảng lặng của audio">
+        <input type="checkbox" id="chk-dict-autopause" onchange="toggleDictAutoPause(this.checked)">
+        <span class="ios-track"><span class="ios-thumb"></span></span>
+        <span id="lbl-dict-autopause">Auto-pause</span>
+      </label>
+      <button class="btn btn-secondary btn-sm" id="btn-mode-auto" onclick="setDictMode('auto')">🎯 Per sentence</button>
+      <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')">✋ Manual</button>
+    </div>
+    <!-- Audio upload for resumed sessions (no audio loaded yet) -->
+    <div id="dict-audio-upload-row" style="display:none;margin-top:8px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:8px 12px;font-size:12.5px">
+      <span style="color:#7a5800;font-weight:700">📂 No audio loaded — add audio file to continue:</span>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+        <input type="file" id="dict-audio-file-input" accept="audio/*" style="font-size:12px" onchange="handleDictAudioFile(event)">
+        <span style="color:#888">or</span>
+        <input type="text" id="dict-drive-id" placeholder="Google Drive File ID" style="flex:1;padding:5px 9px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:12px;font-family:var(--font-mono)">
+        <button class="btn btn-secondary btn-sm" onclick="loadDictDriveAudio()">Load</button>
       </div>
     </div>
+  </div>
+  <div class="wrap" style="padding-top:14px">
     <div id="dictation-sentences"></div>
     <button class="btn btn-primary btn-full" id="btn-finish-dictation" onclick="finishDictation()" style="padding:14px;font-size:15px;display:none">🏁 Submit</button>
   </div>
@@ -541,7 +575,15 @@ async function callGemini(prompt, maxTokens) {
       if (resp.status === 429) { lastErr = new Error('Gemini quota exceeded (' + models[i] + ')'); continue; }
       if (!resp.ok) {
         var j = await resp.json().catch(function () { return {}; });
-        lastErr = new Error((j.error && j.error.message) || ('Gemini HTTP ' + resp.status + ' on ' + models[i]));
+        var msg = (j.error && j.error.message) || ('Gemini HTTP ' + resp.status);
+        if (resp.status === 401 || resp.status === 403) {
+          msg = 'Gemini key không hợp lệ hoặc đã hết hạn (' + models[i] + '). Vui lòng lấy key mới tại aistudio.google.com';
+        } else if (resp.status === 503 || resp.status === 500) {
+          msg = 'Gemini server tạm thời lỗi (' + resp.status + ' on ' + models[i] + ') — thử lại sau';
+        } else {
+          msg = msg + ' (' + models[i] + ')';
+        }
+        lastErr = new Error(msg);
         continue;
       }
       var data = await resp.json();
@@ -580,8 +622,8 @@ async function callGemini(prompt, maxTokens) {
 async function callGroq(prompt, maxTokens) {
   var key = getGroqKey();
   if (!key) throw new Error('NO_GROQ_KEY');
-  // Groq production models (console.groq.com/docs/models) — theo thứ tự capability
-  var models = ['llama-3.3-70b-versatile', 'meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.1-8b-instant'];
+  // Groq production models (Sep 2026): llama-3.3-70b → gpt-oss-120b, llama-3.1-8b → gpt-oss-20b
+  var models = ['openai/gpt-oss-120b', 'meta-llama/llama-4-scout-17b-16e-instruct', 'openai/gpt-oss-20b'];
   var lastErr = null;
   for (var i = 0; i < models.length; i++) {
     try {
@@ -600,7 +642,13 @@ async function callGroq(prompt, maxTokens) {
         })
       });
       if (resp.status === 429) { lastErr = new Error('Groq quota exceeded (' + models[i] + ')'); continue; }
-      if (!resp.ok) { var j = await resp.json().catch(function () { return {}; }); lastErr = new Error((j.error && j.error.message) || ('Groq HTTP ' + resp.status)); continue; }
+      if (!resp.ok) {
+        var j = await resp.json().catch(function () { return {}; });
+        var msg = (j.error && j.error.message) || ('Groq HTTP ' + resp.status);
+        if (resp.status === 401) msg = 'Groq key không hợp lệ — kiểm tra lại key tại console.groq.com/keys';
+        else if (resp.status === 404) msg = 'Groq model không tồn tại: ' + models[i] + ' — thử model khác';
+        lastErr = new Error(msg); continue;
+      }
       var data = await resp.json();
       var raw = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
       if (!raw) { lastErr = new Error('Groq returned empty response'); continue; }
@@ -648,18 +696,20 @@ function preprocessScript(text) {
   // 1. Chuẩn hoá line endings
   text = text.replace(/\r\n?/g, '\n');
 
-  // 2. Xoá nhãn đáp án: (Q1)→(Q40), (1)→(99), [1], (A)(B)(C)(D)
-  text = text.replace(/[\(\[]\s*Q?\d{1,2}[A-D]?\s*[\)\]]/gi, '');
+  // 2. Xoá nhãn đáp án: (Q1), (Q21/22), (Q21-22), (21), [1], (A)-(D)
+  text = text.replace(/[\(\[]\s*Q?\d{1,2}(?:[\/\-]\d{1,2})?[A-D]?\s*[\)\]]/gi, '');
 
-  // 3. Xoá đường kẻ phân đoạn: -------, ======, ******, v.v. (≥4 ký tự giống nhau)
-  text = text.replace(/^[ \t]*[-=*_~#]{4,}[ \t]*$/gm, '');
+  // 3. Xoá đường kẻ phân đoạn ở đầu dòng riêng: ---, ===, ***, hoặc em-dash —— (≥3 chars)
+  text = text.replace(/^[ \t]*(?:[-=*_~#]{3,}|[—–]{2,})[ \t]*$/gm, '');
 
-  // 4. Xoá tên người nói + dấu hai chấm ở đầu dòng/đầu script
-  //    VD: "PHIL:" "Lucy:" "Man A:" "Narrator:" "Woman 1:"
-  //    Giới hạn 4 từ tối đa để không xoá nhầm câu bình thường có dấu ":"
+  // 4. Xoá đường kẻ inline lẫn trong text: chuỗi ≥4 dấu gạch ngang liên tiếp
+  text = text.replace(/[-—–]{4,}/g, ' ');
+
+  // 5. Xoá tên người nói + dấu hai chấm ở đầu dòng
+  //    VD: "PHIL:" "Lucy:" "Man A:" "Narrator:"
   text = text.replace(/(^|\n)[ \t]*([A-Z][A-Za-z0-9]*([ \t]+[A-Z][A-Za-z0-9]*){0,3})[ \t]*:/g, '$1');
 
-  // 5. Dọn khoảng trắng thừa
+  // 6. Dọn khoảng trắng thừa
   text = text.replace(/[ \t]+/g, ' ').replace(/\n{2,}/g, '\n').trim();
 
   return text;
@@ -977,6 +1027,7 @@ async function goQuiz() {
   // Set audio on quiz screen
   var qa = document.getElementById('quiz-audio');
   if (qa && App.audioBlobUrl) { qa.src = App.audioBlobUrl; qa.load(); }
+  _showAudioUploadIfNeeded(['quiz']);
   // Already generated (prefetch hit) — hide loading, render immediately
   if (App.quiz.length) {
     document.getElementById('quiz-loading').classList.add('hidden');
@@ -1047,6 +1098,7 @@ function goGapFill() {
   showScreen('screen-gapfill');
   var audio = document.getElementById('gapfill-audio');
   if (App.audioBlobUrl) { audio.src = App.audioBlobUrl; audio.load(); }
+  _showAudioUploadIfNeeded(['gapfill']);
   if (App.audioBlobUrl && !App_silenceAnalysisDone) { analyseAudioSilence(App.audioBlobUrl); }
   setupGapAutoPause();
   renderGapFill();
@@ -1183,19 +1235,49 @@ function goDictation() {
   App.dictationIdx = 0;
   App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false, replaysUsed: 0 }; });
   showScreen('screen-dictation');
-  var audio = document.getElementById('dict-audio');
-  if (App.audioBlobUrl) { audio.src = App.audioBlobUrl; audio.load(); } else document.getElementById('dict-audio-row').style.display = 'none';
-  // Restore silence mode button label
+  _initDictAudio();
   App.dictSilenceMode = localStorage.getItem('ld_dict_silence_mode') || 'off';
-  var silBtn = document.getElementById('btn-dict-silence');
-  if (silBtn) silBtn.textContent = { silence: '⏸ Silence', wordcount: '⏸ Word-count', off: '▶ Manual' }[App.dictSilenceMode] || '▶ Manual';
+  var silBtn = document.getElementById('chk-dict-autopause');
+  if (silBtn) silBtn.checked = App.dictSilenceMode !== 'off';
   setupDictAudioListeners();
   setDictMode(App.dictSilenceMode === 'off' ? 'manual' : 'auto');
   renderDictation();
-  // Silence analysis (async, non-blocking)
   if (App.audioBlobUrl && !App_silenceAnalysisDone) { analyseAudioSilence(App.audioBlobUrl); }
-  // Show shortcut modal unless user dismissed permanently
   if (localStorage.getItem('ld_sc_hidden') !== '1') { setTimeout(openShortcutModal, 400); }
+}
+
+// Shared audio init for both goDictation and resumeSession
+function _initDictAudio() {
+  var audio = document.getElementById('dict-audio');
+  var uploadRow = document.getElementById('dict-audio-upload-row');
+  if (App.audioBlobUrl) {
+    audio.src = App.audioBlobUrl;
+    audio.load();
+    if (uploadRow) uploadRow.style.display = 'none';
+  } else {
+    // No audio — show upload prompt
+    if (uploadRow) uploadRow.style.display = 'block';
+  }
+}
+
+function handleDictAudioFile(e) {
+  var f = e.target.files[0]; if (!f) return;
+  App.audioBlobUrl = URL.createObjectURL(f);
+  var audio = document.getElementById('dict-audio');
+  audio.src = App.audioBlobUrl; audio.load();
+  document.getElementById('dict-audio-upload-row').style.display = 'none';
+  App_silenceAnalysisDone = false; App_silencePauses = [];
+  analyseAudioSilence(App.audioBlobUrl);
+  LD.toast('✅ Audio loaded — you can now play and dictate.', 'ok');
+}
+function loadDictDriveAudio() {
+  var id = document.getElementById('dict-drive-id').value.trim();
+  if (!id) return;
+  App.audioBlobUrl = 'https://drive.google.com/uc?export=download&id=' + id;
+  var audio = document.getElementById('dict-audio');
+  audio.src = App.audioBlobUrl; audio.load();
+  document.getElementById('dict-audio-upload-row').style.display = 'none';
+  LD.toast('✅ Drive audio loaded.', 'ok');
 }
 // ── Auto-pause per sentence: since there are no real per-sentence timestamps,
 // pause points are ESTIMATED by splitting the audio's total duration proportionally
@@ -1360,8 +1442,8 @@ function checkSentence(i) {
     }
     allCorrect = false;
     if (!ct) {
-      // Missing word
-      return '<span class="w-missing">' + LD.esc(w) + '</span>';
+      // Word not typed yet — show asterisks (same length), NOT the answer
+      return '<span style="color:var(--grey-400);font-family:var(--font-mono)">' + '*'.repeat(ca.length || 4) + '</span>';
     }
     // Wrong word — smart diff
     return '<span class="w-wrong" title="You typed: ' + LD.esc(typedWords[wi]) + '">' +
@@ -1482,11 +1564,14 @@ function loadFinalScoresIntoResult() {
 // RESUME (Dictation only) — StudentID + SessionID
 // ═══════════════════════════════════════════════════════════
 async function resumeSession(sessionId) {
+  showResumeOverlay('Đang tải bài dở…');
   try {
     var r = await LD.api('student.resumeSession', { sessionId: sessionId });
+    hideResumeOverlay();
     if (!r.success) { LD.toast(r.error || 'Could not open this session', 'err'); return; }
     var d = r.data;
     App.sessionId = d.SessionID;
+    App.bookTestPart = d.BookTestPart || '';
     App.correctedSentences = d.CorrectedScriptJSON || [];
     App.cefr = d.CEFRJSON || null;
     App.collocations = d.CollocationJSON || [];
@@ -1494,15 +1579,15 @@ async function resumeSession(sessionId) {
     App.dictationAnswers = App.correctedSentences.map(function (s, i) { return (dj.answers && dj.answers[i]) || { typed: '', checked: false }; });
     App.dictationIdx = dj.currentSentenceIdx || 0;
     showScreen('screen-dictation');
-    var audio = document.getElementById('dict-audio');
-    document.getElementById('dict-audio-row').style.display = App.audioBlobUrl ? 'block' : 'none';
+    _initDictAudio();
     if (localStorage.getItem('ld_sc_hidden') !== '1') { setTimeout(openShortcutModal, 400); }
     setupDictAudioListeners();
     App.dictSilenceMode = localStorage.getItem('ld_dict_silence_mode') || 'off';
     setDictMode(App.dictSilenceMode === 'off' ? 'manual' : 'auto');
     renderDictation();
-    LD.toast('Resumed your in-progress session.', 'ok');
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+    LD.toast('Resumed your in-progress session.' + (App.audioBlobUrl ? '' : ' Add audio file to listen while typing.'), 'ok', 4000);
+    if (window.history && window.history.replaceState) window.history.replaceState({}, '', location.pathname);
+  } catch (e) { hideResumeOverlay(); LD.toast('Network error: ' + e.message, 'err'); }
 }
 async function checkInProgressHint() {
   try {
@@ -1526,7 +1611,7 @@ async function loadInProgressTop5() {
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--grey-100)">' +
         '<div><div style="font-weight:700;font-size:13.5px">' + LD.esc(d.bookTestPart || 'Untitled session') + '</div>' +
         '<div style="font-size:11.5px;color:var(--grey-600)">Sentence ' + ((d.currentSentenceIdx || 0) + 1) + ' · Saved at ' + LD.fmtDate(d.savedAt) + '</div></div>' +
-        '<button class="btn btn-primary btn-sm" onclick="location.href=\'student.html?resume=' + d.sessionId + '\'">▶ Continue</button></div>';
+        '<button class="btn btn-primary btn-sm" onclick="expandSession(\'' + d.sessionId + '\',this)">▶ Continue</button></div>';
     }).join('');
   } catch (e) {}
 }
@@ -1564,7 +1649,7 @@ function renderHistoryTable() {
     if (r.isComplete) {
       statusBadge = '<span class="badge" style="background:var(--green-light);color:var(--green)">✅ Done</span>';
     } else if (r.dictInProgress) {
-      statusBadge = '<button class="btn btn-secondary btn-sm" onclick="location.href=\'student.html?resume=' + r.sessionId + '\'">▶ Resume</button>';
+      statusBadge = '<button class="btn btn-secondary btn-sm" onclick="expandSession(\'' + r.sessionId + '\',this)">▶ Resume</button>';
     } else {
       // Bài chưa làm hết — hiện nút "Load detail" để fetch cụ thể
       var missing = [];
@@ -1592,31 +1677,125 @@ function renderHistoryTable() {
   }).join('');
 }
 
-// Click vào bài incomplete: fetch detail rồi mở resume hoặc hiện thông tin
+// ── Helpers for audio upload on quiz/gapfill screens ──────
+function handleScreenAudioFile(screen, e) {
+  var f = e.target.files[0]; if (!f) return;
+  App.audioBlobUrl = URL.createObjectURL(f);
+  var audio = document.getElementById(screen + '-audio');
+  audio.src = App.audioBlobUrl; audio.load();
+  var row = document.getElementById(screen + '-audio-upload-row');
+  if (row) row.style.display = 'none';
+  App_silenceAnalysisDone = false; App_silencePauses = [];
+  analyseAudioSilence(App.audioBlobUrl);
+  LD.toast('✅ Audio loaded.', 'ok');
+}
+function loadScreenDriveAudio(screen) {
+  var id = document.getElementById(screen + '-drive-id').value.trim();
+  if (!id) return;
+  App.audioBlobUrl = 'https://drive.google.com/uc?export=download&id=' + id;
+  var audio = document.getElementById(screen + '-audio');
+  audio.src = App.audioBlobUrl; audio.load();
+  var row = document.getElementById(screen + '-audio-upload-row');
+  if (row) row.style.display = 'none';
+  LD.toast('✅ Drive audio loaded.', 'ok');
+}
+function _showAudioUploadIfNeeded(screens) {
+  screens.forEach(function(sc) {
+    var row = document.getElementById(sc + '-audio-upload-row');
+    if (row) row.style.display = App.audioBlobUrl ? 'none' : 'block';
+  });
+}
+
+// ── Resume loading overlay ─────────────────────────────────
+function showResumeOverlay(msg) {
+  var ov = document.getElementById('resume-overlay');
+  var msgEl = document.getElementById('resume-overlay-msg');
+  if (msgEl) msgEl.textContent = msg || 'Vui lòng chờ trong giây lát';
+  if (ov) ov.classList.remove('hidden');
+}
+function hideResumeOverlay() {
+  var ov = document.getElementById('resume-overlay');
+  if (ov) ov.classList.add('hidden');
+}
+
+// Click vào bài incomplete: fetch detail rồi resume đúng màn hình
 async function expandSession(sessionId, btn) {
   btn.disabled = true; btn.textContent = '⏳';
+  showResumeOverlay('Đang tải bài học…');
   try {
     var r = await LD.api('student.resumeSession', { sessionId: sessionId });
-    btn.disabled = false;
-    if (!r.success) { LD.toast(r.error || 'Could not load session', 'err'); btn.textContent = '⚠ Retry'; return; }
-    var d = r.data;
-    // Nếu có Dictation dở → resume
-    var dj; try { dj = d.DictationJSON; } catch(e) {}
-    if (dj && !dj.completed && dj.currentSentenceIdx != null) {
-      if (confirm('Session này đang dở ở Dictation (Sentence ' + (dj.currentSentenceIdx + 1) + '). Resume ngay?')) {
-        location.href = 'student.html?resume=' + sessionId;
-      } else { btn.textContent = '▶ Resume'; }
-    } else {
-      // Hiện tóm tắt những gì đã làm
-      var info = [];
-      if (d.QuizScore !== '' && d.QuizScore != null) info.push('Quiz: ' + d.QuizScore + '%');
-      if (d.GapFillScore !== '' && d.GapFillScore != null) info.push('Gap-fill: ' + d.GapFillScore + '%');
-      if (d.DictationAccuracy !== '' && d.DictationAccuracy != null) info.push('Dictation: ' + d.DictationAccuracy + '%');
-      LD.toast('Session detail: ' + (info.length ? info.join(' · ') : 'Chưa hoàn thành phần nào.'), 'info', 5000);
-      btn.textContent = '⚠ Incomplete';
-      btn.disabled = false;
+    if (!r.success) {
+      hideResumeOverlay();
+      btn.disabled = false; btn.textContent = '⚠ Retry';
+      LD.toast(r.error || 'Could not load session', 'err');
+      return;
     }
-  } catch(e) { btn.disabled = false; btn.textContent = '⚠ Error'; LD.toast('Network error', 'err'); }
+    var d = r.data;
+    // Restore session state
+    App.sessionId = d.SessionID;
+    App.bookTestPart = d.BookTestPart || '';
+    App.correctedSentences = d.CorrectedScriptJSON || [];
+    App.cefr = d.CEFRJSON || null;
+    App.collocations = d.CollocationJSON || [];
+
+    var quizDone  = !!d.QuizScore || d.QuizScore === 0;
+    var gapDone   = !!d.GapFillScore || d.GapFillScore === 0;
+    var dictDone  = d.DictationJSON && d.DictationJSON.completed === true;
+    var dictInProgress = d.DictationJSON && !d.DictationJSON.completed && d.DictationJSON.currentSentenceIdx != null;
+
+    hideResumeOverlay();
+
+    if (dictInProgress || (!quizDone && !gapDone)) {
+      // Resume dictation in-progress OR nothing done yet → start from quiz
+      if (!quizDone) {
+        // Start from quiz
+        App.quiz = []; App.quizAnswers = [];
+        _showAudioUploadIfNeeded(['quiz']);
+        await goQuiz();
+      } else if (!gapDone) {
+        _showAudioUploadIfNeeded(['gapfill']);
+        goGapFill();
+      } else {
+        // Resume dictation
+        var dj = d.DictationJSON || { currentSentenceIdx: 0, answers: [] };
+        App.dictationAnswers = App.correctedSentences.map(function (s, i) {
+          return (dj.answers && dj.answers[i]) || { typed: '', checked: false };
+        });
+        App.dictationIdx = dj.currentSentenceIdx || 0;
+        showScreen('screen-dictation');
+        _initDictAudio();
+        if (localStorage.getItem('ld_sc_hidden') !== '1') setTimeout(openShortcutModal, 400);
+        setupDictAudioListeners();
+        App.dictSilenceMode = localStorage.getItem('ld_dict_silence_mode') || 'off';
+        setDictMode(App.dictSilenceMode === 'off' ? 'manual' : 'auto');
+        renderDictation();
+        LD.toast('Resumed dictation from sentence ' + (App.dictationIdx + 1) + '.', 'ok');
+      }
+    } else if (quizDone && !gapDone) {
+      // Quiz done, go gap-fill
+      _showAudioUploadIfNeeded(['gapfill']);
+      goGapFill();
+      LD.toast('Quiz đã xong — tiếp tục Gap-fill!', 'ok', 3000);
+    } else if (quizDone && gapDone && !dictDone) {
+      // Gap done, go dictation
+      _initDictAudio();
+      if (localStorage.getItem('ld_sc_hidden') !== '1') setTimeout(openShortcutModal, 400);
+      setupDictAudioListeners();
+      App.dictationIdx = 0;
+      App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false }; });
+      showScreen('screen-dictation');
+      setDictMode('manual');
+      renderDictation();
+      LD.toast('Gap-fill đã xong — tiếp tục Dictation!', 'ok', 3000);
+    } else {
+      LD.toast('Bài này đã hoàn thành tất cả các phần.', 'info', 3000);
+      btn.disabled = false; btn.textContent = '✅ Done';
+    }
+  } catch(e) {
+    hideResumeOverlay();
+    btn.disabled = false; btn.textContent = '⚠ Error';
+    LD.toast('Network error: ' + e.message, 'err');
+  }
 }
 
 async function deleteSession(sessionId, btn) {
@@ -1642,6 +1821,15 @@ function histSort(key) {
   renderHistoryTable();
 }
 </script>
+
+<!-- ═══════════ RESUME LOADING OVERLAY ═══════════ -->
+<div id="resume-overlay" class="resume-overlay hidden">
+  <div class="ro-card">
+    <span class="spinner" style="width:28px;height:28px;border-width:3px"></span>
+    <h4>Đang tải bài…</h4>
+    <p id="resume-overlay-msg">Vui lòng chờ trong giây lát</p>
+  </div>
+</div>
 
 <!-- ═══════════ DUPLICATE SESSION WARNING ═══════════ -->
 <div id="dup-session-overlay" class="dup-overlay hidden">
