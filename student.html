@@ -117,6 +117,25 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .lv-chip.lv-C1{background:rgba(236,72,153,.14);color:#EC4899}
 .lv-chip.lv-C2{background:rgba(220,38,38,.14);color:#DC2626}
 .btn-secondary.active{background:var(--red);color:#fff;border-color:var(--red)}
+/* ── Shortcut modal ──────────────────────────────────────── */
+.sc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:center;justify-content:center}
+.sc-overlay.hidden{display:none}
+.sc-modal{background:#fff;border-radius:20px;width:min(420px,94vw);overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35)}
+.sc-header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:22px 24px 18px;display:flex;gap:14px;align-items:flex-start}
+.sc-header-icon{font-size:2rem;line-height:1}
+.sc-header-text h3{color:#fff;font-family:var(--font-display);font-size:1.15rem;margin:0 0 4px}
+.sc-header-text p{color:rgba(255,255,255,.55);font-size:12px;margin:0}
+.sc-body{padding:16px 20px 8px}
+.sc-tip{background:#f0fdf4;border-left:3px solid #22c55e;border-radius:6px;padding:9px 12px;font-size:12.5px;color:#166534;margin-bottom:14px}
+.sc-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--grey-100)}
+.sc-row:last-child{border-bottom:none}
+.sc-label{font-size:13.5px;color:var(--black);display:flex;align-items:center;gap:7px}
+.sc-keys{display:flex;gap:4px;align-items:center}
+.sc-key{background:#f1f5f9;border:1.5px solid #cbd5e1;border-bottom:3px solid #94a3b8;border-radius:6px;padding:3px 9px;font-family:var(--font-mono);font-size:12px;font-weight:700;color:#334155;white-space:nowrap}
+.sc-dim{font-size:12px;color:var(--grey-400);font-style:italic}
+.sc-footer{padding:14px 20px 18px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--grey-100)}
+.sc-footer label{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--grey-600);cursor:pointer}
+.sc-footer .btn{flex:1}
 </style>
 </head>
 <body>
@@ -263,8 +282,12 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div class="topbar-app">📝 15-Question Quiz</div>
     <div class="topbar-right"><span id="quiz-progress" style="color:#fff;font-size:12.5px"></span></div>
   </div>
-  <div class="wrap">
-    <div id="quiz-loading" class="card" style="text-align:center;padding:40px"><span class="spinner"></span> Generating quiz with AI…</div>
+  <!-- Sticky audio bar — listen while answering -->
+  <div style="position:sticky;top:56px;z-index:90;background:var(--white);border-bottom:1.5px solid var(--grey-200);padding:8px 20px;box-shadow:0 2px 6px rgba(0,0,0,.08)" id="quiz-audio-bar">
+    <audio id="quiz-audio" controls style="width:100%;height:36px"></audio>
+  </div>
+  <div class="wrap" style="padding-top:14px">
+    <div id="quiz-loading" class="card hidden" style="text-align:center;padding:40px"><span class="spinner"></span> Generating quiz with AI…</div>
     <div id="quiz-body"></div>
     <div style="position:sticky;bottom:0;background:var(--off-white);padding:14px 0;text-align:center">
       <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-quiz loses all progress — you must answer all 15/15 questions before it can be saved.</div>
@@ -283,6 +306,10 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <!-- Sticky audio bar — always visible while scrolling through sentences -->
   <div id="gapfill-audio-bar" style="position:sticky;top:56px;z-index:90;background:var(--white);border-bottom:1.5px solid var(--grey-200);padding:8px 20px;box-shadow:0 2px 6px rgba(0,0,0,.08)">
     <audio id="gapfill-audio" controls style="width:100%;height:36px"></audio>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" id="btn-gap-autopause" onclick="toggleGapAutoPause()">▶ Auto-pause: Off</button>
+      <button class="btn btn-secondary btn-sm" onclick="openShortcutModal()">⌨️ Shortcuts</button>
+    </div>
   </div>
   <div class="wrap" style="padding-top:14px">
     <div id="gapfill-shortcuts-banner" class="dict-banner">
@@ -311,21 +338,19 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <span id="dict-word-total" style="color:#fff;font-size:12px"></span>
       <div class="progress-outer"><div class="progress-fill" id="dict-progress-fill" style="width:0%"></div></div>
       <span id="dict-progress-label" style="color:#fff;font-size:12px"></span>
-      <button class="btn btn-secondary btn-sm" id="btn-toggle-shortcuts" onclick="toggleShortcutsBanner()">⌨️ Shortcuts</button>
+      <button class="btn btn-secondary btn-sm" onclick="openShortcutModal()">⌨️ Shortcuts</button>
       <button class="btn btn-secondary btn-sm" onclick="saveDictationAndExit()">💾 Save &amp; Exit</button>
     </div>
   </div>
   <div class="wrap">
-    <div id="dict-shortcuts-banner" class="dict-banner">
-      <span>⌨️ <b>Enter</b> = Check &nbsp;·&nbsp; <b>Ctrl+→</b> = Next unchecked &nbsp;·&nbsp; <b>Ctrl+Space</b> = Play/Pause &nbsp;·&nbsp; <b>Ctrl+,</b> = ◀ −5s &nbsp;·&nbsp; <b>Ctrl+.</b> = ▶ +5s</span>
-      <button class="dict-banner-close" onclick="toggleShortcutsBanner(false)">✕</button>
-    </div>
     <div style="margin-bottom:12px" id="dict-audio-row">
       <audio id="dict-audio" controls style="width:100%"></audio>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-        <span style="font-size:11.5px;font-weight:700;color:var(--grey-600)">Playback:</span>
-        <button class="btn btn-secondary btn-sm" id="btn-mode-auto" onclick="setDictMode('auto')">🎯 Auto-pause per sentence</button>
-        <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')">✋ Manual control</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <span style="font-size:11.5px;font-weight:700;color:var(--grey-600)">Auto-pause:</span>
+        <button class="btn btn-secondary btn-sm" id="btn-dict-silence" onclick="toggleDictAutoPause()">▶ Manual</button>
+        <span style="font-size:11.5px;font-weight:700;color:var(--grey-600);margin-left:6px">Mode:</span>
+        <button class="btn btn-secondary btn-sm" id="btn-mode-auto" onclick="setDictMode('auto')">🎯 Per sentence</button>
+        <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')">✋ Manual</button>
       </div>
     </div>
     <div id="dictation-sentences"></div>
@@ -641,6 +666,10 @@ function handleAudioFile(e) {
   var f = e.target.files[0]; if (!f) return;
   App.audioBlobUrl = URL.createObjectURL(f);
   document.getElementById('audio-status').textContent = '✅ ' + f.name;
+  // Start silence analysis in background immediately — will be ready by the time student reaches Dictation
+  App_silenceAnalysisDone = false;
+  App_silencePauses = [];
+  analyseAudioSilence(App.audioBlobUrl);
 }
 function loadDriveAudio() {
   var id = document.getElementById('drive-file-id').value.trim();
@@ -845,8 +874,15 @@ async function _generateQuiz() {
 
 async function goQuiz() {
   showScreen('screen-quiz');
-  // Already generated (prefetch hit or returning to quiz tab) — render immediately
-  if (App.quiz.length) { renderQuiz(); return; }
+  // Set audio on quiz screen
+  var qa = document.getElementById('quiz-audio');
+  if (qa && App.audioBlobUrl) { qa.src = App.audioBlobUrl; qa.load(); }
+  // Already generated (prefetch hit) — hide loading, render immediately
+  if (App.quiz.length) {
+    document.getElementById('quiz-loading').classList.add('hidden');
+    renderQuiz();
+    return;
+  }
 
   document.getElementById('quiz-loading').classList.remove('hidden');
   document.getElementById('quiz-body').innerHTML = '';
@@ -911,6 +947,8 @@ function goGapFill() {
   showScreen('screen-gapfill');
   var audio = document.getElementById('gapfill-audio');
   if (App.audioBlobUrl) { audio.src = App.audioBlobUrl; audio.load(); }
+  if (App.audioBlobUrl && !App_silenceAnalysisDone) { analyseAudioSilence(App.audioBlobUrl); }
+  setupGapAutoPause();
   renderGapFill();
 }
 function buildGapFill() {
@@ -1041,10 +1079,17 @@ function goDictation() {
   showScreen('screen-dictation');
   var audio = document.getElementById('dict-audio');
   if (App.audioBlobUrl) { audio.src = App.audioBlobUrl; audio.load(); } else document.getElementById('dict-audio-row').style.display = 'none';
-  toggleShortcutsBanner(localStorage.getItem('ld_dict_shortcuts_hidden') !== '1');
+  // Restore silence mode button label
+  App.dictSilenceMode = localStorage.getItem('ld_dict_silence_mode') || 'off';
+  var silBtn = document.getElementById('btn-dict-silence');
+  if (silBtn) silBtn.textContent = { silence: '⏸ Silence', wordcount: '⏸ Word-count', off: '▶ Manual' }[App.dictSilenceMode] || '▶ Manual';
   setupDictAudioListeners();
-  setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
+  setDictMode(App.dictSilenceMode === 'off' ? 'manual' : 'auto');
   renderDictation();
+  // Silence analysis (async, non-blocking)
+  if (App.audioBlobUrl && !App_silenceAnalysisDone) { analyseAudioSilence(App.audioBlobUrl); }
+  // Show shortcut modal unless user dismissed permanently
+  if (localStorage.getItem('ld_sc_hidden') !== '1') { setTimeout(openShortcutModal, 400); }
 }
 // ── Auto-pause per sentence: since there are no real per-sentence timestamps,
 // pause points are ESTIMATED by splitting the audio's total duration proportionally
@@ -1067,9 +1112,29 @@ function computePausePoints() {
   App.pausePoints = App.correctedSentences.map(function (s) { cum += wc(s); return dur * (cum / totalWords); });
 }
 function onDictTimeUpdate() {
-  if (App.dictMode !== 'auto') return;
   var audio = document.getElementById('dict-audio');
   if (!audio || audio.paused) return;
+  var mode = App.dictSilenceMode || 'off';
+
+  // Silence-based mode: pause at detected silence gaps
+  if (mode === 'silence' && App_silencePauses.length) {
+    for (var s = 0; s < App_silencePauses.length; s++) {
+      var pt = App_silencePauses[s];
+      if (audio.currentTime >= pt && audio.currentTime <= pt + 0.15) {
+        if (audio._lastDictPause !== pt) {
+          audio._lastDictPause = pt;
+          audio.pause();
+          var inp = document.getElementById('sb-input-' + App.dictationIdx);
+          if (inp && !inp.disabled) inp.focus();
+        }
+        return;
+      }
+    }
+    return;
+  }
+
+  // Word-count / legacy auto mode: pause at estimated sentence endpoints
+  if (mode !== 'wordcount' && App.dictMode !== 'auto') return;
   var idx = App.dictationIdx;
   if (!App.pausePoints.length || idx >= App.pausePoints.length) return;
   if (App.dictationAnswers[idx] && App.dictationAnswers[idx].checked) return;
@@ -1077,8 +1142,8 @@ function onDictTimeUpdate() {
   if (audio.currentTime >= App.pausePoints[idx] - 0.05) {
     audio.pause();
     App._pausedForCurrentIdx = true;
-    var inp = document.getElementById('sb-input-' + idx);
-    if (inp) inp.focus();
+    var inp2 = document.getElementById('sb-input-' + idx);
+    if (inp2) inp2.focus();
   }
 }
 function setDictMode(mode) {
@@ -1129,30 +1194,6 @@ function updateWordTotal() {
   var el = document.getElementById('dict-word-total');
   if (el) el.textContent = '📝 ' + typedTotal + '/' + targetTotal + ' words';
 }
-function toggleShortcutsBanner(show) {
-  var banner = document.getElementById('dict-shortcuts-banner');
-  if (!banner) return;
-  var willShow = typeof show === 'boolean' ? show : banner.classList.contains('hidden');
-  banner.classList.toggle('hidden', !willShow);
-  localStorage.setItem('ld_dict_shortcuts_hidden', willShow ? '0' : '1');
-}
-document.addEventListener('keydown', function (e) {
-  // ── Dictation shortcuts ──────────────────────────────────
-  var dictScr = document.getElementById('screen-dictation');
-  if (dictScr && dictScr.classList.contains('active')) {
-    if (e.ctrlKey && e.code === 'Space')    { e.preventDefault(); var a = document.getElementById('dict-audio'); if (a) { if (a.paused) a.play(); else a.pause(); } }
-    if (e.ctrlKey && e.key === 'ArrowRight'){ e.preventDefault(); jumpToNextUnchecked(); }
-    if (e.ctrlKey && (e.key === ',' || e.key === '<')) { e.preventDefault(); var a = document.getElementById('dict-audio'); if (a) a.currentTime = Math.max(0, a.currentTime - 5); }
-    if (e.ctrlKey && (e.key === '.' || e.key === '>')) { e.preventDefault(); var a = document.getElementById('dict-audio'); if (a) a.currentTime = Math.min(a.duration || 0, a.currentTime + 5); }
-  }
-  // ── Gap-fill shortcuts ───────────────────────────────────
-  var gapScr = document.getElementById('screen-gapfill');
-  if (gapScr && gapScr.classList.contains('active')) {
-    if (e.ctrlKey && e.code === 'Space')    { e.preventDefault(); var a = document.getElementById('gapfill-audio'); if (a) { if (a.paused) a.play(); else a.pause(); } }
-    if (e.ctrlKey && (e.key === ',' || e.key === '<')) { e.preventDefault(); var a = document.getElementById('gapfill-audio'); if (a) a.currentTime = Math.max(0, a.currentTime - 5); }
-    if (e.ctrlKey && (e.key === '.' || e.key === '>')) { e.preventDefault(); var a = document.getElementById('gapfill-audio'); if (a) a.currentTime = Math.min(a.duration || 0, a.currentTime + 5); }
-  }
-});
 function jumpToNextUnchecked() {
   for (var i = 0; i < App.dictationAnswers.length; i++) if (!App.dictationAnswers[i].checked) { jumpTo(i); return; }
 }
@@ -1262,9 +1303,10 @@ async function resumeSession(sessionId) {
     showScreen('screen-dictation');
     var audio = document.getElementById('dict-audio');
     document.getElementById('dict-audio-row').style.display = App.audioBlobUrl ? 'block' : 'none';
-    toggleShortcutsBanner(localStorage.getItem('ld_dict_shortcuts_hidden') !== '1');
+    if (localStorage.getItem('ld_sc_hidden') !== '1') { setTimeout(openShortcutModal, 400); }
     setupDictAudioListeners();
-    setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
+    App.dictSilenceMode = localStorage.getItem('ld_dict_silence_mode') || 'off';
+    setDictMode(App.dictSilenceMode === 'off' ? 'manual' : 'auto');
     renderDictation();
     LD.toast('Resumed your in-progress session.', 'ok');
   } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
@@ -1386,6 +1428,189 @@ function histSort(key) {
   App.histSortDir = App.histSortKey === key ? -App.histSortDir : -1;
   App.histSortKey = key;
   renderHistoryTable();
+}
+</script>
+
+<!-- ═══════════ SHORTCUT MODAL ═══════════ -->
+<div id="sc-overlay" class="sc-overlay hidden" onclick="if(event.target===this)closeShortcutModal()">
+  <div class="sc-modal">
+    <div class="sc-header">
+      <div class="sc-header-icon">⌨️</div>
+      <div class="sc-header-text">
+        <h3>Keyboard Shortcuts</h3>
+        <p>Keyboard shortcuts for faster dictation practice</p>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="sc-tip">💡 Use <b>Shift+Space</b> to Play/Pause — keeps both hands on keyboard, no mouse needed.</div>
+      <div class="sc-row"><span class="sc-label">▶ Play / ⏸ Pause</span><span class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key">Space</span></span></div>
+      <div class="sc-row"><span class="sc-label">✅ Check answer</span><span class="sc-keys"><span class="sc-key">Enter</span></span></div>
+      <div class="sc-row"><span class="sc-label">⏭ Next sentence</span><span class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key">Enter</span></span></div>
+      <div class="sc-row"><span class="sc-label">⏪ Seek −3s</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">,</span></span></div>
+      <div class="sc-row"><span class="sc-label">⏩ Seek +3s</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">.</span></span></div>
+      <div class="sc-row"><span class="sc-label">✏️ Edit last sentence</span><span class="sc-keys"><span class="sc-key">↑</span> <span class="sc-dim">(when not typing)</span></span></div>
+      <div class="sc-row"><span class="sc-label">🔄 Reset sentence</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">Alt</span><span class="sc-key">R</span></span></div>
+      <div class="sc-row"><span class="sc-label">⏸ Auto-pause <span style="font-size:11px;color:var(--grey-400)">(dừng cuối mỗi câu)</span></span><span class="sc-dim">toggle ở thanh audio</span></div>
+    </div>
+    <div class="sc-footer">
+      <label><input type="checkbox" id="sc-dont-show" onchange="localStorage.setItem('ld_sc_hidden',this.checked?'1':'0')"> Không hiển thị lại</label>
+      <button class="btn btn-primary" onclick="closeShortcutModal()">Đã hiểu, bắt đầu →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openShortcutModal() {
+  document.getElementById('sc-overlay').classList.remove('hidden');
+  document.getElementById('sc-dont-show').checked = localStorage.getItem('ld_sc_hidden') === '1';
+}
+function closeShortcutModal() { document.getElementById('sc-overlay').classList.add('hidden'); }
+
+// ═══════════════════════════════════════════════════════════
+// SILENCE-BASED AUTO-PAUSE (Web Audio API)
+// Analyses the uploaded audio file for silence gaps >1s and stores
+// timestamps as candidate pause points. Falls back to word-count
+// estimates when the audio is from Google Drive (CORS-restricted).
+// ═══════════════════════════════════════════════════════════
+var App_silencePauses = [];   // timestamps (seconds) of detected silence midpoints
+var App_autoPauseEnabled = { dict: true, gap: false };
+var App_silenceAnalysisDone = false;
+
+async function analyseAudioSilence(blobUrl) {
+  if (!blobUrl || blobUrl.indexOf('blob:') !== 0) return; // Drive URL: CORS blocks, skip
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var buf = await fetch(blobUrl).then(function(r){ return r.arrayBuffer(); });
+    var decoded = await ctx.decodeAudioData(buf);
+    ctx.close();
+    var data = decoded.getChannelData(0);
+    var sr = decoded.sampleRate;
+    var SILENCE_DB = -40;  // threshold
+    var SILENCE_MIN_S = 0.8; // min gap length to count
+    var threshold = Math.pow(10, SILENCE_DB / 20);
+    var pauses = [];
+    var silStart = null;
+    var blockSize = Math.floor(sr * 0.05); // 50ms blocks
+    for (var i = 0; i < data.length; i += blockSize) {
+      var rms = 0;
+      var end = Math.min(i + blockSize, data.length);
+      for (var j = i; j < end; j++) rms += data[j] * data[j];
+      rms = Math.sqrt(rms / (end - i));
+      var t = i / sr;
+      if (rms < threshold) {
+        if (silStart === null) silStart = t;
+      } else {
+        if (silStart !== null && (t - silStart) >= SILENCE_MIN_S) {
+          pauses.push(silStart + (t - silStart) * 0.3); // 30% into the gap
+        }
+        silStart = null;
+      }
+    }
+    App_silencePauses = pauses;
+    App_silenceAnalysisDone = true;
+    console.log('[LisDictation] Silence analysis: found ' + pauses.length + ' pause points');
+  } catch(e) {
+    console.warn('[LisDictation] Silence analysis failed:', e.message);
+    App_silencePauses = [];
+    App_silenceAnalysisDone = true;
+  }
+}
+
+// ── Gap-fill silence auto-pause ──────────────────────────────
+function setupGapAutoPause() {
+  var audio = document.getElementById('gapfill-audio');
+  if (!audio || audio._gapWired) return;
+  audio._gapWired = true;
+  audio.addEventListener('timeupdate', function() {
+    if (!App_autoPauseEnabled.gap) return;
+    if (audio.paused) return;
+    // Pause at each silence point (within 0.1s window)
+    for (var i = 0; i < App_silencePauses.length; i++) {
+      var pt = App_silencePauses[i];
+      if (audio.currentTime >= pt && audio.currentTime <= pt + 0.15) {
+        if (audio._lastGapPause !== pt) {
+          audio._lastGapPause = pt;
+          audio.pause();
+          var blank = document.querySelector('.gap-blank:not([disabled]):not(.gb-correct)');
+          if (blank) blank.focus();
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// UNIFIED KEYBOARD HANDLER
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('keydown', function (e) {
+  var tag = (document.activeElement && document.activeElement.tagName) || '';
+  var inInput = tag === 'INPUT' || tag === 'TEXTAREA';
+
+  // ── Dictation screen ─────────────────────────────────────
+  var dictScr = document.getElementById('screen-dictation');
+  if (dictScr && dictScr.classList.contains('active')) {
+    var da = document.getElementById('dict-audio');
+    // Shift+Space: play/pause (works even from input)
+    if (e.shiftKey && e.code === 'Space') {
+      e.preventDefault();
+      if (da) { if (da.paused) da.play(); else da.pause(); }
+    }
+    // Ctrl+,  = seek -3s
+    if (e.ctrlKey && (e.key === ',' || e.key === '<')) { e.preventDefault(); if (da) da.currentTime = Math.max(0, da.currentTime - 3); }
+    // Ctrl+.  = seek +3s
+    if (e.ctrlKey && (e.key === '.' || e.key === '>')) { e.preventDefault(); if (da) da.currentTime = Math.min(da.duration || 0, da.currentTime + 3); }
+    // Shift+Enter = jump to next unchecked (Ctrl+→ kept for compatibility)
+    if ((e.shiftKey && e.key === 'Enter') || (e.ctrlKey && e.key === 'ArrowRight')) { e.preventDefault(); jumpToNextUnchecked(); }
+    // Ctrl+Alt+R = reset current sentence
+    if (e.ctrlKey && e.altKey && e.key === 'r') {
+      e.preventDefault();
+      var idx = App.dictationIdx;
+      var inp = document.getElementById('sb-input-' + idx);
+      if (inp && !inp.disabled) { inp.value = ''; App.dictationAnswers[idx].typed = ''; onDictInput(idx, ''); }
+    }
+    // ↑ (when not in input) = focus previous sentence input for editing
+    if (e.key === 'ArrowUp' && !inInput) {
+      e.preventDefault();
+      var prev = App.dictationIdx - 1;
+      if (prev >= 0) {
+        var prevInp = document.getElementById('sb-input-' + prev);
+        if (prevInp && !prevInp.disabled) { prevInp.focus(); prevInp.setSelectionRange(prevInp.value.length, prevInp.value.length); }
+      }
+    }
+  }
+
+  // ── Gap-fill screen ──────────────────────────────────────
+  var gapScr = document.getElementById('screen-gapfill');
+  if (gapScr && gapScr.classList.contains('active')) {
+    var ga = document.getElementById('gapfill-audio');
+    if (e.shiftKey && e.code === 'Space') { e.preventDefault(); if (ga) { if (ga.paused) ga.play(); else ga.pause(); } }
+    if (e.ctrlKey && (e.key === ',' || e.key === '<')) { e.preventDefault(); if (ga) ga.currentTime = Math.max(0, ga.currentTime - 3); }
+    if (e.ctrlKey && (e.key === '.' || e.key === '>')) { e.preventDefault(); if (ga) ga.currentTime = Math.min(ga.duration || 0, ga.currentTime + 3); }
+  }
+
+  // Escape: close shortcut modal
+  if (e.key === 'Escape') closeShortcutModal();
+});
+
+// ── Toggle silence auto-pause for each screen ───────────────
+function toggleGapAutoPause() {
+  App_autoPauseEnabled.gap = !App_autoPauseEnabled.gap;
+  var btn = document.getElementById('btn-gap-autopause');
+  if (btn) btn.classList.toggle('active', App_autoPauseEnabled.gap);
+  LD.toast(App_autoPauseEnabled.gap ? '⏸ Auto-pause ON (gap-fill)' : '▶ Auto-pause OFF (gap-fill)', 'ok', 1800);
+}
+function toggleDictAutoPause() {
+  // Cycle: silence-based → word-count → off → silence-based
+  var modes = ['silence', 'wordcount', 'off'];
+  var cur = App.dictSilenceMode || 'off';
+  var next = modes[(modes.indexOf(cur) + 1) % modes.length];
+  App.dictSilenceMode = next;
+  localStorage.setItem('ld_dict_silence_mode', next);
+  var labels = { silence: '⏸ Auto-pause: Silence detection', wordcount: '⏸ Auto-pause: Word-count estimate', off: '▶ Auto-pause: Off' };
+  var btn = document.getElementById('btn-dict-silence');
+  if (btn) btn.textContent = { silence: '⏸ Silence', wordcount: '⏸ Word-count', off: '▶ Manual' }[next];
+  setDictMode(next === 'off' ? 'manual' : 'auto');
+  LD.toast(labels[next], 'ok', 2200);
 }
 </script>
 </body>
