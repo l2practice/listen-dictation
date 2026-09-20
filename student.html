@@ -79,8 +79,9 @@
 .sb-label{font-size:11px;font-weight:700;color:#9aaac8;letter-spacing:.5px;margin-bottom:7px;text-transform:uppercase}
 .sb-result{min-height:22px;line-height:2.1;word-spacing:3px;margin-bottom:7px}
 .sb-result .w-correct{color:var(--green);font-weight:700}
-.sb-result .w-wrong{color:var(--red);text-decoration:line-through;font-weight:700}
+.sb-result .w-wrong{color:var(--red);font-weight:700;font-family:var(--font-mono)}
 .sb-result .w-missing{color:#e67e22;font-weight:800}
+.sb-hint{background:#f0fdf4;border:1.5px solid var(--green);border-radius:8px;padding:8px 12px;margin-top:6px;font-size:13px}
 .sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:14px}
 .sb-input:focus{border-color:var(--blue)}
 .sb-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
@@ -117,7 +118,25 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .lv-chip.lv-C1{background:rgba(236,72,153,.14);color:#EC4899}
 .lv-chip.lv-C2{background:rgba(220,38,38,.14);color:#DC2626}
 .btn-secondary.active{background:var(--red);color:#fff;border-color:var(--red)}
-/* ── Shortcut modal ──────────────────────────────────────── */
+/* ── Dup-session overlay ─────────────────────────────────── */
+.dup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center}
+.dup-overlay.hidden{display:none}
+.dup-modal{background:#fff;border-radius:16px;width:min(400px,92vw);padding:28px 24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.dup-modal h3{font-family:var(--font-display);color:var(--red);margin:0 0 10px;font-size:1.1rem}
+.dup-modal p{font-size:13.5px;color:var(--grey-600);margin:0 0 18px;line-height:1.6}
+.dup-modal .btp-chip{display:inline-block;background:var(--red-light);color:var(--red);font-weight:700;padding:2px 10px;border-radius:100px;font-size:13px;margin:4px 0}
+.dup-modal .btn-row{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+/* ── Floating shortcut button ────────────────────────────── */
+.sc-fab{position:fixed;bottom:20px;right:16px;z-index:200;background:rgba(26,35,126,.85);color:#fff;border:none;border-radius:50%;width:42px;height:42px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.25);backdrop-filter:blur(4px);transition:transform .15s}
+.sc-fab:hover{transform:scale(1.12)}
+.sc-fab.hidden{display:none}
+/* ── iOS-style toggle ────────────────────────────────────── */
+.ios-toggle{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:12.5px;font-weight:600;color:var(--grey-700)}
+.ios-toggle input{position:absolute;opacity:0;width:0;height:0}
+.ios-track{width:40px;height:22px;background:#ccc;border-radius:100px;transition:background .2s;flex-shrink:0}
+.ios-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .2s}
+.ios-toggle input:checked ~ .ios-track{background:var(--green)}
+.ios-toggle input:checked ~ .ios-track .ios-thumb{transform:translateX(18px)}
 .sc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:center;justify-content:center}
 .sc-overlay.hidden{display:none}
 .sc-modal{background:#fff;border-radius:20px;width:min(420px,94vw);overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35)}
@@ -306,9 +325,12 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <!-- Sticky audio bar — always visible while scrolling through sentences -->
   <div id="gapfill-audio-bar" style="position:sticky;top:56px;z-index:90;background:var(--white);border-bottom:1.5px solid var(--grey-200);padding:8px 20px;box-shadow:0 2px 6px rgba(0,0,0,.08)">
     <audio id="gapfill-audio" controls style="width:100%;height:36px"></audio>
-    <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
-      <button class="btn btn-secondary btn-sm" id="btn-gap-autopause" onclick="toggleGapAutoPause()">▶ Auto-pause: Off</button>
-      <button class="btn btn-secondary btn-sm" onclick="openShortcutModal()">⌨️ Shortcuts</button>
+    <div style="display:flex;gap:12px;align-items:center;margin-top:6px;flex-wrap:wrap">
+      <label class="ios-toggle" title="Dừng tự động tại khoảng lặng trong audio">
+        <input type="checkbox" id="chk-gap-autopause" onchange="toggleGapAutoPause(this.checked)">
+        <span class="ios-track"><span class="ios-thumb"></span></span>
+        <span>Auto-pause</span>
+      </label>
     </div>
   </div>
   <div class="wrap" style="padding-top:14px">
@@ -327,6 +349,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <button class="btn btn-primary" id="btn-submit-gapfill" onclick="submitGapFill()" disabled style="padding:12px 30px">✅ Submit Gap-fill</button>
     </div>
   </div>
+  <button class="sc-fab" onclick="openShortcutModal()" title="Keyboard shortcuts">⌨️</button>
 </div>
 
 <!-- ═══════════ DICTATION ═══════════ -->
@@ -345,10 +368,12 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <div class="wrap">
     <div style="margin-bottom:12px" id="dict-audio-row">
       <audio id="dict-audio" controls style="width:100%"></audio>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
-        <span style="font-size:11.5px;font-weight:700;color:var(--grey-600)">Auto-pause:</span>
-        <button class="btn btn-secondary btn-sm" id="btn-dict-silence" onclick="toggleDictAutoPause()">▶ Manual</button>
-        <span style="font-size:11.5px;font-weight:700;color:var(--grey-600);margin-left:6px">Mode:</span>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <label class="ios-toggle" title="Auto-pause dựa trên khoảng lặng của audio">
+          <input type="checkbox" id="chk-dict-autopause" onchange="toggleDictAutoPause(this.checked)">
+          <span class="ios-track"><span class="ios-thumb"></span></span>
+          <span id="lbl-dict-autopause">Auto-pause</span>
+        </label>
         <button class="btn btn-secondary btn-sm" id="btn-mode-auto" onclick="setDictMode('auto')">🎯 Per sentence</button>
         <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')">✋ Manual</button>
       </div>
@@ -356,6 +381,8 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div id="dictation-sentences"></div>
     <button class="btn btn-primary btn-full" id="btn-finish-dictation" onclick="finishDictation()" style="padding:14px;font-size:15px;display:none">🏁 Submit</button>
   </div>
+  <!-- Floating shortcut button -->
+  <button class="sc-fab" onclick="openShortcutModal()" title="Keyboard shortcuts">⌨️</button>
 </div>
 
 <!-- ═══════════ RESULT ═══════════ -->
@@ -526,10 +553,20 @@ async function callGemini(prompt, maxTokens) {
       var s = raw.indexOf('{'), e = raw.lastIndexOf('}') + 1;
       if (s < 0 || e <= s) { lastErr = new Error('Gemini: response is not JSON (' + models[i] + '): ' + raw.slice(0, 80)); continue; }
       try {
-        return JSON.parse(raw.slice(s, e));
+        // Sanitize: IPA fields sometimes contain unescaped " — strip them so JSON.parse succeeds
+        var jsonStr = raw.slice(s, e).replace(/(?<=:\s*"[^"]*)"(?=[^"]*"[^"]*[,}\]])/g, "'");
+        return JSON.parse(jsonStr);
       } catch (parseErr) {
-        lastErr = new Error('Gemini: JSON parse failed (' + models[i] + '): ' + parseErr.message);
-        continue;
+        // Fallback: try with a more aggressive cleanup of stray quotes inside string values
+        try {
+          var cleaned = raw.slice(s, e)
+            .replace(/"ipa"\s*:\s*"([^"]*)"/g, function(m, ipa) { return '"ipa":"' + ipa.replace(/"/g, "'") + '"'; })
+            .replace(/"vi"\s*:\s*"([^"]*)"/g, function(m, vi) { return '"vi":"' + vi.replace(/"/g, "'") + '"'; });
+          return JSON.parse(cleaned);
+        } catch (e2) {
+          lastErr = new Error('Gemini: JSON parse failed (' + models[i] + '): ' + parseErr.message);
+          continue;
+        }
       }
     } catch (err) { lastErr = err; }
   }
@@ -630,13 +667,40 @@ function splitSentences(text) {
   text = text.replace(/\r\n?/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
   if (!text) return [];
   var work = text;
+  // Protect abbreviations
   ABBR.forEach(function (a, idx) {
     var re = new RegExp('\\b' + a.replace('.', '\\.') + '\\.', 'g');
     work = work.replace(re, a.replace('.', '') + '§' + idx + '§');
   });
-  var parts = work.match(/[^.!?]+[.!?]+(?=\s+[A-Z""]|\s*$)|[^.!?]+$/g) || [work];
+  // Also protect decimal numbers (3.14) and initials (J. K.)
+  work = work.replace(/(\d)\.(\d)/g, '$1§DEC§$2');
+  work = work.replace(/\b([A-Z])\.(?=[A-Z]\.)/g, '$1§INI§');
+
+  // Primary split: sentence-ending punctuation followed by space + any word (upper or lower)
+  // Use two-pass: first split on [.!?] + space, then filter out false splits
+  var parts = [];
+  var buf = '';
+  var tokens = work.split(/([.!?]+)\s+/);
+  // tokens = [text, punct, text, punct, ...]
+  for (var i = 0; i < tokens.length; i += 2) {
+    var seg = tokens[i] || '';
+    var punc = tokens[i + 1] || '';
+    buf += seg;
+    if (punc) {
+      buf += punc;
+      parts.push(buf.trim());
+      buf = '';
+    }
+  }
+  if (buf.trim()) parts.push(buf.trim());
+  if (!parts.length || (parts.length === 1 && parts[0] === work)) {
+    // Fallback to original regex if split produced nothing useful
+    parts = work.match(/[^.!?]+[.!?]+(?=\s+[A-Z""]|\s*$)|[^.!?]+$/g) || [work];
+  }
+
   return parts.map(function (s) {
     ABBR.forEach(function (a, idx) { s = s.split(a + '§' + idx + '§').join(a + '.'); });
+    s = s.replace(/§DEC§/g, '.').replace(/§INI§/g, '.');
     return s.trim();
   }).filter(Boolean);
 }
@@ -700,8 +764,7 @@ async function runAnalyzeScript() {
       '(2) give a short, context-appropriate Vietnamese translation + British IPA for each difficult word listed below.\n\n' +
       'SENTENCES:\n' + numbered + '\n\n' +
       'WORDS TO TRANSLATE (' + hardWords.length + ' words, already filtered by CEFR level): ' + hardWords.join(', ') + '\n\n' +
-      'Return ONLY this JSON: {"corrected":["sentence 0 fixed",...],"collocations":[["phrase","Vietnamese meaning"]],"gloss":[["word","Vietnamese meaning","/ipa/"]]}';
-    var res = await callAI(prompt, 6144);
+      'Return ONLY this JSON (no markdown, no extra text): {"corrected":["sentence 0 fixed",...],"collocations":[["phrase","Vietnamese meaning"]],"gloss":[["word","Vietnamese meaning","ipa_without_quotes"]]}. IMPORTANT: inside string values never use double-quote characters — use single-quotes or no quotes for IPA notation (e.g. use /ɪnfɔːmz/ not "/ɪnfɔːmz/").';    var res = await callAI(prompt, 6144);
     App.correctedSentences = (res.corrected && res.corrected.length === App.sentences.length) ? res.corrected : App.sentences.slice();
     App.collocations = (res.collocations || []).map(function (c) { return { en: c[0] || '', vi: c[1] || '' }; }).filter(function (c) { return c.en; });
     App.gloss = {};
@@ -767,9 +830,37 @@ async function startSession() {
   var book = document.getElementById('book-input').value;
   var test = document.getElementById('test-input').value;
   var part = document.getElementById('part-input').value;
-  App.bookTestPart = [book, test ? ('Test ' + test) : '', part ? ('Part ' + part) : ''].filter(Boolean).join(' · ');
-  App.maxReplays = 999; // unlimited (UI selector removed per request)
+  // Validate required fields
+  if (!book || book === '__custom__') { LD.toast('Vui lòng chọn Book trước khi bắt đầu.', 'err'); return; }
+  if (!test) { LD.toast('Vui lòng chọn Test number.', 'err'); return; }
+  if (!part) { LD.toast('Vui lòng chọn Part number.', 'err'); return; }
+  App.bookTestPart = [book, 'Test ' + test, 'Part ' + part].join(' · ');
+  App.maxReplays = 999;
   var btn = document.getElementById('btn-start-session');
+
+  // Check for existing session with same book/test/part in history
+  try {
+    var histR = await LD.api('student.getHistorySummary', {});
+    if (histR.success && histR.data) {
+      var dup = histR.data.find(function(s) {
+        return s.bookTestPart && s.bookTestPart.toLowerCase() === App.bookTestPart.toLowerCase();
+      });
+      if (dup) {
+        // Show warning overlay — user can cancel or force-create
+        var overlay = document.getElementById('dup-session-overlay');
+        document.getElementById('dup-session-btp').textContent = App.bookTestPart;
+        document.getElementById('dup-session-date').textContent = dup.startTime ? new Date(dup.startTime).toLocaleDateString('vi-VN') : '';
+        overlay.classList.remove('hidden');
+        return; // Wait for user's choice in the overlay
+      }
+    }
+  } catch(e) { /* ignore — just proceed if history check fails */ }
+
+  await _doStartSession(btn);
+}
+
+async function _doStartSession(btn) {
+  if (!btn) btn = document.getElementById('btn-start-session');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating session…';
   try {
     var r = await LD.api('session.start', { bookTestPart: App.bookTestPart });
@@ -784,6 +875,12 @@ async function startSession() {
     LD.toast('Error: ' + err.message, 'err');
     btn.disabled = false; btn.textContent = '🚀 Start Practice Session';
   }
+}
+function closeDupOverlay() { document.getElementById('dup-session-overlay').classList.add('hidden'); }
+function dupGoHistory() { closeDupOverlay(); goHistory(); }
+function dupForceCreate() {
+  closeDupOverlay();
+  _doStartSession(document.getElementById('btn-start-session'));
 }
 function goStudy() {
   renderLevelChips(); renderStudyPassage(); renderCefrDist(); renderCollocations();
@@ -1050,6 +1147,9 @@ function checkSegment() {
   renderGapFill();
 }
 async function submitGapFill() {
+  var btn = document.getElementById('btn-submit-gapfill');
+  if (btn.disabled) return;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
   var total = 0, correct = 0, flatAnswers = [];
   App.gapfill.forEach(function (g, gi) {
     g.blankWordIdx.forEach(function (wi, bi) {
@@ -1064,10 +1164,13 @@ async function submitGapFill() {
   var score = total ? Math.round(correct / total * 100) : 100;
   try {
     var r = await LD.api('session.saveGapFill', { sessionId: App.sessionId, answers: flatAnswers, total: total, correct: correct, score: score });
-    if (!r.success) { LD.toast(r.error || 'Could not save gap-fill', 'err'); return; }
+    if (!r.success) { LD.toast(r.error || 'Could not save gap-fill', 'err'); btn.disabled = false; btn.textContent = '✅ Submit Gap-fill'; return; }
     LD.toast('Gap-fill: ' + correct + '/' + total + ' correct on the first try (' + score + '%)', 'ok');
     goDictation();
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+  } catch (e) {
+    LD.toast('Network error: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = '✅ Submit Gap-fill';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1112,12 +1215,12 @@ function computePausePoints() {
   App.pausePoints = App.correctedSentences.map(function (s) { cum += wc(s); return dur * (cum / totalWords); });
 }
 function onDictTimeUpdate() {
+  if (!App_autoPauseEnabled.dict) return; // iOS toggle is OFF
   var audio = document.getElementById('dict-audio');
   if (!audio || audio.paused) return;
-  var mode = App.dictSilenceMode || 'off';
 
-  // Silence-based mode: pause at detected silence gaps
-  if (mode === 'silence' && App_silencePauses.length) {
+  // Silence-based: pause at detected silence gaps
+  if (App_silencePauses.length) {
     for (var s = 0; s < App_silencePauses.length; s++) {
       var pt = App_silencePauses[s];
       if (audio.currentTime >= pt && audio.currentTime <= pt + 0.15) {
@@ -1133,8 +1236,7 @@ function onDictTimeUpdate() {
     return;
   }
 
-  // Word-count / legacy auto mode: pause at estimated sentence endpoints
-  if (mode !== 'wordcount' && App.dictMode !== 'auto') return;
+  // Word-count fallback (no silence data yet)
   var idx = App.dictationIdx;
   if (!App.pausePoints.length || idx >= App.pausePoints.length) return;
   if (App.dictationAnswers[idx] && App.dictationAnswers[idx].checked) return;
@@ -1160,18 +1262,35 @@ function renderDictation() {
   var html = App.correctedSentences.map(function (s, i) {
     var st = App.dictationAnswers[i];
     var target = wc(s), typedNow = wc(st.typed);
+    var pct = target ? Math.round(typedNow / target * 100) : 0;
     var cls = 'sentence-block' + (i === App.dictationIdx ? ' active-block' : '') + (st.checked ? ' completed' : '');
+    // Word count colour hint
+    var wcColor = typedNow === 0 ? 'var(--grey-400)' : (typedNow === target ? 'var(--green)' : (pct >= 80 ? '#e67e22' : 'var(--red)'));
     return '<div class="' + cls + '" data-idx="' + i + '">' +
-      '<div class="sb-label">Sentence ' + (i + 1) + ' <span style="opacity:.6;font-weight:600">· ' + target + ' words</span></div>' +
+      '<div class="sb-label">Sentence ' + (i + 1) +
+        ' <span style="opacity:.6;font-weight:600">· ' + target + ' words</span>' +
+        '<span style="margin-left:auto;font-size:11px;font-weight:700;color:' + wcColor + '">' + typedNow + '/' + target + ' typed</span>' +
+      '</div>' +
       '<div class="sb-result" id="sb-result-' + i + '"></div>' +
-      '<input class="sb-input" id="sb-input-' + i + '" placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '" ' + (st.checked ? 'disabled' : '') + ' oninput="onDictInput(' + i + ',this.value)" onkeydown="onDictInputKeydown(event,' + i + ')">' +
-      '<div class="sb-wordcount" id="sb-wc-' + i + '">' + typedNow + '/' + target + ' words typed</div>' +
+      '<input class="sb-input" id="sb-input-' + i + '"' +
+        ' lang="en" spellcheck="true" autocomplete="off" autocorrect="off" autocapitalize="off"' +
+        ' placeholder="Type what you hear…" value="' + LD.esc(st.typed) + '"' +
+        (st.checked ? ' disabled' : '') +
+        ' oninput="onDictInput(' + i + ',this.value)"' +
+        ' onkeydown="onDictInputKeydown(event,' + i + ')"' +
+        ' onpaste="event.preventDefault()">' +
       '<div class="sb-controls">' +
       '<button class="btn btn-secondary btn-sm" onclick="checkSentence(' + i + ')" ' + (st.checked ? 'disabled' : '') + '>✓ Check</button>' +
-      '<button class="btn btn-secondary btn-sm" onclick="jumpTo(' + i + ')">▶ Jump here</button>' +
-      '</div></div>';
+      '<button class="btn btn-secondary btn-sm" onclick="jumpTo(' + i + ')">▶ Jump</button>' +
+      '</div>' +
+      '<div id="sb-hint-' + i + '" class="sb-hint hidden"></div>' +
+      '</div>';
   }).join('');
   document.getElementById('dictation-sentences').innerHTML = html;
+  // Re-apply any existing results (e.g. after re-render)
+  App.dictationAnswers.forEach(function(st, i) {
+    if (st.resultHtml) document.getElementById('sb-result-' + i).innerHTML = st.resultHtml;
+  });
   var done = App.dictationAnswers.filter(function (a) { return a.checked; }).length;
   var pct = Math.round(done / App.correctedSentences.length * 100);
   document.getElementById('dict-progress-fill').style.width = pct + '%';
@@ -1181,9 +1300,107 @@ function renderDictation() {
 }
 function onDictInput(i, v) {
   App.dictationAnswers[i].typed = v;
-  var el = document.getElementById('sb-wc-' + i);
-  if (el) el.textContent = wc(v) + '/' + wc(App.correctedSentences[i]) + ' words typed';
+  // Update word count label inline without full re-render
+  var target = wc(App.correctedSentences[i]);
+  var typedNow = wc(v);
+  var pct = target ? Math.round(typedNow / target * 100) : 0;
+  var wcColor = typedNow === 0 ? 'var(--grey-400)' : (typedNow === target ? 'var(--green)' : (pct >= 80 ? '#e67e22' : 'var(--red)'));
+  var lbl = document.querySelector('#sb-input-' + i + ' ~ div, .sentence-block[data-idx="' + i + '"] .sb-label span:last-child');
+  // Update the inline typed-count span in sb-label
+  var block = document.querySelector('.sentence-block[data-idx="' + i + '"] .sb-label span:last-child');
+  if (block) { block.textContent = typedNow + '/' + target + ' typed'; block.style.color = wcColor; }
+  // Hide hint when student edits
+  var hint = document.getElementById('sb-hint-' + i);
+  if (hint) hint.classList.add('hidden');
   updateWordTotal();
+}
+function checkSentence(i) {
+  var inputEl = document.getElementById('sb-input-' + i);
+  var typed = (inputEl ? inputEl.value : '').trim();
+  App.dictationAnswers[i].typed = typed;
+
+  var actualWords = App.correctedSentences[i].split(/\s+/).filter(Boolean);
+  var typedWords  = typed.split(/\s+/).filter(Boolean);
+
+  function cleanW(w) { return w.replace(/[.,!?;:"'-]/g, '').toLowerCase(); }
+
+  // ── Smart diff: character-level comparison for wrong words ──
+  function charDiff(actual, typed) {
+    // Find longest common prefix
+    var prefix = 0;
+    while (prefix < actual.length && prefix < typed.length && actual[prefix] === typed[prefix]) prefix++;
+    if (prefix === actual.length && typed.length > actual.length) {
+      // Extra chars: correct part + asterisks for extra
+      return '<span style="color:var(--green)">' + LD.esc(actual) + '</span>' +
+             '<span style="color:var(--red)">*</span>';
+    }
+    if (prefix === typed.length && actual.length > typed.length) {
+      // Missing chars: show correct prefix + asterisks for missing
+      var missing = actual.length - typed.length;
+      return '<span style="color:var(--green)">' + LD.esc(typed) + '</span>' +
+             '<span style="color:var(--red)">' + '*'.repeat(missing) + '</span>';
+    }
+    // General mismatch: show correct prefix in green, wrong suffix in red with asterisks
+    var correctPart = actual.slice(0, prefix);
+    var wrongLen = actual.length - prefix;
+    return (correctPart ? '<span style="color:var(--green)">' + LD.esc(correctPart) + '</span>' : '') +
+           '<span style="color:var(--red)">' + '*'.repeat(wrongLen || typed.length - prefix || 1) + '</span>';
+  }
+
+  var allCorrect = true;
+  var correctCount = 0;
+  var html = actualWords.map(function (w, wi) {
+    var ca = cleanW(w), ct = cleanW(typedWords[wi] || '');
+    if (ca === ct) {
+      correctCount++;
+      return '<span class="w-correct">' + LD.esc(w) + '</span>';
+    }
+    allCorrect = false;
+    if (!ct) {
+      // Missing word
+      return '<span class="w-missing">' + LD.esc(w) + '</span>';
+    }
+    // Wrong word — smart diff
+    return '<span class="w-wrong" title="You typed: ' + LD.esc(typedWords[wi]) + '">' +
+           charDiff(ca, ct) + '</span>';
+  }).join(' ');
+
+  // Save result HTML for re-render persistence
+  App.dictationAnswers[i].resultHtml = html;
+  document.getElementById('sb-result-' + i).innerHTML = html;
+
+  // ── Show Hints button at ≥90% accuracy ──
+  var accuracy = actualWords.length ? correctCount / actualWords.length : 0;
+  var hintDiv = document.getElementById('sb-hint-' + i);
+  if (!allCorrect && accuracy >= 0.9 && hintDiv) {
+    var hintHtml = actualWords.map(function(w, wi) {
+      var ca = cleanW(w), ct = cleanW(typedWords[wi] || '');
+      if (ca === ct) return '<span>' + LD.esc(w) + '</span>';
+      return '<span style="color:var(--green);font-weight:800;text-decoration:underline">' + LD.esc(w) + '</span>';
+    }).join(' ');
+    hintDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--grey-500);margin-bottom:4px">💡 Hint (differences highlighted)</div><div style="font-size:13.5px;line-height:2">' + hintHtml + '</div>';
+    hintDiv.classList.remove('hidden');
+  } else if (hintDiv) {
+    hintDiv.classList.add('hidden');
+  }
+
+  if (allCorrect) {
+    App.dictationAnswers[i].checked = true;
+    App.dictationAnswers[i].resultHtml = html;
+    if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
+    App._pausedForCurrentIdx = false;
+    renderDictation();
+    var nextInput = document.getElementById('sb-input-' + App.dictationIdx);
+    if (nextInput && !nextInput.disabled) nextInput.focus();
+    if (App.dictMode === 'auto') {
+      var audio = document.getElementById('dict-audio');
+      if (audio && audio.paused && App.dictationIdx < App.correctedSentences.length) {
+        setTimeout(function () { audio.play().catch(function () {}); }, 500);
+      }
+    }
+  } else {
+    if (inputEl) inputEl.focus();
+  }
 }
 function onDictInputKeydown(e, i) {
   if (e.key === 'Enter') { e.preventDefault(); if (!App.dictationAnswers[i].checked) checkSentence(i); }
@@ -1205,51 +1422,9 @@ function jumpTo(i) {
     if (audio) audio.currentTime = i > 0 ? App.pausePoints[i - 1] : 0;
   }
   renderDictation();
-  document.getElementById('sb-input-' + i).focus();
+  var inp = document.getElementById('sb-input-' + i);
+  if (inp) inp.focus();
 }
-function checkSentence(i) {
-  var inputEl = document.getElementById('sb-input-' + i);
-  var typed = (inputEl ? inputEl.value : '').trim();
-  App.dictationAnswers[i].typed = typed;
-
-  var actualWords = App.correctedSentences[i].replace(/[.,!?;:"'-]/g, '').toLowerCase().split(/\s+/).filter(Boolean);
-  var typedWords  = typed.replace(/[.,!?;:"'-]/g, '').toLowerCase().split(/\s+/).filter(Boolean);
-
-  // Build result HTML against the original (display) words
-  var displayWords = App.correctedSentences[i].split(/\s+/).filter(Boolean);
-  var allCorrect = true;
-  var html = displayWords.map(function (w, wi) {
-    var cleanActual = w.replace(/[.,!?;:"'-]/g, '').toLowerCase();
-    var cleanTyped  = (typedWords[wi] || '').toLowerCase();
-    var ok = cleanTyped === cleanActual;
-    if (!ok) allCorrect = false;
-    return '<span class="' + (ok ? 'w-correct' : (cleanTyped ? 'w-wrong' : 'w-missing')) + '">' + LD.esc(w) + '</span>';
-  }).join(' ');
-
-  // Show result inline (always) — but DON'T lock the input if there are errors
-  document.getElementById('sb-result-' + i).innerHTML = html;
-
-  if (allCorrect) {
-    // Fully correct → lock this sentence and advance
-    App.dictationAnswers[i].checked = true;
-    if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
-    App._pausedForCurrentIdx = false;
-    renderDictation();
-    var nextInput = document.getElementById('sb-input-' + App.dictationIdx);
-    if (nextInput && !nextInput.disabled) nextInput.focus();
-    // Auto mode: resume playback
-    if (App.dictMode === 'auto') {
-      var audio = document.getElementById('dict-audio');
-      if (audio && audio.paused && App.dictationIdx < App.correctedSentences.length) {
-        setTimeout(function () { audio.play().catch(function () {}); }, 500);
-      }
-    }
-  } else {
-    // Has errors → keep input enabled, keep focus so student can fix
-    if (inputEl) inputEl.focus();
-  }
-}
-async function saveDictationAndExit() {
   try {
     var r = await LD.api('session.saveDictationProgress', {
       sessionId: App.sessionId, currentSentenceIdx: App.dictationIdx, answers: App.dictationAnswers
@@ -1431,6 +1606,20 @@ function histSort(key) {
 }
 </script>
 
+<!-- ═══════════ DUPLICATE SESSION WARNING ═══════════ -->
+<div id="dup-session-overlay" class="dup-overlay hidden">
+  <div class="dup-modal">
+    <h3>⚠️ Bài này đã có trong History</h3>
+    <p>Bạn đã từng làm bài <span class="btp-chip" id="dup-session-btp"></span> vào ngày <b id="dup-session-date"></b>.<br>
+    Nếu tạo mới, giáo viên sẽ nhận được <b>2 kết quả</b> cho cùng 1 bài. Bạn có thể vào History để làm tiếp hoặc xem lại.</p>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="dupGoHistory()">📊 Vào History</button>
+      <button class="btn btn-secondary" onclick="closeDupOverlay()">✕ Huỷ</button>
+      <button class="btn btn-primary" onclick="dupForceCreate()" style="background:linear-gradient(135deg,#e67e22,#d35400)">⚠ Tạo mới dù sao</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════ SHORTCUT MODAL ═══════════ -->
 <div id="sc-overlay" class="sc-overlay hidden" onclick="if(event.target===this)closeShortcutModal()">
   <div class="sc-modal">
@@ -1593,24 +1782,25 @@ document.addEventListener('keydown', function (e) {
 });
 
 // ── Toggle silence auto-pause for each screen ───────────────
-function toggleGapAutoPause() {
-  App_autoPauseEnabled.gap = !App_autoPauseEnabled.gap;
-  var btn = document.getElementById('btn-gap-autopause');
-  if (btn) btn.classList.toggle('active', App_autoPauseEnabled.gap);
-  LD.toast(App_autoPauseEnabled.gap ? '⏸ Auto-pause ON (gap-fill)' : '▶ Auto-pause OFF (gap-fill)', 'ok', 1800);
+function toggleGapAutoPause(checked) {
+  App_autoPauseEnabled.gap = checked;
+  LD.toast(checked ? '⏸ Auto-pause ON' : '▶ Auto-pause OFF', 'ok', 1500);
 }
-function toggleDictAutoPause() {
-  // Cycle: silence-based → word-count → off → silence-based
-  var modes = ['silence', 'wordcount', 'off'];
-  var cur = App.dictSilenceMode || 'off';
-  var next = modes[(modes.indexOf(cur) + 1) % modes.length];
-  App.dictSilenceMode = next;
-  localStorage.setItem('ld_dict_silence_mode', next);
-  var labels = { silence: '⏸ Auto-pause: Silence detection', wordcount: '⏸ Auto-pause: Word-count estimate', off: '▶ Auto-pause: Off' };
-  var btn = document.getElementById('btn-dict-silence');
-  if (btn) btn.textContent = { silence: '⏸ Silence', wordcount: '⏸ Word-count', off: '▶ Manual' }[next];
-  setDictMode(next === 'off' ? 'manual' : 'auto');
-  LD.toast(labels[next], 'ok', 2200);
+function toggleDictAutoPause(checked) {
+  App_autoPauseEnabled.dict = checked;
+  var lbl = document.getElementById('lbl-dict-autopause');
+  if (lbl) lbl.textContent = checked ? 'Auto-pause: ON' : 'Auto-pause';
+  if (checked) {
+    if (App_silencePauses.length) {
+      LD.toast('⏸ Auto-pause: dùng ' + App_silencePauses.length + ' silence points', 'ok', 2000);
+    } else {
+      LD.toast('⏸ Auto-pause: dùng word-count estimate (chưa có silence data)', 'ok', 2500);
+      setDictMode('auto');
+    }
+  } else {
+    setDictMode('manual');
+    LD.toast('▶ Auto-pause OFF', 'ok', 1500);
+  }
 }
 </script>
 </body>
