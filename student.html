@@ -280,12 +280,17 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
     <div class="topbar-app">🧩 Gap-fill</div>
     <div class="topbar-right"><span id="gapfill-seg-label" style="color:#fff;font-size:12px"></span></div>
   </div>
-  <div class="wrap">
-    <div class="card" style="padding:12px 16px;margin-bottom:14px">
-      <audio id="gapfill-audio" controls style="width:100%"></audio>
+  <!-- Sticky audio bar — always visible while scrolling through sentences -->
+  <div id="gapfill-audio-bar" style="position:sticky;top:56px;z-index:90;background:var(--white);border-bottom:1.5px solid var(--grey-200);padding:8px 20px;box-shadow:0 2px 6px rgba(0,0,0,.08)">
+    <audio id="gapfill-audio" controls style="width:100%;height:36px"></audio>
+  </div>
+  <div class="wrap" style="padding-top:14px">
+    <div id="gapfill-shortcuts-banner" class="dict-banner">
+      <span>⌨️ <b>Enter</b> = Check this pair &nbsp;·&nbsp; <b>Ctrl+Space</b> = Play/Pause &nbsp;·&nbsp; <b>Ctrl+,</b> = ◀ −5s &nbsp;·&nbsp; <b>Ctrl+.</b> = ▶ +5s</span>
+      <button class="dict-banner-close" onclick="document.getElementById('gapfill-shortcuts-banner').classList.add('hidden')">✕</button>
     </div>
     <div class="card" style="font-size:12.5px;color:var(--grey-600);margin-bottom:14px">
-      🎧 Listen and fill in the blanks <b>two sentences at a time</b>. Fill every blank in the current pair, then press <b>Enter</b> (or the Check button) — the app grades it instantly and marks each blank ✓ correct / ✗ wrong. If anything is wrong, fix it and press <b>Enter</b> again — your progress on earlier sentences is kept. Once the pair is fully correct, it automatically moves on to the next two sentences.
+      🎧 Listen and fill in the blanks <b>two sentences at a time</b>. Fill every blank in the current pair, then press <b>Enter</b> (or the Check button). Once the pair is fully correct, it automatically moves on.
     </div>
     <div id="gapfill-body"></div>
     <div id="gapfill-seg-hint" class="gap-seg-hint" style="display:none"></div>
@@ -510,8 +515,8 @@ async function callGemini(prompt, maxTokens) {
 async function callGroq(prompt, maxTokens) {
   var key = getGroqKey();
   if (!key) throw new Error('NO_GROQ_KEY');
-  // Groq free models — thứ tự theo capability
-  var models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+  // Groq production models (console.groq.com/docs/models) — theo thứ tự capability
+  var models = ['llama-3.3-70b-versatile', 'meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.1-8b-instant'];
   var lastErr = null;
   for (var i = 0; i < models.length; i++) {
     try {
@@ -581,12 +586,15 @@ function preprocessScript(text) {
   // 2. Xoá nhãn đáp án: (Q1)→(Q40), (1)→(99), [1], (A)(B)(C)(D)
   text = text.replace(/[\(\[]\s*Q?\d{1,2}[A-D]?\s*[\)\]]/gi, '');
 
-  // 3. Xoá tên người nói + dấu hai chấm ở đầu dòng/đầu script
+  // 3. Xoá đường kẻ phân đoạn: -------, ======, ******, v.v. (≥4 ký tự giống nhau)
+  text = text.replace(/^[ \t]*[-=*_~#]{4,}[ \t]*$/gm, '');
+
+  // 4. Xoá tên người nói + dấu hai chấm ở đầu dòng/đầu script
   //    VD: "PHIL:" "Lucy:" "Man A:" "Narrator:" "Woman 1:"
   //    Giới hạn 4 từ tối đa để không xoá nhầm câu bình thường có dấu ":"
   text = text.replace(/(^|\n)[ \t]*([A-Z][A-Za-z0-9]*([ \t]+[A-Z][A-Za-z0-9]*){0,3})[ \t]*:/g, '$1');
 
-  // 4. Dọn khoảng trắng thừa
+  // 5. Dọn khoảng trắng thừa
   text = text.replace(/[ \t]+/g, ' ').replace(/\n{2,}/g, '\n').trim();
 
   return text;
@@ -673,6 +681,9 @@ async function runAnalyzeScript() {
     document.getElementById('analyze-status').innerHTML = '✅ Spelling fixed + found ' + App.collocations.length + ' collocations + translated ' + Object.keys(App.gloss).length + ' difficult words.';
     document.getElementById('btn-start-session').disabled = false;
     document.getElementById('btn-start-session').textContent = '🚀 Start Practice Session';
+    // Kick off quiz generation in the background — student is still on screen-study
+    // so by the time they reach screen-quiz it will likely already be ready.
+    prefetchQuiz();
   } catch (err) {
     document.getElementById('analyze-status').innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(err.message) + '</span>';
   } finally {
@@ -799,28 +810,59 @@ function onStudyWordClick(w) {
 // ═══════════════════════════════════════════════════════════
 // AI CALL #2 — Generate the 15-question quiz (5 content + 10 vocab), all in English
 // ═══════════════════════════════════════════════════════════
+
+// Background prefetch — starts right after Analyze, runs silently.
+// Uses Gemini first (via callAI priority), falls back to Groq automatically.
+var _quizPromise = null; // singleton promise — prevents double-fetch
+function prefetchQuiz() {
+  if (App.quiz.length || _quizPromise) return; // already done or in-flight
+  _quizPromise = _generateQuiz().then(function (questions) {
+    App.quiz = questions;
+    App.quizAnswers = new Array(App.quiz.length).fill(-1);
+    _quizPromise = null;
+  }).catch(function (err) {
+    console.warn('[LisDictation] Background quiz prefetch failed:', err.message);
+    _quizPromise = null; // allow retry when user opens Quiz tab
+  });
+}
+
+async function _generateQuiz() {
+  var hardWords = [];
+  ['B2', 'C1', 'C2'].forEach(function (lv) { (App.cefr && App.cefr.byLevel[lv] || []).forEach(function (w) { hardWords.push(w); }); });
+  var prompt = 'Based on the following IELTS Listening script (already spell-checked) and the list of difficult words / collocations, ' +
+    'write EXACTLY 15 multiple-choice questions (4 options each) IN ENGLISH for a Vietnamese IELTS student: 5 CONTENT questions ' +
+    '(main idea/detail/inference from the script), 10 VOCABULARY questions (meaning/usage of the difficult words or collocations below). ' +
+    'Write every question, option and explanation in English — do not use Vietnamese anywhere in the output.\n\n' +
+    'SCRIPT:\n"""' + App.correctedSentences.join(' ') + '"""\n\n' +
+    'DIFFICULT WORDS (B2+): ' + hardWords.slice(0, 40).join(', ') + '\n' +
+    'COLLOCATIONS: ' + App.collocations.map(function (c) { return c.en; }).join(', ') + '\n\n' +
+    'Return ONLY this JSON: {"questions":[{"type":"content|vocab","q":"question text","o":["A","B","C","D"],"a":0,"e":"short explanation"}]} — the "questions" array must have exactly 15 items, exactly 5 with type=content and exactly 10 with type=vocab. Everything in English.';
+  var res = await callAI(prompt, 6144);
+  var questions = (res.questions || []).slice(0, 15);
+  if (!questions.length) throw new Error('Quiz response had no questions');
+  return questions;
+}
+
 async function goQuiz() {
   showScreen('screen-quiz');
-  if (App.quiz.length) { renderQuiz(); return; } // already generated — don't call AI again if the student comes back here
+  // Already generated (prefetch hit or returning to quiz tab) — render immediately
+  if (App.quiz.length) { renderQuiz(); return; }
+
   document.getElementById('quiz-loading').classList.remove('hidden');
   document.getElementById('quiz-body').innerHTML = '';
+
+  // If prefetch is still in-flight, wait for it; otherwise generate now
+  var p = _quizPromise || _generateQuiz();
+  _quizPromise = p;
   try {
-    var hardWords = [];
-    ['B2', 'C1', 'C2'].forEach(function (lv) { (App.cefr && App.cefr.byLevel[lv] || []).forEach(function (w) { hardWords.push(w); }); });
-    var prompt = 'Based on the following IELTS Listening script (already spell-checked) and the list of difficult words / collocations, ' +
-      'write EXACTLY 15 multiple-choice questions (4 options each) IN ENGLISH for a Vietnamese IELTS student: 5 CONTENT questions ' +
-      '(main idea/detail/inference from the script), 10 VOCABULARY questions (meaning/usage of the difficult words or collocations below). ' +
-      'Write every question, option and explanation in English — do not use Vietnamese anywhere in the output.\n\n' +
-      'SCRIPT:\n"""' + App.correctedSentences.join(' ') + '"""\n\n' +
-      'DIFFICULT WORDS (B2+): ' + hardWords.slice(0, 40).join(', ') + '\n' +
-      'COLLOCATIONS: ' + App.collocations.map(function (c) { return c.en; }).join(', ') + '\n\n' +
-      'Return ONLY this JSON: {"questions":[{"type":"content|vocab","q":"question text","o":["A","B","C","D"],"a":0,"e":"short explanation"}]} — the "questions" array must have exactly 15 items, exactly 5 with type=content and exactly 10 with type=vocab. Everything in English.';
-    var res = await callAI(prompt, 6144);
-    App.quiz = (res.questions || []).slice(0, 15);
+    var questions = await p;
+    App.quiz = questions;
     App.quizAnswers = new Array(App.quiz.length).fill(-1);
+    _quizPromise = null;
     document.getElementById('quiz-loading').classList.add('hidden');
     renderQuiz();
   } catch (err) {
+    _quizPromise = null;
     document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--red)">Quiz generation error: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button>';
   }
 }
@@ -842,14 +884,20 @@ function updateQuizProgress() {
   document.getElementById('btn-submit-quiz').disabled = answered < App.quiz.length || App.quiz.length !== 15;
 }
 async function submitQuiz() {
+  var btn = document.getElementById('btn-submit-quiz');
+  if (btn.disabled) return; // guard double-tap
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
   var correct = App.quiz.reduce(function (a, q, i) { return a + (App.quizAnswers[i] === q.a ? 1 : 0); }, 0);
   var score = Math.round(correct / App.quiz.length * 100);
   try {
     var r = await LD.api('session.saveQuiz', { sessionId: App.sessionId, questions: App.quiz, answers: App.quizAnswers, correct: correct, score: score });
-    if (!r.success) { LD.toast(r.error || 'Could not save the quiz', 'err'); return; }
+    if (!r.success) { LD.toast(r.error || 'Could not save the quiz', 'err'); btn.disabled = false; btn.textContent = '✅ Submit Quiz'; return; }
     LD.toast('Quiz: ' + correct + '/15 (' + score + '%)', 'ok');
     goGapFill();
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+  } catch (e) {
+    LD.toast('Network error: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = '✅ Submit Quiz';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -862,7 +910,7 @@ function goGapFill() {
   buildGapFill();
   showScreen('screen-gapfill');
   var audio = document.getElementById('gapfill-audio');
-  if (App.audioBlobUrl) audio.src = App.audioBlobUrl;
+  if (App.audioBlobUrl) { audio.src = App.audioBlobUrl; audio.load(); }
   renderGapFill();
 }
 function buildGapFill() {
@@ -944,9 +992,11 @@ function checkSegment() {
     g.blankWordIdx.forEach(function (wi, bi) {
       var given = (App.gapfillAnswers[gi][bi] || '').trim().toLowerCase();
       var actual = g.parts[wi].replace(/[^A-Za-z'-]/g, '').toLowerCase();
-      var ok = given !== '' && given === actual;
       var st = App.gapBlankState[gi][bi];
-      if (st.firstTryCorrect === null) { st.firstTryCorrect = ok; st.firstTryGiven = given; } // score + GV review reflect the FIRST attempt only
+      if (st.correct) return; // already correct — keep it green, don't re-grade
+      if (given === '') { allCorrect = false; return; } // not filled yet — skip grading but block advance
+      var ok = given === actual;
+      if (st.firstTryCorrect === null) { st.firstTryCorrect = ok; st.firstTryGiven = given; }
       st.checked = true; st.correct = ok;
       if (!ok) allCorrect = false;
     });
@@ -990,7 +1040,7 @@ function goDictation() {
   App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false, replaysUsed: 0 }; });
   showScreen('screen-dictation');
   var audio = document.getElementById('dict-audio');
-  if (App.audioBlobUrl) audio.src = App.audioBlobUrl; else document.getElementById('dict-audio-row').style.display = 'none';
+  if (App.audioBlobUrl) { audio.src = App.audioBlobUrl; audio.load(); } else document.getElementById('dict-audio-row').style.display = 'none';
   toggleShortcutsBanner(localStorage.getItem('ld_dict_shortcuts_hidden') !== '1');
   setupDictAudioListeners();
   setDictMode(localStorage.getItem('ld_dict_mode') || 'auto');
