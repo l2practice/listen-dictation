@@ -118,6 +118,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .lv-chip.lv-C1{background:rgba(236,72,153,.14);color:#EC4899}
 .lv-chip.lv-C2{background:rgba(220,38,38,.14);color:#DC2626}
 .btn-secondary.active{background:var(--red);color:#fff;border-color:var(--red)}
+.hist-range.active{background:var(--navy2)!important;color:#fff!important;border-color:var(--navy2)!important}
 /* ── Resume loading overlay ──────────────────────────────── */
 .resume-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
 .resume-overlay.hidden{display:none}
@@ -452,8 +453,15 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <div class="hist-toolbar">
         <strong style="font-size:15px;color:var(--navy)">📋 All Sessions</strong>
         <div style="flex:1"></div>
-        <input id="hist-search" oninput="renderHistoryTable()" placeholder="🔍 Search by book name…" class="form-input" style="width:180px;padding:6px 10px">
-        <button class="btn btn-secondary btn-sm" onclick="loadHistory()">🔄 Refresh</button>
+        <!-- Time range filter — default 4 weeks, lazy-load longer ranges -->
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm hist-range active" id="hr-4w"   onclick="loadHistory(28)"  >4 weeks</button>
+          <button class="btn btn-secondary btn-sm hist-range"        id="hr-2m"   onclick="loadHistory(60)"  >2 months</button>
+          <button class="btn btn-secondary btn-sm hist-range"        id="hr-3m"   onclick="loadHistory(90)"  >3 months</button>
+          <button class="btn btn-secondary btn-sm hist-range"        id="hr-all"  onclick="loadHistory(0)"   >All time</button>
+        </div>
+        <input id="hist-search" oninput="renderHistoryTable()" placeholder="🔍 Search…" class="form-input" style="width:140px;padding:6px 10px">
+        <button class="btn btn-secondary btn-sm" onclick="loadHistory(App._histDays||28)">🔄</button>
       </div>
       <div style="overflow:auto">
         <table class="ld-table">
@@ -530,7 +538,7 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
 }
-function goHistory() { showScreen('screen-history'); loadHistory(); loadInProgressTop5(); }
+function goHistory() { showScreen('screen-history'); loadHistory(App._histDays || 28); loadInProgressTop5(); }
 
 // ═══════════════════════════════════════════════════════════
 // GEMINI KEY
@@ -1072,14 +1080,41 @@ function updateQuizProgress() {
 }
 async function submitQuiz() {
   var btn = document.getElementById('btn-submit-quiz');
-  if (btn.disabled) return; // guard double-tap
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+  if (btn.disabled) return;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Checking…';
   var correct = App.quiz.reduce(function (a, q, i) { return a + (App.quizAnswers[i] === q.a ? 1 : 0); }, 0);
   var score = Math.round(correct / App.quiz.length * 100);
+
+  // Threshold: 90% to pass
+  if (score < 90) {
+    btn.disabled = false; btn.textContent = '✅ Submit Quiz';
+    // Show fail modal
+    var msg = 'Bạn đạt ' + correct + '/15 (' + score + '%). Cần ít nhất 90% (≥14/15) mới qua được.\n\nMột bộ câu hỏi mới sẽ được tạo để bạn thử lại.';
+    if (confirm(msg)) {
+      // Reset quiz and regenerate
+      App.quiz = []; App.quizAnswers = [];
+      _quizPromise = null;
+      document.getElementById('quiz-loading').classList.remove('hidden');
+      document.getElementById('quiz-body').innerHTML = '';
+      document.getElementById('btn-submit-quiz').disabled = true;
+      try {
+        var questions = await _generateQuiz();
+        App.quiz = questions;
+        App.quizAnswers = new Array(App.quiz.length).fill(-1);
+        document.getElementById('quiz-loading').classList.add('hidden');
+        renderQuiz();
+        LD.toast('Quiz mới đã được tạo. Hãy cố gắng hơn!', 'ok', 3000);
+      } catch (err) {
+        document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--red)">Lỗi tạo quiz: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button>';
+      }
+    }
+    return;
+  }
+
   try {
     var r = await LD.api('session.saveQuiz', { sessionId: App.sessionId, questions: App.quiz, answers: App.quizAnswers, correct: correct, score: score });
     if (!r.success) { LD.toast(r.error || 'Could not save the quiz', 'err'); btn.disabled = false; btn.textContent = '✅ Submit Quiz'; return; }
-    LD.toast('Quiz: ' + correct + '/15 (' + score + '%)', 'ok');
+    LD.toast('🎉 Quiz: ' + correct + '/15 (' + score + '%) — Passed!', 'ok', 3000);
     goGapFill();
   } catch (e) {
     LD.toast('Network error: ' + e.message, 'err');
@@ -1619,11 +1654,27 @@ async function loadInProgressTop5() {
 async function loadInProgress() { return loadInProgressTop5(); }
 
 // ── HISTORY: load summary (tên + điểm), bài chưa đủ điểm cho click-to-expand ──
-async function loadHistory() {
+async function loadHistory(days) {
+  if (days === undefined) days = App._histDays || 28;
+  App._histDays = days;
+  // Update active button
+  ['4w','2m','3m','all'].forEach(function(id) {
+    var btn = document.getElementById('hr-' + id);
+    if (btn) btn.classList.remove('active');
+  });
+  var activeId = days === 28 ? 'hr-4w' : days === 60 ? 'hr-2m' : days === 90 ? 'hr-3m' : 'hr-all';
+  var ab = document.getElementById(activeId); if (ab) ab.classList.add('active');
+
   var tbody = document.getElementById('history-tbody');
   tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--grey-400)"><span class="spinner"></span> Loading…</td></tr>';
   try {
-    var r = await LD.api('student.getHistorySummary', {});
+    var params = {};
+    if (days > 0) {
+      var from = new Date();
+      from.setDate(from.getDate() - days);
+      params.fromDate = from.toISOString().slice(0, 10);
+    }
+    var r = await LD.api('student.getHistorySummary', params);
     App.histRows = (r.success && r.data) || [];
     renderHistoryTable();
   } catch (e) { tbody.innerHTML = '<tr><td colspan="9" style="color:var(--red)">Error loading history</td></tr>'; }
@@ -1933,24 +1984,43 @@ async function analyseAudioSilence(blobUrl) {
 // ── Gap-fill silence auto-pause ──────────────────────────────
 function setupGapAutoPause() {
   var audio = document.getElementById('gapfill-audio');
-  if (!audio || audio._gapWired) return;
-  audio._gapWired = true;
-  audio.addEventListener('timeupdate', function() {
+  if (!audio) return;
+  // Always remove old listener and re-add so it picks up new audio src
+  if (audio._gapPauseHandler) {
+    audio.removeEventListener('timeupdate', audio._gapPauseHandler);
+  }
+  audio._lastGapPause = -1;
+  audio._gapPauseHandler = function() {
     if (!App_autoPauseEnabled.gap) return;
     if (audio.paused) return;
-    // Pause at each silence point (within 0.1s window)
-    for (var i = 0; i < App_silencePauses.length; i++) {
-      var pt = App_silencePauses[i];
-      if (audio.currentTime >= pt && audio.currentTime <= pt + 0.15) {
-        if (audio._lastGapPause !== pt) {
-          audio._lastGapPause = pt;
-          audio.pause();
-          var blank = document.querySelector('.gap-blank:not([disabled]):not(.gb-correct)');
-          if (blank) blank.focus();
+    var t = audio.currentTime;
+    // Silence-based: pause at detected silence midpoints
+    if (App_silencePauses.length) {
+      for (var i = 0; i < App_silencePauses.length; i++) {
+        var pt = App_silencePauses[i];
+        if (t >= pt && t <= pt + 0.18) {
+          if (Math.abs(audio._lastGapPause - pt) > 0.5) {
+            audio._lastGapPause = pt;
+            audio.pause();
+            var blank = document.querySelector('.gap-blank:not([disabled]):not(.gb-correct)');
+            if (blank) blank.focus();
+          }
+          return;
         }
       }
+      return;
     }
-  });
+    // Fallback: pause every ~4 seconds when no silence data (e.g. Drive audio)
+    var interval = 4;
+    var bucket = Math.floor(t / interval) * interval;
+    if (bucket > 0 && Math.abs(audio._lastGapPause - bucket) > 0.5 && t < bucket + 0.18) {
+      audio._lastGapPause = bucket;
+      audio.pause();
+      var b2 = document.querySelector('.gap-blank:not([disabled]):not(.gb-correct)');
+      if (b2) b2.focus();
+    }
+  };
+  audio.addEventListener('timeupdate', audio._gapPauseHandler);
 }
 
 // ═══════════════════════════════════════════════════════════
