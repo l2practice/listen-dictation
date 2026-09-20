@@ -1382,7 +1382,11 @@ function setDictMode(mode) {
   App._pausedForCurrentIdx = false;
   if (mode === 'auto' && !App.pausePoints.length) computePausePoints();
 }
-function wc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
+function wc(text) {
+  // Normalize curly apostrophes so don't counts as 1 word not 2
+  var s = String(text || '').replace(/[\u2018\u2019\u02BC\u02B9]/g, "'");
+  return (s.match(/\b[\w'-]+\b/g) || []).length;
+}
 function renderDictation() {
   var html = App.correctedSentences.map(function (s, i) {
     var st = App.dictationAnswers[i];
@@ -1447,7 +1451,12 @@ function checkSentence(i) {
   var typed = (inputEl ? inputEl.value : '').trim();
   App.dictationAnswers[i].typed = typed;
 
-  var actualWords = App.correctedSentences[i].split(/\s+/).filter(Boolean);
+  // Normalize curly apostrophes in both sides before comparison
+  var sentenceNorm = App.correctedSentences[i]
+    .replace(/[\u2018\u2019\u02BC\u02B9]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014\u2012]/g, '-');
+  var actualWords = sentenceNorm.split(/\s+/).filter(Boolean);
   var typedWords  = typed.split(/\s+/).filter(Boolean);
 
   function normalize(w) {
@@ -1456,27 +1465,25 @@ function checkSentence(i) {
       .replace(/[\u201C\u201D]/g, '"')
       .replace(/[\u2013\u2014\u2012]/g, '-');
   }
+  // Compare only letters+digits — ignore ALL punctuation, apostrophes, dashes
+  // don't → dont, won't → wont, well-known → wellknown, 42 → 42, 1st → 1st
   function cleanW(w) {
-    return normalize(w).replace(/[.,!?;:"'\-]/g, '').toLowerCase();
+    return normalize(w).replace(/[^a-z0-9]/gi, '').toLowerCase();
   }
 
   // ── Smart diff: character-level comparison for wrong words ──
   function charDiff(actual, typed) {
-    // Find longest common prefix
     var prefix = 0;
     while (prefix < actual.length && prefix < typed.length && actual[prefix] === typed[prefix]) prefix++;
     if (prefix === actual.length && typed.length > actual.length) {
-      // Extra chars: correct part + asterisks for extra
       return '<span style="color:var(--green)">' + LD.esc(actual) + '</span>' +
              '<span style="color:var(--red)">*</span>';
     }
     if (prefix === typed.length && actual.length > typed.length) {
-      // Missing chars: show correct prefix + asterisks for missing
       var missing = actual.length - typed.length;
       return '<span style="color:var(--green)">' + LD.esc(typed) + '</span>' +
              '<span style="color:var(--red)">' + '*'.repeat(missing) + '</span>';
     }
-    // General mismatch: show correct prefix in green, wrong suffix in red with asterisks
     var correctPart = actual.slice(0, prefix);
     var wrongLen = actual.length - prefix;
     return (correctPart ? '<span style="color:var(--green)">' + LD.esc(correctPart) + '</span>' : '') +
@@ -1493,10 +1500,8 @@ function checkSentence(i) {
     }
     allCorrect = false;
     if (!ct) {
-      // Word not typed yet — show asterisks (same length), NOT the answer
       return '<span style="color:var(--grey-400);font-family:var(--font-mono)">' + '*'.repeat(ca.length || 4) + '</span>';
     }
-    // Wrong word — smart diff
     return '<span class="w-wrong" title="You typed: ' + LD.esc(typedWords[wi]) + '">' +
            charDiff(ca, ct) + '</span>';
   }).join(' ');
@@ -1505,7 +1510,7 @@ function checkSentence(i) {
   App.dictationAnswers[i].resultHtml = html;
   document.getElementById('sb-result-' + i).innerHTML = html;
 
-  // ── Show Hints button at ≥90% accuracy ──
+  // ── Show Hints at ≥90% accuracy ──
   var accuracy = actualWords.length ? correctCount / actualWords.length : 0;
   var hintDiv = document.getElementById('sb-hint-' + i);
   if (!allCorrect && accuracy >= 0.9 && hintDiv) {
