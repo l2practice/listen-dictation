@@ -534,6 +534,11 @@ var App = {
 })();
 
 function showScreen(id) {
+  // Pause + reset all audio before leaving current screen
+  document.querySelectorAll('audio').forEach(function(a) {
+    if (!a.paused) a.pause();
+    a.currentTime = 0;
+  });
   document.querySelectorAll('.screen').forEach(function (s) { s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
