@@ -432,6 +432,9 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <th onclick="histSort('dictationAccuracy')">Dictation</th>
             <th onclick="histSort('totalScore')">Total</th>
             <th>Status</th>
+            <th></th>
+            <th onclick="histSort('totalScore')">Total</th>
+            <th>Status</th>
           </tr></thead>
           <tbody id="history-tbody"></tbody>
         </table>
@@ -1425,15 +1428,23 @@ function jumpTo(i) {
   var inp = document.getElementById('sb-input-' + i);
   if (inp) inp.focus();
 }
+async function saveDictationAndExit() {
+  var btn = document.querySelector('[onclick="saveDictationAndExit()"]');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
   try {
     var r = await LD.api('session.saveDictationProgress', {
       sessionId: App.sessionId, currentSentenceIdx: App.dictationIdx, answers: App.dictationAnswers
     });
     if (r.success) { LD.toast('Saved — resume it from "History → In Progress".', 'ok', 3500); goHistory(); }
-    else LD.toast(r.error || 'Could not save', 'err');
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+    else { LD.toast(r.error || 'Could not save', 'err'); if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Exit'; } }
+  } catch (e) {
+    LD.toast('Network error: ' + e.message, 'err');
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Exit'; }
+  }
 }
 async function finishDictation() {
+  var btn = document.getElementById('btn-finish-dictation');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting…'; }
   var totalWords = 0, correctWords = 0;
   App.correctedSentences.forEach(function (s, i) {
     var actual = s.replace(/[.,!?;:"]/g, '').split(/\s+/);
@@ -1443,11 +1454,18 @@ async function finishDictation() {
   var accuracy = totalWords ? Math.round(correctWords / totalWords * 100) : 0;
   try {
     var r = await LD.api('session.finishDictation', { sessionId: App.sessionId, answers: App.dictationAnswers, accuracy: accuracy });
-    if (!r.success) { LD.toast(r.error || 'Could not submit', 'err'); return; }
+    if (!r.success) {
+      LD.toast(r.error || 'Could not submit', 'err');
+      if (btn) { btn.disabled = false; btn.textContent = '🏁 Submit'; }
+      return;
+    }
     document.getElementById('result-total').textContent = r.totalScore + '%';
     loadFinalScoresIntoResult();
     showScreen('screen-result');
-  } catch (e) { LD.toast('Network error: ' + e.message, 'err'); }
+  } catch (e) {
+    LD.toast('Network error: ' + e.message, 'err');
+    if (btn) { btn.disabled = false; btn.textContent = '🏁 Submit'; }
+  }
 }
 function loadFinalScoresIntoResult() {
   var qCorrect = App.quiz.reduce(function (a, q, i) { return a + (App.quizAnswers[i] === q.a ? 1 : 0); }, 0);
@@ -1518,12 +1536,12 @@ async function loadInProgress() { return loadInProgressTop5(); }
 // ── HISTORY: load summary (tên + điểm), bài chưa đủ điểm cho click-to-expand ──
 async function loadHistory() {
   var tbody = document.getElementById('history-tbody');
-  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--grey-400)"><span class="spinner"></span> Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--grey-400)"><span class="spinner"></span> Loading…</td></tr>';
   try {
     var r = await LD.api('student.getHistorySummary', {});
     App.histRows = (r.success && r.data) || [];
     renderHistoryTable();
-  } catch (e) { tbody.innerHTML = '<tr><td colspan="8" style="color:var(--red)">Error loading history</td></tr>'; }
+  } catch (e) { tbody.innerHTML = '<tr><td colspan="9" style="color:var(--red)">Error loading history</td></tr>'; }
 }
 
 function renderHistoryTable() {
@@ -1532,7 +1550,7 @@ function renderHistoryTable() {
   rows.sort(function (a, b) { var x = a[App.histSortKey], y = b[App.histSortKey]; return x > y ? App.histSortDir : x < y ? -App.histSortDir : 0; });
 
   if (!rows.length) {
-    document.getElementById('history-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--grey-400)">No sessions yet.</td></tr>';
+    document.getElementById('history-tbody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--grey-400)">No sessions yet.</td></tr>';
     document.getElementById('hist-count').textContent = '';
     return;
   }
@@ -1568,7 +1586,9 @@ function renderHistoryTable() {
       '<td>' + LD.fmtDuration(r.durationMin) + '</td>' +
       '<td>' + qScore + '</td><td>' + gScore + '</td><td>' + dScore + '</td>' +
       '<td>' + total + '</td>' +
-      '<td>' + statusBadge + '</td></tr>';
+      '<td>' + statusBadge + '</td>' +
+      '<td><button class="btn btn-sm" style="color:var(--red);background:none;border:1.5px solid var(--red);padding:4px 8px" onclick="deleteSession(\'' + r.sessionId + '\',this)" title="Xoá bài này">🗑</button></td>' +
+      '</tr>';
   }).join('');
 }
 
@@ -1599,7 +1619,23 @@ async function expandSession(sessionId, btn) {
   } catch(e) { btn.disabled = false; btn.textContent = '⚠ Error'; LD.toast('Network error', 'err'); }
 }
 
-function histSort(key) {
+async function deleteSession(sessionId, btn) {
+  if (!confirm('Xoá bài này? Giáo viên sẽ không thấy kết quả nữa và bạn không thể hoàn tác.')) return;
+  btn.disabled = true; btn.textContent = '⏳';
+  try {
+    var r = await LD.api('student.deleteSession', { sessionId: sessionId });
+    if (!r.success) { LD.toast(r.error || 'Could not delete', 'err'); btn.disabled = false; btn.textContent = '🗑'; return; }
+    // Remove from local cache and re-render
+    App.histRows = App.histRows.filter(function(s) { return s.sessionId !== sessionId; });
+    var row = document.getElementById('hist-row-' + sessionId);
+    if (row) {
+      row.style.transition = 'opacity .3s';
+      row.style.opacity = '0';
+      setTimeout(function() { renderHistoryTable(); }, 300);
+    } else { renderHistoryTable(); }
+    LD.toast('Đã xoá bài học.', 'ok');
+  } catch(e) { LD.toast('Network error: ' + e.message, 'err'); btn.disabled = false; btn.textContent = '🗑'; }
+}
   App.histSortDir = App.histSortKey === key ? -App.histSortDir : -1;
   App.histSortKey = key;
   renderHistoryTable();
