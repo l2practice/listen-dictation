@@ -1636,6 +1636,7 @@ async function deleteSession(sessionId, btn) {
     LD.toast('Đã xoá bài học.', 'ok');
   } catch(e) { LD.toast('Network error: ' + e.message, 'err'); btn.disabled = false; btn.textContent = '🗑'; }
 }
+function histSort(key) {
   App.histSortDir = App.histSortKey === key ? -App.histSortDir : -1;
   App.histSortKey = key;
   renderHistoryTable();
