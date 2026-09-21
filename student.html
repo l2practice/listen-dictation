@@ -1424,10 +1424,20 @@ function renderDictation() {
     if (st.resultHtml) document.getElementById('sb-result-' + i).innerHTML = st.resultHtml;
   });
   var done = App.dictationAnswers.filter(function (a) { return a.checked; }).length;
+  // "Attempted" = checked (correct) OR has been checked at least once (resultHtml set = Check was pressed)
+  var attempted = App.dictationAnswers.filter(function (a) { return a.checked || !!a.resultHtml; }).length;
   var pct = Math.round(done / App.correctedSentences.length * 100);
   document.getElementById('dict-progress-fill').style.width = pct + '%';
   document.getElementById('dict-progress-label').textContent = done + '/' + App.correctedSentences.length;
-  document.getElementById('btn-finish-dictation').style.display = done === App.correctedSentences.length ? 'block' : 'none';
+  // Show Submit when all sentences attempted (pressed Check at least once), even if some still wrong
+  var finishBtn = document.getElementById('btn-finish-dictation');
+  finishBtn.style.display = attempted === App.correctedSentences.length ? 'block' : 'none';
+  // Label: if all correct → "🏁 Submit", else "🏁 Submit anyway (X sentences incomplete)"
+  if (attempted === App.correctedSentences.length && done < App.correctedSentences.length) {
+    finishBtn.textContent = '🏁 Nộp bài (' + (App.correctedSentences.length - done) + ' câu chưa đúng)';
+  } else {
+    finishBtn.textContent = '🏁 Submit';
+  }
   updateWordTotal();
 }
 function onDictInput(i, v) {
