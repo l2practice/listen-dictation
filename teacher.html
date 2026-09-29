@@ -17,7 +17,7 @@
 .topbar-btn{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,.85);font-size:12.5px;cursor:pointer;font-family:var(--font-body);font-weight:600}
 .topbar-btn:hover{background:rgba(255,255,255,.2);color:#fff}
 .wrap{width:100%;max-width:1280px;margin:0 auto;padding:22px 20px 60px}
-.tab-strip{display:flex;gap:4px;background:var(--grey-100);border-radius:12px;padding:4px;margin-bottom:18px;max-width:420px}
+.tab-strip{display:flex;gap:4px;background:var(--grey-100);border-radius:12px;padding:4px;margin-bottom:18px;max-width:620px}
 .tab-strip-btn{flex:1;padding:9px;border:none;background:transparent;border-radius:9px;font-family:var(--font-body);font-size:13px;font-weight:700;color:var(--grey-600);cursor:pointer}
 .tab-strip-btn.active{background:#fff;color:var(--red);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .card{background:var(--white);border-radius:var(--radius-lg);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--grey-200);margin-bottom:16px}
@@ -42,6 +42,15 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .class-card{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--grey-100)}
 .class-card:last-child{border-bottom:none}
 .hidden{display:none!important}
+.np-row td{vertical-align:middle}
+.np-row.done td{opacity:.45}
+.np-class{font-weight:800;color:var(--navy2)}
+.np-btp{font-weight:700}
+.np-period{font-family:var(--font-mono);font-size:12px;color:var(--grey-600)}
+.np-done{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--grey-600);cursor:pointer;user-select:none}
+.np-done input{width:17px;height:17px;accent-color:var(--green);cursor:pointer}
+.np-undo{background:none;border:none;color:var(--red);font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline}
+.tab-count{display:inline-block;min-width:18px;padding:0 6px;margin-left:4px;border-radius:100px;background:var(--red);color:#fff;font-size:11px;line-height:18px}
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -77,8 +86,12 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .dt-w-ok{color:#3fb950;font-weight:700}
 .dt-w-bad{color:#f85149;font-weight:700;text-decoration:line-through}
 .dt-w-miss{color:#d29922;font-weight:800}
-.dt-blank{background:rgba(200,16,46,.18);border:1px solid #c8102e;border-radius:5px;padding:0 6px;color:#ff7b8a;font-weight:700}
-.dt-blank.correct{background:rgba(46,160,67,.18);border-color:#2ea043;color:#56d364}
+.dt-gf-sum{font-size:12.5px;color:#8b949e;margin-bottom:10px}
+.dt-gf-script{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:16px 20px;font-size:14.5px;line-height:2}
+.dt-gf-script p{margin:0 0 6px}
+.dt-gf-no{color:#8b949e;font-size:12px}
+.dt-gf-ok{color:#3fb950;font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.dt-gf-bad{color:#f85149;font-weight:800;text-decoration:line-through}
 .dt-q{background:#161b22;border:1px solid #30363d;border-radius:11px;padding:14px 16px;margin-bottom:12px}
 .dt-q-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 9px;border-radius:100px;margin-bottom:8px}
 .dt-q-tag.content{background:rgba(200,16,46,.18);color:#ff7b8a}
@@ -88,6 +101,10 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .dt-opt.correct{border-color:#2ea043;background:rgba(46,160,67,.1);color:#56d364;font-weight:700}
 .dt-opt.chosen-wrong{border-color:#c8102e;background:rgba(200,16,46,.1);color:#f85149;font-weight:700}
 .dt-empty{color:#8b949e;font-size:13px;padding:30px;text-align:center}
+.dt-doc-btn{background:#1f6feb;border:1px solid #1f6feb;color:#fff;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;text-decoration:none}
+.dt-doc-btn:hover{background:#388bfd}
+.dt-archived{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:36px 24px;text-align:center;color:#8b949e;font-size:13.5px;line-height:1.7}
+.dt-archived .dt-doc-btn{display:inline-block;margin-top:14px;font-size:14px;padding:11px 22px}
 </style>
 </head>
 <body>
@@ -102,12 +119,31 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
 <div class="wrap">
   <div class="tab-strip">
-    <button class="tab-strip-btn active" id="tab-btn-classes" onclick="switchTab('classes')">🏫 Classes</button>
+    <button class="tab-strip-btn active" id="tab-btn-practice" onclick="switchTab('practice')">🆕 New Practice<span class="tab-count hidden" id="np-count"></span></button>
+    <button class="tab-strip-btn" id="tab-btn-classes" onclick="switchTab('classes')">🏫 Classes</button>
     <button class="tab-strip-btn" id="tab-btn-sessions" onclick="switchTab('sessions')">📊 Sessions</button>
   </div>
 
   <!-- ═══ CLASSES ═══ -->
-  <div id="tab-classes">
+  <!-- ═══ NEW PRACTICE ═══ -->
+  <div id="tab-practice">
+    <div class="card">
+      <div class="card-title">🆕 New Practice
+        <span style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:11px;color:var(--grey-400);font-weight:400">Exercises with new completed work (all 3 parts) since you last marked them Done</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadNewPractice()">🔄 Refresh</button>
+        </span>
+      </div>
+      <div style="overflow:auto">
+        <table class="ld-table">
+          <thead><tr><th>Class</th><th>New session</th><th>Period</th><th></th><th>Done</th></tr></thead>
+          <tbody id="np-tbody"><tr><td colspan="5" style="color:var(--grey-400)">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-classes" class="hidden">
     <div class="card">
       <div class="card-title">➕ Create New Class</div>
       <div class="form-row">
@@ -176,7 +212,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
           </select>
         </div>
       </div>
-      <!-- Row 2: Thời gian + nút Load + Export + Clear -->
+      <!-- Row 2: Thời gian + nút Load + Export -->
       <div class="toolbar" style="gap:8px;flex-wrap:wrap">
         <div>
           <label class="form-label">Time Range</label>
@@ -188,7 +224,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <option value="custom">Custom range…</option>
           </select>
         </div>
-        <div id="sess-custom-range" style="display:none;display:flex;gap:6px;align-items:flex-end">
+        <div id="sess-custom-range" style="display:none;gap:6px;align-items:flex-end">
           <div>
             <label class="form-label">From</label>
             <input type="date" class="form-input" id="sess-filter-from" style="width:130px">
@@ -204,8 +240,10 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <div style="flex:1"></div>
         <div style="align-self:flex-end;display:flex;gap:6px">
           <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
-          <button class="btn btn-secondary btn-sm" style="color:var(--red);border-color:var(--red)" onclick="openClearModal()">🗑 Clear Data</button>
         </div>
+      </div>
+      <div style="font-size:11.5px;color:var(--grey-600);margin-top:8px">
+        🗄 Completed work is saved to a Google Doc. 10 days after completion the detail is removed from the sheet — scores stay here and <b>📄 Open Docs</b> opens the Doc.
       </div>
       <div style="margin-top:10px">
         <input class="form-input" id="sess-search" placeholder="🔍 Filter by Student's name/ book…" style="width:100%;max-width:300px" oninput="renderSessionsTable()">
@@ -227,7 +265,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <th onclick="sessSort('gapFillScore')">Gap-fill</th>
             <th onclick="sessSort('dictationAccuracy')">Dictation</th>
             <th onclick="sessSort('totalScore')">Total Score</th>
-            <th>Detail</th>
+            <th>Details</th>
           </tr></thead>
           <tbody id="sessions-tbody"></tbody>
         </table>
@@ -237,43 +275,19 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   </div>
 </div>
 
-<!-- ═══ CLEAR DATA MODAL ═══ -->
-<div class="ld-modal-bg" id="clearModal">
-  <div class="ld-auth-card" style="max-width:460px">
-    <div class="ld-auth-title" style="font-size:1.1rem;color:var(--red)">🗑 Clear Session Data</div>
-    <p class="ld-auth-sub" style="text-align:left;margin-bottom:8px">
-      Xoá nội dung chi tiết <b>(script, phân tích AI)</b> của các sessions <b>có tuổi trên 30 ngày</b>.<br>
-      Điểm số và thông tin làm bài vẫn được giữ nguyên.
-    </p>
-    <div id="clear-preview" style="background:var(--grey-100);border-radius:10px;padding:12px 16px;font-size:12.5px;margin-bottom:14px;color:var(--grey-800)">
-      <span class="spinner"></span> Loading…
-    </div>
-    <div class="ld-field">
-      <label class="ld-label">Lớp (để trống = tất cả lớp)</label>
-      <select class="ld-input" id="clear-class" style="height:auto;padding:10px 13px">
-        <option value="">— All classes —</option>
-      </select>
-    </div>
-    <div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:10px;padding:10px 14px;font-size:12.5px;color:#856404;margin-bottom:16px">
-      ⚠️ Thao tác này <b>không thể hoàn tác</b>. Script và JSON phân tích sẽ bị xoá vĩnh viễn. Điểm số được giữ lại.
-    </div>
-    <button class="ld-btn ld-btn-primary" id="btn-confirm-clear" style="background:linear-gradient(135deg,#c8102e,#9b0b22)" onclick="confirmClear()">🗑 Xoá dữ liệu cũ (&gt; 30 ngày)</button>
-    <div style="text-align:center;margin-top:12px">
-      <a href="#" onclick="closeClearModal();return false" style="font-size:12.5px;color:var(--grey-600);text-decoration:none">Huỷ</a>
-    </div>
-  </div>
-</div>
-
 <!-- ═══ SESSION DETAIL (dark overlay) ═══ -->
 <div id="detail-overlay">
   <div class="dt-topbar">
     <h2 id="dt-title">Session Detail</h2>
     <span class="dt-sub" id="dt-subtitle"></span>
-    <button class="dt-close" onclick="closeDetail()">✕ Close</button>
+    <span style="flex:1"></span>
+    <a class="dt-doc-btn hidden" id="dt-doc-link" target="_blank" rel="noopener">📄 Google Doc</a>
+    <button class="dt-close" onclick="closeDetail()" style="margin-left:0">✕ Close</button>
   </div>
   <div class="dt-wrap">
     <div class="dt-meta" id="dt-meta"></div>
     <div class="dt-stats" id="dt-stats"></div>
+    <div class="dt-archived hidden" id="dt-archived"></div>
     <div class="dt-tabs" id="dt-tabs">
       <button class="dt-tab-btn" id="dt-tab-btn-dictation" onclick="switchDetailTab('dictation')">🎧 Dictation</button>
       <button class="dt-tab-btn" id="dt-tab-btn-gapfill" onclick="switchDetailTab('gapfill')">🧩 Gap-fill</button>
@@ -287,20 +301,23 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
 <script src="ld-common.js"></script>
 <script>
-var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false };
+var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false,
+  practice: [] };
 
 (function init() {
   var s = LD.session.require('Teacher');
   if (!s) return;
   document.getElementById('tb-user').textContent = '👤 ' + s.user.fullName;
   loadClasses();
+  loadNewPractice(); // tab mặc định khi GV đăng nhập
 })();
 
+var TABS = ['practice', 'classes', 'sessions'];
 function switchTab(tab) {
-  document.getElementById('tab-classes').classList.toggle('hidden', tab !== 'classes');
-  document.getElementById('tab-sessions').classList.toggle('hidden', tab !== 'sessions');
-  document.getElementById('tab-btn-classes').classList.toggle('active', tab === 'classes');
-  document.getElementById('tab-btn-sessions').classList.toggle('active', tab === 'sessions');
+  TABS.forEach(function (t) {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+    document.getElementById('tab-btn-' + t).classList.toggle('active', t === tab);
+  });
   // Khi GV mở tab Sessions lần đầu: chỉ load filter options (lớp + book), KHÔNG load toàn bộ sessions
   if (tab === 'sessions' && !App.filterOptionsLoaded) loadFilterOptions();
 }
@@ -368,7 +385,7 @@ async function loadFilterOptions() {
     var classOpts = r.data.map(function(c){
       return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>';
     }).join('');
-    ['sess-filter-class', 'clear-class'].forEach(function(id){
+    ['sess-filter-class'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.innerHTML = '<option value="">— All classes —</option>' + classOpts;
     });
@@ -460,46 +477,9 @@ function renderSessionsTable() {
       '<td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
       '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
       '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td>' +
-      '<td><button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + r.sessionId + '\')">🔍 Detail</button></td></tr>';
+      '<td>' + detailsButton(r.sessionId, r.detailPurged, r.docUrl) + '</td></tr>';
   }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Không có kết quả.</td></tr>';
   document.getElementById('sess-count').textContent = rows.length + ' session(s)';
-}
-
-// ── CLEAR DATA (cố định: > 30 ngày) ──
-async function openClearModal() {
-  // Sync class dropdown
-  var cls = document.getElementById('sess-filter-class').value;
-  if (cls) document.getElementById('clear-class').value = cls;
-  document.getElementById('clearModal').classList.add('show');
-  // Preview: tính ngày cutoff và hiện cho GV biết
-  var cutoff = new Date(Date.now() - 30 * 86400000);
-  var fmtCutoff = cutoff.toLocaleDateString('vi-VN', {day:'2-digit',month:'2-digit',year:'numeric'});
-  document.getElementById('clear-preview').innerHTML =
-    '🗓 Sẽ xoá script &amp; JSON của các sessions <b>trước ngày ' + fmtCutoff + '</b> (hơn 30 ngày tuổi).<br>' +
-    'Điểm Quiz, Gap-fill, Dictation vẫn giữ nguyên.';
-}
-function closeClearModal() { document.getElementById('clearModal').classList.remove('show'); }
-async function confirmClear() {
-  var classId = document.getElementById('clear-class').value;
-  var classLabel = classId
-    ? document.getElementById('clear-class').options[document.getElementById('clear-class').selectedIndex].text
-    : 'all classes';
-  // Tính to = hôm nay - 30 ngày = cutoff
-  var cutoff = new Date(Date.now() - 30 * 86400000);
-  var fromDate = '2000-01-01'; // epoch — lấy tất cả cũ hơn 30 ngày
-  var toDate = cutoff.toISOString().slice(0, 10);
-  var msg = 'Xoá script & JSON của lớp: ' + classLabel + '\nSessions trước ngày: ' + toDate + '\n\n⚠️ Không thể hoàn tác!';
-  if (!confirm(msg)) return;
-
-  var btn = document.getElementById('btn-confirm-clear');
-  btn.disabled = true; var orig = btn.textContent; btn.innerHTML = '<span class="ld-spin"></span> Đang xoá…';
-
-  var r = await LD.api('teacher.clearSessionData', { fromDate: fromDate, toDate: toDate, classId: classId });
-  btn.disabled = false; btn.textContent = orig;
-
-  if (!r.success) { LD.toast(r.error || 'Lỗi khi clear.', 'err'); return; }
-  LD.toast(r.message || ('Đã clear ' + r.cleared + ' sessions.'), 'ok', 5000);
-  closeClearModal();
 }
 
 async function loadSessions() { return loadFilteredSessions(); }
@@ -512,15 +492,33 @@ async function openDetail(sessionId) {
   document.getElementById('dt-subtitle').textContent = 'Loading…';
   document.getElementById('dt-meta').innerHTML = '';
   document.getElementById('dt-stats').innerHTML = '';
+  document.getElementById('dt-doc-link').classList.add('hidden');
+  document.getElementById('dt-archived').classList.add('hidden');
+  document.getElementById('dt-tabs').classList.remove('hidden');
   ['dictation', 'gapfill', 'quiz'].forEach(function (t) { document.getElementById('dt-pane-' + t).innerHTML = ''; });
   var r = await LD.api('teacher.getSessionDetail', { sessionId: sessionId });
   if (!r.success) { document.getElementById('dt-subtitle').textContent = 'Error: ' + (r.error || ''); return; }
   DetailApp.data = r.data;
+  var d = r.data;
   renderDetailHeader();
+  var docLink = document.getElementById('dt-doc-link');
+  if (d.DocURL) { docLink.href = d.DocURL; docLink.classList.remove('hidden'); }
+  // Chi tiết còn trong sheet → trang HTML như cũ. Đã bị dọn (sau 10 ngày) → mở bản lưu trên Google Docs.
+  var hasDetail = Array.isArray(d.CorrectedScriptJSON) && d.CorrectedScriptJSON.length > 0;
+  if (!hasDetail) {
+    document.getElementById('dt-tabs').classList.add('hidden');
+    ['dictation', 'gapfill', 'quiz'].forEach(function (t) { document.getElementById('dt-pane-' + t).classList.remove('active'); });
+    var box = document.getElementById('dt-archived');
+    box.classList.remove('hidden');
+    box.innerHTML = d.DocURL
+      ? '🗄 The detailed answers were archived on ' + LD.esc(LD.fmtDate(d.DetailPurgedAt)) + ' to keep the sheet light.<br>The full review (script, vocabulary, quiz / gap-fill / dictation answers) is in the Google Doc.' +
+        '<br><a class="dt-doc-btn" href="' + LD.esc(d.DocURL) + '" target="_blank" rel="noopener">📄 Open Google Doc</a>'
+      : '⚠️ No detailed answers are stored for this session (it was cleared before Doc archiving existed, or the student has not analysed the script yet).';
+    return;
+  }
   renderDictationDetail();
   renderGapFillDetail();
   renderQuizDetail();
-  var d = r.data;
   var defaultTab = d.DictationJSON ? 'dictation' : (d.GapFillJSON ? 'gapfill' : 'quiz');
   switchDetailTab(defaultTab);
 }
@@ -532,6 +530,8 @@ function switchDetailTab(tab) {
     document.getElementById('dt-pane-' + t).classList.toggle('active', t === tab);
   });
 }
+// Same rule as student.html checkSentence: ignore punctuation/apostrophes/dashes and case
+function dtWordKey(w) { return String(w || '').replace(/[\u2018\u2019\u02BC\u02B9]/g, "'").replace(/[^a-z0-9]/gi, '').toLowerCase(); }
 function dtWc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
 function renderDetailHeader() {
   var d = DetailApp.data;
@@ -562,12 +562,12 @@ function renderDictationDetail() {
   var answers = dj.answers || [];
   pane.innerHTML = sentences.map(function (s, i) {
     var st = answers[i] || { typed: '', checked: false };
-    var actualWords = s.replace(/[.,!?;:"]/g, '').split(/\s+/);
-    var typedWords = (st.typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/);
+    var actualWords = s.split(/\s+/).filter(Boolean);
+    var typedWords = (st.typed || '').split(/\s+/).filter(Boolean);
     var allOk = true;
     var html = actualWords.map(function (w, wi) {
-      var tw = (typedWords[wi] || '').toLowerCase();
-      var ok = tw === w.toLowerCase();
+      var tw = dtWordKey(typedWords[wi]);
+      var ok = tw === dtWordKey(w);
       if (!ok) allOk = false;
       return '<span class="' + (ok ? 'dt-w-ok' : (tw ? 'dt-w-bad' : 'dt-w-miss')) + '">' + LD.esc(w) + '</span>';
     }).join(' ');
@@ -577,31 +577,29 @@ function renderDictationDetail() {
       '<div class="typed">Typed: ' + html + '</div></div>';
   }).join('');
 }
+// Toàn bộ script; ô điền gạch dưới. Đúng lần đầu → xanh đậm gạch dưới; sai → từ SV điền gạch ngang đỏ + từ đúng xanh.
+// firstTryCorrect/firstTryGiven = lần thử ĐẦU (điểm mastery-learning) — SV có thể thử lại đến khi đúng.
 function renderGapFillDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-gapfill');
   var gj = d.GapFillJSON;
   var sentences = d.CorrectedScriptJSON || [];
   if (!gj || !gj.answers || !gj.answers.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Gap-fill part yet.</div>'; return; }
-  var bySentence = {};
-  gj.answers.forEach(function (a) { (bySentence[a.sentenceIdx] = bySentence[a.sentenceIdx] || []).push(a); });
-  pane.innerHTML = Object.keys(bySentence).map(function (si) {
-    si = Number(si);
-    var sentence = sentences[si] || '';
-    var parts = sentence.split(/(\s+)/);
-    var blanks = bySentence[si];
-    // firstTryCorrect reflects the student's FIRST attempt (the mastery-learning score); the
-    // student may have retried until correct, so show what they typed the first time, not the
-    // final (always-correct) value — that's the meaningful signal for a teacher reviewing mistakes.
-    var allOk = blanks.every(function (b) { return b.firstTryCorrect; });
-    var out = parts.map(function (w, wi) {
-      var b = blanks.find(function (x) { return x.wordIdx === wi; });
-      if (!b) return LD.esc(w);
-      var ok = !!b.firstTryCorrect;
-      var shown = b.firstTryGiven != null ? b.firstTryGiven : b.given;
-      return '<span class="dt-blank' + (ok ? ' correct' : '') + '">' + LD.esc(shown || '(blank)') + (ok ? '' : ' → ' + LD.esc(b.actual)) + '</span>';
-    }).join('');
-    return '<div class="dt-sentence ' + (allOk ? 'ok' : 'bad') + '"><div class="sn">Sentence ' + (si + 1) + (allOk ? '' : ' · needed a retry') + '</div><div class="typed">' + out + '</div></div>';
-  }).join('');
+  var blanks = {};
+  gj.answers.forEach(function (a) { (blanks[a.sentenceIdx] = blanks[a.sentenceIdx] || {})[a.wordIdx] = a; });
+  var wrong = gj.answers.filter(function (a) { return !a.firstTryCorrect; }).length;
+  pane.innerHTML = '<div class="dt-gf-sum">Correct on the first try: <b>' + (gj.answers.length - wrong) + '/' + gj.answers.length + '</b></div>' +
+    '<div class="dt-gf-script">' + sentences.map(function (sentence, si) {
+      var bs = blanks[si] || {};
+      return '<p><span class="dt-gf-no">' + (si + 1) + '.</span> ' + sentence.split(/(\s+)/).map(function (tok, wi) {
+        var b = bs[wi];
+        if (!b) return LD.esc(tok);
+        var m = tok.match(/^([^A-Za-z0-9']*)(.*?)([^A-Za-z0-9']*)$/);
+        var core = m[2] || b.actual;
+        var shown = b.firstTryGiven != null ? b.firstTryGiven : b.given;
+        return LD.esc(m[1]) + (b.firstTryCorrect ? '' : '<span class="dt-gf-bad">' + LD.esc(shown || '(blank)') + '</span> ') +
+          '<span class="dt-gf-ok">' + LD.esc(core) + '</span>' + LD.esc(m[3]);
+      }).join('') + '</p>';
+    }).join('') + '</div>';
 }
 function renderQuizDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-quiz');
@@ -620,12 +618,91 @@ function renderQuizDetail() {
 }
 function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSortDir : -1; App.sessSortKey = key; renderSessionsTable(); }
 async function exportCsv() {
-  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value };
+  var dates = buildDateRange();
+  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: dates.fromDate, toDate: dates.toDate };
   var r = await LD.api('teacher.exportSessions', p);
   if (!r.success) { LD.toast(r.error || 'Could not export CSV', 'err'); return; }
   var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
+}
+
+// Details (trang HTML) khi chi tiết còn trong sheet; quá 10 ngày đã dọn → Open Docs mở thẳng Google Doc
+function detailsButton(sessionId, purged, docUrl) {
+  if (purged && docUrl) return '<a class="btn btn-secondary btn-sm" href="' + LD.esc(docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">📄 Open Docs</a>';
+  return '<button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + LD.esc(sessionId) + '\')">🔍 Details</button>';
+}
+
+// ── NEW PRACTICE ──
+function fmtDay(iso) {
+  var d = new Date(iso);
+  return isNaN(d) ? '—' : d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+async function loadNewPractice() {
+  var tb = document.getElementById('np-tbody');
+  tb.innerHTML = '<tr><td colspan="5"><span class="spinner"></span> Loading…</td></tr>';
+  var r = await LD.api('practice.new', {});
+  if (!r.success) { tb.innerHTML = '<tr><td colspan="5" style="color:var(--red)">' + LD.esc(r.error || 'Error') + '</td></tr>'; return; }
+  App.practice = r.data.map(function (g) { g._done = false; return g; });
+  renderNewPractice();
+}
+function updatePracticeCount() {
+  var n = App.practice.filter(function (g) { return !g._done; }).length;
+  var el = document.getElementById('np-count');
+  el.textContent = n; el.classList.toggle('hidden', !n);
+}
+function renderNewPractice() {
+  var tb = document.getElementById('np-tbody');
+  updatePracticeCount();
+  if (!App.practice.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--grey-400);padding:28px">🎉 No new practice — you are up to date.</td></tr>'; return; }
+  tb.innerHTML = App.practice.map(function (g, i) {
+    return '<tr class="np-row' + (g._done ? ' done' : '') + '">' +
+      '<td class="np-class">' + LD.esc(g.className) + '</td>' +
+      '<td class="np-btp">' + LD.esc(g.bookTestPart) + '</td>' +
+      '<td class="np-period">' + fmtDay(g.from) + ' – ' + fmtDay(g.to) + '</td>' +
+      '<td><button class="btn btn-secondary btn-sm" onclick="openPracticeInSessions(' + i + ')">📊 Open in Sessions</button></td>' +
+      '<td>' + (g._done
+        ? '✓ Done <button class="np-undo" onclick="undoPracticeDone(' + i + ')">Undo</button>'
+        : '<label class="np-done"><input type="checkbox" onchange="markPracticeDone(' + i + ',this)"></label>') + '</td></tr>';
+  }).join('');
+}
+// Chuyển sang tab Sessions, đặt sẵn bộ lọc Lớp + Book/Test/Part của nhóm rồi tải — GV search/sort tiếp ở đó
+async function openPracticeInSessions(i) {
+  var g = App.practice[i];
+  switchTab('sessions');
+  if (!App.filterOptionsLoaded) await loadFilterOptions();
+  var btp = String(g.bookTestPart);
+  var book = (btp.match(/^\s*([^\s·]+)/) || [])[1] || '';
+  var test = (btp.match(/Test\s*(\d+)/i) || [])[1] || '';
+  var part = (btp.match(/Part\s*(\d+)/i) || [])[1] || '';
+  var setSel = function (id, val) {
+    var sel = document.getElementById(id);
+    if (val && !Array.prototype.some.call(sel.options, function (o) { return o.value === val; })) {
+      var o = document.createElement('option'); o.value = val; o.textContent = val; sel.appendChild(o);
+    }
+    sel.value = val;
+  };
+  setSel('sess-filter-class', g.classId);
+  setSel('sess-filter-book', book); setSel('sess-filter-test', test); setSel('sess-filter-part', part);
+  document.getElementById('sess-time-preset').value = 'all'; applyTimePreset();
+  document.getElementById('sess-search').value = '';
+  loadFilteredSessions();
+}
+async function markPracticeDone(i, cb) {
+  var g = App.practice[i];
+  cb.disabled = true;
+  // upTo = bài mới nhất đang hiển thị → bài nộp sau thời điểm này vẫn hiện lại ở lần đăng nhập sau
+  var r = await LD.api('practice.markDone', { classId: g.classId, bookTestPart: g.bookTestPart, upTo: g.to });
+  if (!r.success) { cb.checked = false; cb.disabled = false; LD.toast(r.error || 'Could not save', 'err'); return; }
+  g._done = true;
+  renderNewPractice();
+}
+async function undoPracticeDone(i) {
+  var g = App.practice[i];
+  var r = await LD.api('practice.undoDone', { classId: g.classId, bookTestPart: g.bookTestPart });
+  if (!r.success) { LD.toast(r.error || 'Could not undo', 'err'); return; }
+  g._done = false;
+  renderNewPractice();
 }
 </script>
 </body>
