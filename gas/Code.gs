@@ -166,11 +166,11 @@ function headerSpec() {
       'QuizScore', 'GapFillScore', 'DictationAccuracy', 'TotalScore',
       'CreatedAt',
       // Homework.gs — ensureColumns tự thêm vào cuối sheet hiện có
-      'HomeworkID', 'DocURL', 'DocSentAt', 'DetailPurgedAt'
+      'HomeworkID', 'DocURL', 'DetailPurgedAt'
     ],
     Settings: ['Key', 'Value'],
     Homework: ['HomeworkID', 'ClassID', 'ClassName', 'Book', 'Test', 'Part', 'BookTestPart',
-               'Deadline', 'Note', 'Status', 'CreatedBy', 'CreatedAt', 'ReminderSentAt']
+               'Deadline', 'Note', 'Status', 'CreatedBy', 'CreatedAt']
   };
 }
 function initHeaders(sheet, name) {

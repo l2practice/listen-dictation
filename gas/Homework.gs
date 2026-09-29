@@ -2,29 +2,27 @@
 // LisDictation — Homework Book + Report Docs + Auto-purge (Homework.gs)
 // Cùng project Apps Script với Code.gs (dùng chung CONFIG, getSheet, _setCell…).
 //
-// Chức năng:
-//  1. Homework Book: GV giao bài (lớp + Book/Test/Part + deadline). SV đăng nhập thấy banner.
-//     Trước deadline 24h: email nhắc những SV chưa xong, ghi rõ phần còn thiếu.
+// Chức năng (KHÔNG gửi mail cho SV):
+//  1. Homework Book: GV giao bài (lớp + Book/Test/Part + deadline). SV đăng nhập thấy banner
+//     liệt kê bài chưa xong; làm đủ 3 phần là bài tự biến khỏi banner.
 //  2. Report Doc: SV nộp đủ 3 phần → tạo Google Doc (script, word levels, collocations,
-//     quiz/gap-fill/dictation review) + gửi email kèm PDF.
-//     Sau 10 ngày: xoá JSON chi tiết trong sheet Sessions (điểm số giữ nguyên) —
-//     GV bấm Detail sẽ mở Doc thay cho trang HTML.
+//     quiz/gap-fill/dictation review). SV mở từ cột "Details" trong History.
+//     Sau 10 ngày (tính từ ngày nộp hoặc deadline, lấy mốc muộn hơn): tự xoá JSON chi tiết
+//     trong sheet Sessions, không báo SV. Điểm số giữ nguyên; GV bấm "Open Docs" để xem lại.
 //
-// Cài đặt (1 lần): chạy hàm hw_setup() trong editor → cấp quyền Docs/Drive/Mail/Trigger
+// Cài đặt (1 lần): chạy hàm hw_setup() trong editor → cấp quyền Docs/Drive/Trigger
 //   → Deploy ▸ Manage deployments ▸ Edit ▸ Version: New version (giữ nguyên URL /exec).
 // ============================================================
 
 var HW = {
   PURGE_AFTER_DAYS: 10,
-  REMIND_BEFORE_HOURS: 24,
-  EXPORT_BATCH: 8,          // số Doc tạo tối đa mỗi lần cron chạy (quota Docs/Mail cá nhân ~100-250/ngày)
+  EXPORT_BATCH: 8,          // số Doc tạo tối đa mỗi lần cron chạy (quota tạo Docs tài khoản cá nhân ~250/ngày)
   PURGE_BATCH: 80,
   REPORT_FOLDER: 'LisDictation — Student Reports',
-  // 'link' = ai có link đều xem được (SV mở được link trong email, không cần Google account)
-  // 'private' = chỉ GV xem; SV vẫn nhận bản PDF đính kèm
+  // 'link' = ai có link đều xem được → SV mở được Doc từ app mà không cần được share riêng
+  // 'private' = chỉ GV xem được Doc (SV bấm Open Docs sẽ bị Google từ chối)
   DOC_SHARING: 'link',
   TZ: 'Asia/Ho_Chi_Minh',
-  APP_URL: 'https://l2practice.github.io/listen-dictation/login.html',
   DETAIL_COLS: ['ScriptText', 'CorrectedScriptJSON', 'CEFRJSON', 'CollocationJSON', 'QuizJSON', 'GapFillJSON', 'DictationJSON']
 };
 
@@ -40,7 +38,6 @@ function hwRoute(action, user, p) {
       if (action === 'homework.delete')    return hwDelete(p);
       if (action === 'homework.list')      return hwListForTeacher(p);
       if (action === 'homework.progress')  return hwProgress(p);
-      if (action === 'homework.remind')    return hwRemindNow(p);
     }
     return null; // không phải action của module này
   } catch (e) { return { success: false, error: e.message }; }
@@ -49,8 +46,7 @@ function hwRoute(action, user, p) {
 // ─── SETUP + CRON ────────────────────────────────────────────
 function hw_setup() {
   getSheet(CONFIG.TABS.HOMEWORK);
-  getSheet(CONFIG.TABS.SESSIONS); // ensureColumns → thêm HomeworkID, DocURL, DocSentAt, DetailPurgedAt
-  if (!getSetting('hw_installed_at')) setSetting('hw_installed_at', nowIso());
+  getSheet(CONFIG.TABS.SESSIONS); // ensureColumns → thêm HomeworkID, DocURL, DetailPurgedAt
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'hw_hourly') ScriptApp.deleteTrigger(t);
   });
@@ -59,11 +55,10 @@ function hw_setup() {
   Logger.log('Homework module ready. Trigger hw_hourly installed.');
 }
 
-// Chạy mỗi giờ: (1) tạo Doc cho bài đã xong (2) nhắc deadline (3) xoá chi tiết > 10 ngày
+// Chạy mỗi giờ: (1) tạo Doc cho bài đã xong mà chưa có Doc (2) xoá chi tiết > 10 ngày
 function hw_hourly() {
   var res = {};
   try { res.exported = hwExportPending_(); } catch (e) { res.exportError = e.message; }
-  try { res.reminded = hwSendDueReminders_(); } catch (e) { res.remindError = e.message; }
   try { res.purged = hwPurgeOld_(); } catch (e) { res.purgeError = e.message; }
   Logger.log(JSON.stringify(res));
   return res;
@@ -83,11 +78,6 @@ function hwBtp_(book, test, part) { return [book, 'Test ' + test, 'Part ' + part
 // Khoá so khớp BookTestPart: "Cam17 · Test 1 · Part 4" ≡ "cam17 test 1 part 4"
 function hwBtpKey_(s) { return String(s || '').toLowerCase().replace(/[·|,]/g, ' ').replace(/\s+/g, ' ').trim(); }
 function hwJson_(v, fb) { if (!v) return fb; if (typeof v === 'object') return v; try { return JSON.parse(v); } catch (e) { return fb; } }
-function hwEsc_(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-  });
-}
 // Cùng quy tắc so từ với student.html (checkSentence): bỏ dấu câu/nháy/gạch, không phân biệt hoa thường
 function hwWordKey_(w) {
   return String(w || '').replace(/[‘’ʼʹ]/g, "'").replace(/[^a-z0-9]/gi, '').toLowerCase();
@@ -133,7 +123,7 @@ function hwPartsOf_(quizScore, gapScore, dictAcc) {
 
 // Index: studentId|btpKey → session tốt nhất (nhiều phần xong nhất, rồi mới nhất)
 function hwSessionIndex_(studentIdFilter) {
-  var d = hwReadSessionCols_(['SessionID', 'StudentID', 'BookTestPart', 'StartTime', 'EndTime', 'QuizScore', 'GapFillScore', 'DictationAccuracy', 'TotalScore', 'DocURL']);
+  var d = hwReadSessionCols_(['SessionID', 'StudentID', 'BookTestPart', 'StartTime', 'EndTime', 'QuizScore', 'GapFillScore', 'DictationAccuracy', 'TotalScore', 'DocURL', 'DetailPurgedAt']);
   var idx = {}, c = d.cols;
   for (var i = 0; i < d.n; i++) {
     var sid = String(c.StudentID[i] || '').trim();
@@ -145,6 +135,7 @@ function hwSessionIndex_(studentIdFilter) {
     s.endTime = hwIso_(c.EndTime[i]);
     s.totalScore = hwHas_(c.TotalScore[i]) ? c.TotalScore[i] : null;
     s.docUrl = String(c.DocURL[i] || '');
+    s.detailPurged = hwHas_(c.DetailPurgedAt[i]);
     var prev = idx[key];
     if (!prev || s.partsDone > prev.partsDone || (s.partsDone === prev.partsDone && hwTime_(s.startTime) > hwTime_(prev.startTime))) idx[key] = s;
   }
@@ -156,12 +147,8 @@ function hwStudentsOf_(classId) {
   return sheetToObjects(getSheet(CONFIG.TABS.USERS)).filter(function (u) {
     return u.Role === 'Student' && String(u.Status) !== 'Archived' && String(u.ClassID || '').toUpperCase() === cid;
   }).map(function (u) {
-    return { studentId: String(u.StudentID), fullName: String(u.FullName || ''), email: String(u.Email || '').trim() };
+    return { studentId: String(u.StudentID), fullName: String(u.FullName || '') };
   });
-}
-function hwStudentById_(studentId) {
-  var u = sheetToObjects(getSheet(CONFIG.TABS.USERS)).find(function (x) { return String(x.StudentID) === String(studentId); });
-  return u ? { studentId: String(u.StudentID), fullName: String(u.FullName || ''), email: String(u.Email || '').trim() } : null;
 }
 
 // ─── HOMEWORK SHEET ──────────────────────────────────────────
@@ -186,7 +173,7 @@ function hwPublic_(h) {
     homeworkId: String(h.HomeworkID), classId: String(h.ClassID), className: String(h.ClassName || classNameOf(h.ClassID)),
     book: String(h.Book), test: String(h.Test), part: String(h.Part), bookTestPart: String(h.BookTestPart),
     deadline: hwIso_(h.Deadline), note: String(h.Note || ''), status: String(h.Status || 'Active'),
-    createdAt: hwIso_(h.CreatedAt), reminderSentAt: hwIso_(h.ReminderSentAt)
+    createdAt: hwIso_(h.CreatedAt)
   };
 }
 function hwValidate_(p) {
@@ -211,7 +198,7 @@ function hwCreate(user, p) {
     HomeworkID: 'HW-' + genId().substring(0, 8), ClassID: classId, ClassName: classNameOf(classId),
     Book: v.book, Test: v.test, Part: v.part, BookTestPart: v.btp, Deadline: v.deadline,
     Note: String(p.note || '').slice(0, 500), Status: 'Active',
-    CreatedBy: user.email || user.fullName || '', CreatedAt: nowIso(), ReminderSentAt: ''
+    CreatedBy: user.email || user.fullName || '', CreatedAt: nowIso()
   };
   sheet.appendRow(hwSheetHeaders_(sheet).map(function (h) { return rec[h] != null ? rec[h] : ''; }));
   return { success: true, homeworkId: rec.HomeworkID };
@@ -231,10 +218,7 @@ function hwUpdate(p) {
   hwSetHwCell_(h._row, 'Part', v.part);
   hwSetHwCell_(h._row, 'BookTestPart', v.btp);
   if (p.note != null) hwSetHwCell_(h._row, 'Note', String(p.note).slice(0, 500));
-  if (v.deadline !== hwIso_(h.Deadline)) {
-    hwSetHwCell_(h._row, 'Deadline', v.deadline);
-    hwSetHwCell_(h._row, 'ReminderSentAt', ''); // đổi hạn → cho phép nhắc lại theo hạn mới
-  }
+  if (v.deadline !== hwIso_(h.Deadline)) hwSetHwCell_(h._row, 'Deadline', v.deadline);
   return { success: true };
 }
 
@@ -273,9 +257,10 @@ function hwProgress(p) {
     var st = idx[s.studentId.toLowerCase() + '|' + btpKey] || hwPartsOf_('', '', '');
     var completedAt = st.partsDone === 3 ? st.endTime : '';
     return {
-      studentId: s.studentId, fullName: s.fullName, email: s.email,
+      studentId: s.studentId, fullName: s.fullName,
       quizDone: st.quizDone, gapDone: st.gapDone, dictDone: st.dictDone, partsDone: st.partsDone, missing: st.missing,
       sessionId: st.sessionId || '', totalScore: st.totalScore != null ? st.totalScore : null,
+      docUrl: st.docUrl || '', detailPurged: !!st.detailPurged,
       completedAt: completedAt, late: !!(completedAt && dl && hwTime_(completedAt) > dl)
     };
   });
@@ -313,60 +298,15 @@ function hwResolveHomeworkId_(user, homeworkId, bookTestPart) {
   return hwBtpKey_(h.BookTestPart) === hwBtpKey_(bookTestPart) ? String(h.HomeworkID) : '';
 }
 
-// ─── REMINDERS ───────────────────────────────────────────────
-function hwSendDueReminders_() {
-  var now = Date.now(), win = HW.REMIND_BEFORE_HOURS * 3600e3, sent = 0;
-  hwAllHomework_().forEach(function (h) {
-    if (h.Status !== 'Active' || hwHas_(h.ReminderSentAt)) return;
-    var dl = hwTime_(h.Deadline);
-    if (!dl || dl <= now || dl - now > win) return;
-    var r = hwRemind_(h);
-    if (r.ok) { hwSetHwCell_(h._row, 'ReminderSentAt', nowIso()); sent += r.sent; }
-  });
-  return sent;
-}
-function hwRemindNow(p) {
-  var h = hwAllHomework_().find(function (x) { return String(x.HomeworkID) === String(p.homeworkId); });
-  if (!h) return { success: false, error: 'Không tìm thấy bài tập.' };
-  var r = hwRemind_(h);
-  if (!r.ok) return { success: false, error: r.error };
-  hwSetHwCell_(h._row, 'ReminderSentAt', nowIso());
-  return { success: true, sent: r.sent, skippedNoEmail: r.noEmail };
-}
-function hwRemind_(h) {
-  var idx = hwSessionIndex_(), btpKey = hwBtpKey_(h.BookTestPart);
-  var targets = hwStudentsOf_(h.ClassID).map(function (s) {
-    return { s: s, st: idx[s.studentId.toLowerCase() + '|' + btpKey] || hwPartsOf_('', '', '') };
-  }).filter(function (x) { return x.st.partsDone < 3; });
-  var withEmail = targets.filter(function (x) { return x.s.email; });
-  if (withEmail.length > MailApp.getRemainingDailyQuota())
-    return { ok: false, error: 'Không đủ quota email hôm nay (' + MailApp.getRemainingDailyQuota() + ' còn lại, cần ' + withEmail.length + ').' };
-  withEmail.forEach(function (x) {
-    var started = x.st.partsDone > 0;
-    var html =
-      '<div style="font-family:Arial,sans-serif;font-size:14px;color:#1A1A16;line-height:1.6">' +
-      '<p>Chào <b>' + hwEsc_(x.s.fullName) + '</b>,</p>' +
-      '<p>Bài luyện nghe <b>' + hwEsc_(h.BookTestPart) + '</b> sẽ hết hạn lúc <b style="color:#C8102E">' + hwFmt_(h.Deadline) + '</b>.</p>' +
-      (started
-        ? '<p>Bạn đã làm ' + x.st.partsDone + '/3 phần. Còn thiếu: <b style="color:#C8102E">' + x.st.missing.join(', ') + '</b>.</p>'
-        : '<p>Bạn <b style="color:#C8102E">chưa bắt đầu</b> bài này (cần làm đủ: Quiz, Gap-fill, Dictation).</p>') +
-      (h.Note ? '<p style="background:#fff8e6;border-left:3px solid #C9A84C;padding:8px 12px">📌 ' + hwEsc_(h.Note) + '</p>' : '') +
-      '<p><a href="' + HW.APP_URL + '" style="background:#C8102E;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">▶ Vào làm bài</a></p>' +
-      '<p style="color:#77776E;font-size:12px">Email tự động từ LisDictation — Language Hub.</p></div>';
-    MailApp.sendEmail({ to: x.s.email, subject: '[LisDictation] Nhắc hạn nộp: ' + h.BookTestPart + ' (' + hwFmt_(h.Deadline) + ')', htmlBody: html, name: 'LisDictation' });
-  });
-  return { ok: true, sent: withEmail.length, noEmail: targets.length - withEmail.length };
-}
-
-// ─── REPORT DOC + EMAIL ──────────────────────────────────────
+// ─── REPORT DOC ──────────────────────────────────────────────
 function hwExportForStudent(user, p) {
   var f = hwFindSession_(p.sessionId);
   if (!f || String(f.row[f.hdrs.indexOf('StudentID')]) !== String(user.studentId)) return { success: false, error: 'Không tìm thấy session.' };
-  return hwExportSession_(p.sessionId, { email: true });
+  return hwExportSession_(p.sessionId);
 }
 
-// Tạo Doc + gửi mail cho 1 session. Idempotent: đã có DocURL thì chỉ gửi lại mail nếu chưa gửi.
-function hwExportSession_(sessionId, opts) {
+// Tạo Google Doc cho 1 session đã xong đủ 3 phần. Idempotent: đã có DocURL thì trả lại link.
+function hwExportSession_(sessionId) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return { success: false, error: 'Hệ thống đang bận, thử lại sau.' };
   try {
@@ -375,32 +315,19 @@ function hwExportSession_(sessionId, opts) {
     var r = hwRowObj_(f);
     var parts = hwPartsOf_(r.QuizScore, r.GapFillScore, r.DictationAccuracy);
     if (parts.partsDone < 3) return { success: false, error: 'Bài chưa hoàn thành đủ 3 phần.' };
-    var docUrl = String(r.DocURL || ''), docId = '';
+    var docUrl = String(r.DocURL || '');
     if (!docUrl) {
       if (!r.CorrectedScriptJSON) {
         // Chi tiết đã bị xoá trước đây (vd. nút Clear Data cũ) → đánh dấu để cron không thử lại mãi
         if (!hwHas_(r.DetailPurgedAt)) _setCell(f, 'DetailPurgedAt', 'no-detail');
         return { success: false, error: 'Không còn dữ liệu chi tiết để tạo Doc.' };
       }
-      var doc = hwBuildDoc_(r);
-      docUrl = doc.url; docId = doc.id;
+      docUrl = hwBuildDoc_(r).url;
       _setCell(f, 'DocURL', docUrl);
     }
-    var emailed = false;
-    if (opts && opts.email && !hwHas_(r.DocSentAt)) {
-      var student = hwStudentById_(r.StudentID);
-      if (student && student.email && MailApp.getRemainingDailyQuota() > 0) {
-        hwEmailReport_(r, student, docId || hwDocIdFromUrl_(docUrl), docUrl);
-        _setCell(f, 'DocSentAt', nowIso());
-        emailed = true;
-      } else if (!student || !student.email) {
-        _setCell(f, 'DocSentAt', 'no-email'); // tránh cron thử lại mãi
-      }
-    }
-    return { success: true, docUrl: docUrl, emailed: emailed };
+    return { success: true, docUrl: docUrl };
   } finally { lock.releaseLock(); }
 }
-function hwDocIdFromUrl_(url) { var m = String(url).match(/\/d\/([\w-]+)/); return m ? m[1] : ''; }
 
 function hwReportFolder_(className) {
   var props = PropertiesService.getScriptProperties();
@@ -528,40 +455,15 @@ function hwBuildDoc_(r) {
   return { id: doc.getId(), url: doc.getUrl() };
 }
 
-function hwEmailReport_(r, student, docId, docUrl) {
-  var attachments = [];
-  try { attachments.push(DriveApp.getFileById(docId).getAs('application/pdf').setName('LisDictation - ' + r.BookTestPart + '.pdf')); } catch (e) {}
-  var html =
-    '<div style="font-family:Arial,sans-serif;font-size:14px;color:#1A1A16;line-height:1.6">' +
-    '<p>Chào <b>' + hwEsc_(student.fullName) + '</b>,</p>' +
-    '<p>Bạn đã hoàn thành bài <b>' + hwEsc_(r.BookTestPart) + '</b>. Kết quả:</p>' +
-    '<table style="border-collapse:collapse;font-size:14px">' +
-    [['Quiz', r.QuizScore], ['Gap-fill', r.GapFillScore], ['Dictation', r.DictationAccuracy], ['Total', r.TotalScore]].map(function (x) {
-      return '<tr><td style="padding:4px 16px 4px 0;color:#77776E">' + x[0] + '</td><td style="font-weight:bold">' + x[1] + '%</td></tr>';
-    }).join('') + '</table>' +
-    '<p>Bản tổng kết (script, từ vựng theo CEFR, collocations, lỗi Quiz/Gap-fill/Dictation) được đính kèm dạng PDF' +
-    (HW.DOC_SHARING === 'link' ? ' và có trên Google Docs:</p><p><a href="' + docUrl + '" style="background:#04245A;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">📄 Mở bản tổng kết</a></p>' : '.</p>') +
-    '<p style="color:#77776E;font-size:12px">Hãy lưu lại email này để ôn tập. Chi tiết bài làm trên hệ thống sẽ được dọn sau ' + HW.PURGE_AFTER_DAYS + ' ngày (điểm số vẫn được giữ).</p></div>';
-  MailApp.sendEmail({
-    to: student.email, subject: '[LisDictation] Kết quả bài ' + r.BookTestPart,
-    htmlBody: html, attachments: attachments, name: 'LisDictation'
-  });
-}
-
-// Cron: tạo Doc cho bài xong mà chưa có Doc; gửi lại mail bị lỡ (quota/lỗi mạng).
-// Bài hoàn thành TRƯỚC khi cài module chỉ được tạo Doc (không gửi mail) để SV không nhận mail cũ hàng loạt.
+// Cron: tạo Doc cho bài đã xong đủ 3 phần mà chưa có Doc (SV đóng tab ngay sau khi nộp, bài cũ trước khi cài…)
 function hwExportPending_() {
-  var installedAt = hwTime_(getSetting('hw_installed_at')) || Date.now();
-  var d = hwReadSessionCols_(['SessionID', 'EndTime', 'QuizScore', 'GapFillScore', 'DictationAccuracy', 'DocURL', 'DocSentAt', 'DetailPurgedAt']);
+  var d = hwReadSessionCols_(['SessionID', 'QuizScore', 'GapFillScore', 'DictationAccuracy', 'DocURL', 'DetailPurgedAt']);
   var c = d.cols, done = 0, tries = 0;
   for (var i = 0; i < d.n && done < HW.EXPORT_BATCH && tries < HW.EXPORT_BATCH * 3; i++) {
     if (hwPartsOf_(c.QuizScore[i], c.GapFillScore[i], c.DictationAccuracy[i]).partsDone < 3) continue;
-    var hasDoc = !!c.DocURL[i], sent = hwHas_(c.DocSentAt[i]);
-    var isNew = hwTime_(c.EndTime[i]) >= installedAt;
-    if (hasDoc && (sent || !isNew)) continue;
-    if (!hasDoc && hwHas_(c.DetailPurgedAt[i])) continue;
+    if (c.DocURL[i] || hwHas_(c.DetailPurgedAt[i])) continue;
     tries++;
-    var r = hwExportSession_(c.SessionID[i], { email: isNew });
+    var r = hwExportSession_(c.SessionID[i]);
     if (r.success) done++;
   }
   return done;

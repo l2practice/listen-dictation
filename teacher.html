@@ -42,7 +42,6 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .class-card{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--grey-100)}
 .class-card:last-child{border-bottom:none}
 .badge-red{background:var(--red-light);color:var(--red)}
-.badge-navy{background:#e3ebf7;color:var(--navy)}
 .hidden{display:none!important}
 .hw-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--grey-100);min-width:120px}
 .hw-bar span{display:block;height:100%}
@@ -151,7 +150,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <div id="tab-homework" class="hidden">
     <div class="card">
       <div class="card-title"><span id="hw-form-title">➕ Assign Homework</span>
-        <span style="font-size:11px;color:var(--grey-400);font-weight:400">Students see it as a banner · reminder email 24h before the deadline</span>
+        <span style="font-size:11px;color:var(--grey-400);font-weight:400">Students see unfinished homework as a banner when they log in</span>
       </div>
       <div class="form-row">
         <div><label class="form-label">Class</label><select class="form-select" id="hw-class" style="min-width:150px"></select></div>
@@ -269,7 +268,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         </div>
       </div>
       <div style="font-size:11.5px;color:var(--grey-600);margin-top:8px">
-        🗄 Completed work is archived to a Google Doc (emailed to the student) and its detail is removed from the sheet after 10 days — scores stay here. <b>📄</b> = opens the Doc.
+        🗄 Completed work is saved to a Google Doc. After 10 days (from submission or the homework deadline, whichever is later) the detail is removed from the sheet — scores stay here and <b>📄 Open Docs</b> opens the Doc.
       </div>
       <div style="margin-top:10px">
         <input class="form-input" id="sess-search" placeholder="🔍 Filter by Student's name/ book…" style="width:100%;max-width:300px" oninput="renderSessionsTable()">
@@ -291,7 +290,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <th onclick="sessSort('gapFillScore')">Gap-fill</th>
             <th onclick="sessSort('dictationAccuracy')">Dictation</th>
             <th onclick="sessSort('totalScore')">Total Score</th>
-            <th>Detail</th>
+            <th>Details</th>
           </tr></thead>
           <tbody id="sessions-tbody"></tbody>
         </table>
@@ -506,7 +505,7 @@ function renderSessionsTable() {
       '<td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
       '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
       '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td>' +
-      '<td><button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + r.sessionId + '\')">' + (r.detailPurged ? '📄 Doc' : '🔍 Detail') + '</button></td></tr>';
+      '<td>' + detailsButton(r.sessionId, r.detailPurged, r.docUrl) + '</td></tr>';
   }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Không có kết quả.</td></tr>';
   document.getElementById('sess-count').textContent = rows.length + ' session(s)';
 }
@@ -658,6 +657,12 @@ async function exportCsv() {
   a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
 }
 
+// Details (trang HTML) khi chi tiết còn trong sheet; quá 10 ngày đã dọn → Open Docs mở thẳng Google Doc
+function detailsButton(sessionId, purged, docUrl) {
+  if (purged && docUrl) return '<a class="btn btn-secondary btn-sm" href="' + LD.esc(docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">📄 Open Docs</a>';
+  return '<button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + LD.esc(sessionId) + '\')">🔍 Details</button>';
+}
+
 // ── HOMEWORK BOOK ──
 function initHomeworkForm() {
   document.getElementById('hw-book-list').innerHTML = BOOKS.map(function (b) { return '<option value="' + b + '">'; }).join('');
@@ -730,7 +735,6 @@ async function loadHomework() {
     var status = left < 0 ? '<span class="badge badge-grey">Closed</span>'
       : left < 864e5 ? '<span class="badge badge-red">Due &lt; 24h</span>'
       : '<span class="badge badge-green">Open</span>';
-    if (h.reminderSentAt) status += ' <span class="badge badge-navy" title="Reminder sent ' + LD.esc(LD.fmtDate(h.reminderSentAt)) + '">📧</span>';
     var pd = h.total ? Math.round(h.done / h.total * 100) : 0, pp = h.total ? Math.round(h.partial / h.total * 100) : 0;
     var id = LD.esc(h.homeworkId);
     return '<tr><td><b>' + LD.fmtDate(h.deadline) + '</b></td><td>' + LD.esc(h.className) + '</td><td>' + LD.esc(h.bookTestPart) + '</td>' +
@@ -741,7 +745,6 @@ async function loadHomework() {
       '<td style="display:flex;gap:4px">' +
       '<button class="btn btn-secondary btn-sm" onclick="viewHomeworkProgress(\'' + id + '\')">👥 Progress</button>' +
       '<button class="btn btn-secondary btn-sm" title="Edit" onclick="editHomework(\'' + id + '\')">✏️</button>' +
-      '<button class="btn btn-secondary btn-sm" title="Email students who have not finished" onclick="remindHomework(\'' + id + '\')">📧</button>' +
       '<button class="btn btn-secondary btn-sm" title="Remove from Homework Book (results are kept)" style="color:var(--red)" onclick="deleteHomework(\'' + id + '\')">🗑</button>' +
       '</td></tr>';
   }).join('') : '<tr><td colspan="7" style="color:var(--grey-400);text-align:center">No homework assigned yet.</td></tr>';
@@ -769,15 +772,6 @@ async function deleteHomework(id) {
   if (!r.success) { LD.toast(r.error || 'Error', 'err'); return; }
   LD.toast('Removed.', 'ok'); loadHomework();
 }
-async function remindHomework(id) {
-  var h = App.homework.find(function (x) { return x.homeworkId === id; });
-  if (!h || !confirm('Email a reminder now to every student in ' + h.className + ' who has not finished ' + h.bookTestPart + '?')) return;
-  LD.toast('Sending…');
-  var r = await LD.api('homework.remind', { homeworkId: id });
-  if (!r.success) { LD.toast(r.error || 'Could not send', 'err', 5000); return; }
-  LD.toast('📧 Sent ' + r.sent + ' reminder(s)' + (r.skippedNoEmail ? ' · ' + r.skippedNoEmail + ' student(s) have no email' : ''), 'ok', 5000);
-  loadHomework();
-}
 async function viewHomeworkProgress(id) {
   var card = document.getElementById('hw-progress-card'), tb = document.getElementById('hw-progress-tbody');
   card.classList.remove('hidden');
@@ -795,7 +789,7 @@ async function viewHomeworkProgress(id) {
       '<td>' + dot(s.quizDone) + '</td><td>' + dot(s.gapDone) + '</td><td>' + dot(s.dictDone) + '</td>' +
       '<td>' + missing + '</td><td><b>' + (s.totalScore != null ? s.totalScore + '%' : '—') + '</b></td>' +
       '<td>' + (s.completedAt ? LD.fmtDate(s.completedAt) + (s.late ? ' <span class="badge badge-red">Late</span>' : '') : '—') + '</td>' +
-      '<td>' + (s.sessionId && s.partsDone > 0 ? '<button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + LD.esc(s.sessionId) + '\')">🔍 Detail</button>' : '') + '</td></tr>';
+      '<td>' + (s.sessionId && s.partsDone > 0 ? detailsButton(s.sessionId, s.detailPurged, s.docUrl) : '') + '</td></tr>';
   }).join('') : '<tr><td colspan="9" style="color:var(--grey-400)">No students in this class.</td></tr>';
   card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
