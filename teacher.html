@@ -17,7 +17,7 @@
 .topbar-btn{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,.85);font-size:12.5px;cursor:pointer;font-family:var(--font-body);font-weight:600}
 .topbar-btn:hover{background:rgba(255,255,255,.2);color:#fff}
 .wrap{width:100%;max-width:1280px;margin:0 auto;padding:22px 20px 60px}
-.tab-strip{display:flex;gap:4px;background:var(--grey-100);border-radius:12px;padding:4px;margin-bottom:18px;max-width:420px}
+.tab-strip{display:flex;gap:4px;background:var(--grey-100);border-radius:12px;padding:4px;margin-bottom:18px;max-width:620px}
 .tab-strip-btn{flex:1;padding:9px;border:none;background:transparent;border-radius:9px;font-family:var(--font-body);font-size:13px;font-weight:700;color:var(--grey-600);cursor:pointer}
 .tab-strip-btn.active{background:#fff;color:var(--red);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .card{background:var(--white);border-radius:var(--radius-lg);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--grey-200);margin-bottom:16px}
@@ -41,7 +41,15 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .badge-gold{background:#fff3cc;color:#7a5800;font-family:var(--font-mono)}
 .class-card{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--grey-100)}
 .class-card:last-child{border-bottom:none}
+.badge-red{background:var(--red-light);color:var(--red)}
+.badge-navy{background:#e3ebf7;color:var(--navy)}
 .hidden{display:none!important}
+.hw-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--grey-100);min-width:120px}
+.hw-bar span{display:block;height:100%}
+.hw-bar .b-done{background:var(--green)}.hw-bar .b-part{background:var(--gold)}
+.hw-legend{font-size:11px;color:var(--grey-600);margin-top:3px;white-space:nowrap}
+.part-dot{display:inline-block;width:22px;text-align:center;font-weight:800}
+.part-dot.ok{color:var(--green)}.part-dot.no{color:var(--grey-400)}
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -88,6 +96,10 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .dt-opt.correct{border-color:#2ea043;background:rgba(46,160,67,.1);color:#56d364;font-weight:700}
 .dt-opt.chosen-wrong{border-color:#c8102e;background:rgba(200,16,46,.1);color:#f85149;font-weight:700}
 .dt-empty{color:#8b949e;font-size:13px;padding:30px;text-align:center}
+.dt-doc-btn{background:#1f6feb;border:1px solid #1f6feb;color:#fff;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;text-decoration:none}
+.dt-doc-btn:hover{background:#388bfd}
+.dt-archived{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:36px 24px;text-align:center;color:#8b949e;font-size:13.5px;line-height:1.7}
+.dt-archived .dt-doc-btn{display:inline-block;margin-top:14px;font-size:14px;padding:11px 22px}
 </style>
 </head>
 <body>
@@ -103,7 +115,8 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 <div class="wrap">
   <div class="tab-strip">
     <button class="tab-strip-btn active" id="tab-btn-classes" onclick="switchTab('classes')">🏫 Classes</button>
-    <button class="tab-strip-btn" id="tab-btn-sessions" onclick="switchTab('sessions')">📊 Sessions</button>
+    <button class="tab-strip-btn" id="tab-btn-homework" onclick="switchTab('homework')">📚 Homework Book</button>
+    <button class="tab-strip-btn" id="tab-btn-sessions" onclick="switchTab('sessions')">📊 Results</button>
   </div>
 
   <!-- ═══ CLASSES ═══ -->
@@ -129,6 +142,55 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <div style="overflow:auto">
         <table class="ld-table"><thead><tr><th>Student ID</th><th>Full Name</th><th>Email</th><th>Status</th><th></th></tr></thead>
           <tbody id="roster-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ HOMEWORK BOOK ═══ -->
+  <div id="tab-homework" class="hidden">
+    <div class="card">
+      <div class="card-title"><span id="hw-form-title">➕ Assign Homework</span>
+        <span style="font-size:11px;color:var(--grey-400);font-weight:400">Students see it as a banner · reminder email 24h before the deadline</span>
+      </div>
+      <div class="form-row">
+        <div><label class="form-label">Class</label><select class="form-select" id="hw-class" style="min-width:150px"></select></div>
+        <div><label class="form-label">Book</label><input class="form-input" id="hw-book" list="hw-book-list" placeholder="Cam17" style="width:110px"></div>
+        <div><label class="form-label">Test</label><select class="form-select" id="hw-test"></select></div>
+        <div><label class="form-label">Part</label><select class="form-select" id="hw-part"></select></div>
+        <div><label class="form-label">Deadline</label><input class="form-input" type="datetime-local" id="hw-deadline"></div>
+        <div style="flex:1;min-width:180px"><label class="form-label">Note (optional)</label><input class="form-input" id="hw-note" placeholder="e.g. Focus on numbers &amp; spelling" style="width:100%"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-primary" id="hw-submit" onclick="submitHomework()">📌 Assign</button>
+        <button class="btn btn-secondary hidden" id="hw-cancel-edit" onclick="resetHomeworkForm()">Cancel edit</button>
+      </div>
+      <datalist id="hw-book-list"></datalist>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📚 Homework Book
+        <span style="display:flex;gap:8px;align-items:center">
+          <select class="form-select" id="hw-filter-class" onchange="loadHomework()" style="min-width:150px"></select>
+          <button class="btn btn-secondary btn-sm" onclick="loadHomework()">🔄 Refresh</button>
+        </span>
+      </div>
+      <div style="overflow:auto">
+        <table class="ld-table">
+          <thead><tr><th>Deadline</th><th>Class</th><th>Book / Test / Part</th><th>Note</th><th>Progress</th><th>Status</th><th></th></tr></thead>
+          <tbody id="hw-tbody"><tr><td colspan="7" style="color:var(--grey-400)">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card hidden" id="hw-progress-card">
+      <div class="card-title"><span id="hw-progress-title">Progress</span>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('hw-progress-card').classList.add('hidden')">✕ Close</button>
+      </div>
+      <div style="overflow:auto">
+        <table class="ld-table">
+          <thead><tr><th>Student ID</th><th>Full Name</th><th title="Quiz">Q</th><th title="Gap-fill">G</th><th title="Dictation">D</th><th>Missing</th><th>Total</th><th>Completed</th><th></th></tr></thead>
+          <tbody id="hw-progress-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -176,7 +238,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
           </select>
         </div>
       </div>
-      <!-- Row 2: Thời gian + nút Load + Export + Clear -->
+      <!-- Row 2: Thời gian + nút Load + Export -->
       <div class="toolbar" style="gap:8px;flex-wrap:wrap">
         <div>
           <label class="form-label">Time Range</label>
@@ -188,7 +250,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <option value="custom">Custom range…</option>
           </select>
         </div>
-        <div id="sess-custom-range" style="display:none;display:flex;gap:6px;align-items:flex-end">
+        <div id="sess-custom-range" style="display:none;gap:6px;align-items:flex-end">
           <div>
             <label class="form-label">From</label>
             <input type="date" class="form-input" id="sess-filter-from" style="width:130px">
@@ -204,8 +266,10 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         <div style="flex:1"></div>
         <div style="align-self:flex-end;display:flex;gap:6px">
           <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
-          <button class="btn btn-secondary btn-sm" style="color:var(--red);border-color:var(--red)" onclick="openClearModal()">🗑 Clear Data</button>
         </div>
+      </div>
+      <div style="font-size:11.5px;color:var(--grey-600);margin-top:8px">
+        🗄 Completed work is archived to a Google Doc (emailed to the student) and its detail is removed from the sheet after 10 days — scores stay here. <b>📄</b> = opens the Doc.
       </div>
       <div style="margin-top:10px">
         <input class="form-input" id="sess-search" placeholder="🔍 Filter by Student's name/ book…" style="width:100%;max-width:300px" oninput="renderSessionsTable()">
@@ -237,43 +301,19 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   </div>
 </div>
 
-<!-- ═══ CLEAR DATA MODAL ═══ -->
-<div class="ld-modal-bg" id="clearModal">
-  <div class="ld-auth-card" style="max-width:460px">
-    <div class="ld-auth-title" style="font-size:1.1rem;color:var(--red)">🗑 Clear Session Data</div>
-    <p class="ld-auth-sub" style="text-align:left;margin-bottom:8px">
-      Xoá nội dung chi tiết <b>(script, phân tích AI)</b> của các sessions <b>có tuổi trên 30 ngày</b>.<br>
-      Điểm số và thông tin làm bài vẫn được giữ nguyên.
-    </p>
-    <div id="clear-preview" style="background:var(--grey-100);border-radius:10px;padding:12px 16px;font-size:12.5px;margin-bottom:14px;color:var(--grey-800)">
-      <span class="spinner"></span> Loading…
-    </div>
-    <div class="ld-field">
-      <label class="ld-label">Lớp (để trống = tất cả lớp)</label>
-      <select class="ld-input" id="clear-class" style="height:auto;padding:10px 13px">
-        <option value="">— All classes —</option>
-      </select>
-    </div>
-    <div style="background:#fff3cd;border:1.5px solid #ffc107;border-radius:10px;padding:10px 14px;font-size:12.5px;color:#856404;margin-bottom:16px">
-      ⚠️ Thao tác này <b>không thể hoàn tác</b>. Script và JSON phân tích sẽ bị xoá vĩnh viễn. Điểm số được giữ lại.
-    </div>
-    <button class="ld-btn ld-btn-primary" id="btn-confirm-clear" style="background:linear-gradient(135deg,#c8102e,#9b0b22)" onclick="confirmClear()">🗑 Xoá dữ liệu cũ (&gt; 30 ngày)</button>
-    <div style="text-align:center;margin-top:12px">
-      <a href="#" onclick="closeClearModal();return false" style="font-size:12.5px;color:var(--grey-600);text-decoration:none">Huỷ</a>
-    </div>
-  </div>
-</div>
-
 <!-- ═══ SESSION DETAIL (dark overlay) ═══ -->
 <div id="detail-overlay">
   <div class="dt-topbar">
     <h2 id="dt-title">Session Detail</h2>
     <span class="dt-sub" id="dt-subtitle"></span>
-    <button class="dt-close" onclick="closeDetail()">✕ Close</button>
+    <span style="flex:1"></span>
+    <a class="dt-doc-btn hidden" id="dt-doc-link" target="_blank" rel="noopener">📄 Google Doc</a>
+    <button class="dt-close" onclick="closeDetail()" style="margin-left:0">✕ Close</button>
   </div>
   <div class="dt-wrap">
     <div class="dt-meta" id="dt-meta"></div>
     <div class="dt-stats" id="dt-stats"></div>
+    <div class="dt-archived hidden" id="dt-archived"></div>
     <div class="dt-tabs" id="dt-tabs">
       <button class="dt-tab-btn" id="dt-tab-btn-dictation" onclick="switchDetailTab('dictation')">🎧 Dictation</button>
       <button class="dt-tab-btn" id="dt-tab-btn-gapfill" onclick="switchDetailTab('gapfill')">🧩 Gap-fill</button>
@@ -287,22 +327,27 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
 <script src="ld-common.js"></script>
 <script>
-var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false };
+var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false,
+  homework: [], hwEditId: null, homeworkLoaded: false };
+var BOOKS = ['Cam11', 'Cam12', 'Cam13', 'Cam14', 'Cam15', 'Cam16', 'Cam17', 'Cam18', 'Cam19', 'Cam20', 'Cam21'];
 
 (function init() {
   var s = LD.session.require('Teacher');
   if (!s) return;
   document.getElementById('tb-user').textContent = '👤 ' + s.user.fullName;
+  initHomeworkForm();
   loadClasses();
 })();
 
+var TABS = ['classes', 'homework', 'sessions'];
 function switchTab(tab) {
-  document.getElementById('tab-classes').classList.toggle('hidden', tab !== 'classes');
-  document.getElementById('tab-sessions').classList.toggle('hidden', tab !== 'sessions');
-  document.getElementById('tab-btn-classes').classList.toggle('active', tab === 'classes');
-  document.getElementById('tab-btn-sessions').classList.toggle('active', tab === 'sessions');
+  TABS.forEach(function (t) {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+    document.getElementById('tab-btn-' + t).classList.toggle('active', t === tab);
+  });
   // Khi GV mở tab Sessions lần đầu: chỉ load filter options (lớp + book), KHÔNG load toàn bộ sessions
   if (tab === 'sessions' && !App.filterOptionsLoaded) loadFilterOptions();
+  if (tab === 'homework' && !App.homeworkLoaded) loadHomework();
 }
 
 // ── CLASSES ──
@@ -323,6 +368,7 @@ async function loadClasses() {
   var r = await LD.api('teacher.getClasses', {});
   if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(r.error) + '</span>'; return; }
   App.classes = r.data;
+  fillHomeworkClassSelects();
   // filter options sẽ được merge vào khi GV mở tab Sessions (loadFilterOptions)
   el.innerHTML = r.data.length ? r.data.map(function (c) {
     return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-gold">' + c.ClassID + '</span> ' +
@@ -368,7 +414,7 @@ async function loadFilterOptions() {
     var classOpts = r.data.map(function(c){
       return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>';
     }).join('');
-    ['sess-filter-class', 'clear-class'].forEach(function(id){
+    ['sess-filter-class'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.innerHTML = '<option value="">— All classes —</option>' + classOpts;
     });
@@ -460,46 +506,9 @@ function renderSessionsTable() {
       '<td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
       '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
       '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td>' +
-      '<td><button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + r.sessionId + '\')">🔍 Detail</button></td></tr>';
+      '<td><button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + r.sessionId + '\')">' + (r.detailPurged ? '📄 Doc' : '🔍 Detail') + '</button></td></tr>';
   }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Không có kết quả.</td></tr>';
   document.getElementById('sess-count').textContent = rows.length + ' session(s)';
-}
-
-// ── CLEAR DATA (cố định: > 30 ngày) ──
-async function openClearModal() {
-  // Sync class dropdown
-  var cls = document.getElementById('sess-filter-class').value;
-  if (cls) document.getElementById('clear-class').value = cls;
-  document.getElementById('clearModal').classList.add('show');
-  // Preview: tính ngày cutoff và hiện cho GV biết
-  var cutoff = new Date(Date.now() - 30 * 86400000);
-  var fmtCutoff = cutoff.toLocaleDateString('vi-VN', {day:'2-digit',month:'2-digit',year:'numeric'});
-  document.getElementById('clear-preview').innerHTML =
-    '🗓 Sẽ xoá script &amp; JSON của các sessions <b>trước ngày ' + fmtCutoff + '</b> (hơn 30 ngày tuổi).<br>' +
-    'Điểm Quiz, Gap-fill, Dictation vẫn giữ nguyên.';
-}
-function closeClearModal() { document.getElementById('clearModal').classList.remove('show'); }
-async function confirmClear() {
-  var classId = document.getElementById('clear-class').value;
-  var classLabel = classId
-    ? document.getElementById('clear-class').options[document.getElementById('clear-class').selectedIndex].text
-    : 'all classes';
-  // Tính to = hôm nay - 30 ngày = cutoff
-  var cutoff = new Date(Date.now() - 30 * 86400000);
-  var fromDate = '2000-01-01'; // epoch — lấy tất cả cũ hơn 30 ngày
-  var toDate = cutoff.toISOString().slice(0, 10);
-  var msg = 'Xoá script & JSON của lớp: ' + classLabel + '\nSessions trước ngày: ' + toDate + '\n\n⚠️ Không thể hoàn tác!';
-  if (!confirm(msg)) return;
-
-  var btn = document.getElementById('btn-confirm-clear');
-  btn.disabled = true; var orig = btn.textContent; btn.innerHTML = '<span class="ld-spin"></span> Đang xoá…';
-
-  var r = await LD.api('teacher.clearSessionData', { fromDate: fromDate, toDate: toDate, classId: classId });
-  btn.disabled = false; btn.textContent = orig;
-
-  if (!r.success) { LD.toast(r.error || 'Lỗi khi clear.', 'err'); return; }
-  LD.toast(r.message || ('Đã clear ' + r.cleared + ' sessions.'), 'ok', 5000);
-  closeClearModal();
 }
 
 async function loadSessions() { return loadFilteredSessions(); }
@@ -512,15 +521,33 @@ async function openDetail(sessionId) {
   document.getElementById('dt-subtitle').textContent = 'Loading…';
   document.getElementById('dt-meta').innerHTML = '';
   document.getElementById('dt-stats').innerHTML = '';
+  document.getElementById('dt-doc-link').classList.add('hidden');
+  document.getElementById('dt-archived').classList.add('hidden');
+  document.getElementById('dt-tabs').classList.remove('hidden');
   ['dictation', 'gapfill', 'quiz'].forEach(function (t) { document.getElementById('dt-pane-' + t).innerHTML = ''; });
   var r = await LD.api('teacher.getSessionDetail', { sessionId: sessionId });
   if (!r.success) { document.getElementById('dt-subtitle').textContent = 'Error: ' + (r.error || ''); return; }
   DetailApp.data = r.data;
+  var d = r.data;
   renderDetailHeader();
+  var docLink = document.getElementById('dt-doc-link');
+  if (d.DocURL) { docLink.href = d.DocURL; docLink.classList.remove('hidden'); }
+  // Chi tiết còn trong sheet → trang HTML như cũ. Đã bị dọn (sau 10 ngày) → mở bản lưu trên Google Docs.
+  var hasDetail = Array.isArray(d.CorrectedScriptJSON) && d.CorrectedScriptJSON.length > 0;
+  if (!hasDetail) {
+    document.getElementById('dt-tabs').classList.add('hidden');
+    ['dictation', 'gapfill', 'quiz'].forEach(function (t) { document.getElementById('dt-pane-' + t).classList.remove('active'); });
+    var box = document.getElementById('dt-archived');
+    box.classList.remove('hidden');
+    box.innerHTML = d.DocURL
+      ? '🗄 The detailed answers were archived on ' + LD.esc(LD.fmtDate(d.DetailPurgedAt)) + ' to keep the sheet light.<br>The full review (script, vocabulary, quiz / gap-fill / dictation answers) is in the Google Doc.' +
+        '<br><a class="dt-doc-btn" href="' + LD.esc(d.DocURL) + '" target="_blank" rel="noopener">📄 Open Google Doc</a>'
+      : '⚠️ No detailed answers are stored for this session (it was cleared before Doc archiving existed, or the student has not analysed the script yet).';
+    return;
+  }
   renderDictationDetail();
   renderGapFillDetail();
   renderQuizDetail();
-  var d = r.data;
   var defaultTab = d.DictationJSON ? 'dictation' : (d.GapFillJSON ? 'gapfill' : 'quiz');
   switchDetailTab(defaultTab);
 }
@@ -532,6 +559,8 @@ function switchDetailTab(tab) {
     document.getElementById('dt-pane-' + t).classList.toggle('active', t === tab);
   });
 }
+// Same rule as student.html checkSentence: ignore punctuation/apostrophes/dashes and case
+function dtWordKey(w) { return String(w || '').replace(/[\u2018\u2019\u02BC\u02B9]/g, "'").replace(/[^a-z0-9]/gi, '').toLowerCase(); }
 function dtWc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
 function renderDetailHeader() {
   var d = DetailApp.data;
@@ -562,12 +591,12 @@ function renderDictationDetail() {
   var answers = dj.answers || [];
   pane.innerHTML = sentences.map(function (s, i) {
     var st = answers[i] || { typed: '', checked: false };
-    var actualWords = s.replace(/[.,!?;:"]/g, '').split(/\s+/);
-    var typedWords = (st.typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/);
+    var actualWords = s.split(/\s+/).filter(Boolean);
+    var typedWords = (st.typed || '').split(/\s+/).filter(Boolean);
     var allOk = true;
     var html = actualWords.map(function (w, wi) {
-      var tw = (typedWords[wi] || '').toLowerCase();
-      var ok = tw === w.toLowerCase();
+      var tw = dtWordKey(typedWords[wi]);
+      var ok = tw === dtWordKey(w);
       if (!ok) allOk = false;
       return '<span class="' + (ok ? 'dt-w-ok' : (tw ? 'dt-w-bad' : 'dt-w-miss')) + '">' + LD.esc(w) + '</span>';
     }).join(' ');
@@ -620,12 +649,155 @@ function renderQuizDetail() {
 }
 function sessSort(key) { App.sessSortDir = App.sessSortKey === key ? -App.sessSortDir : -1; App.sessSortKey = key; renderSessionsTable(); }
 async function exportCsv() {
-  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: document.getElementById('sess-filter-from').value, toDate: document.getElementById('sess-filter-to').value };
+  var dates = buildDateRange();
+  var p = { classId: document.getElementById('sess-filter-class').value, fromDate: dates.fromDate, toDate: dates.toDate };
   var r = await LD.api('teacher.exportSessions', p);
   if (!r.success) { LD.toast(r.error || 'Could not export CSV', 'err'); return; }
   var blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' });
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'lisdictation-sessions.csv'; a.click();
+}
+
+// ── HOMEWORK BOOK ──
+function initHomeworkForm() {
+  document.getElementById('hw-book-list').innerHTML = BOOKS.map(function (b) { return '<option value="' + b + '">'; }).join('');
+  var nums = function (n) { var o = ''; for (var i = 1; i <= n; i++) o += '<option>' + i + '</option>'; return o; };
+  document.getElementById('hw-test').innerHTML = nums(15);
+  document.getElementById('hw-part').innerHTML = nums(8);
+  resetHomeworkForm();
+}
+function fillHomeworkClassSelects() {
+  var active = App.classes.filter(function (c) { return c.Status === 'Active'; });
+  var opts = active.map(function (c) { return '<option value="' + LD.esc(c.ClassID) + '">' + LD.esc(c.ClassName) + '</option>'; }).join('');
+  var sel = document.getElementById('hw-class'), keep = sel.value;
+  sel.innerHTML = '<option value="">— Select class —</option>' + opts;
+  if (keep) sel.value = keep;
+  var f = document.getElementById('hw-filter-class'), keepF = f.value;
+  f.innerHTML = '<option value="">— All classes —</option>' + App.classes.map(function (c) {
+    return '<option value="' + LD.esc(c.ClassID) + '">' + LD.esc(c.ClassName) + '</option>';
+  }).join('');
+  if (keepF) f.value = keepF;
+}
+// datetime-local cần giờ địa phương dạng YYYY-MM-DDTHH:mm
+function toLocalInput(d) {
+  var z = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes());
+}
+function resetHomeworkForm() {
+  App.hwEditId = null;
+  var d = new Date(Date.now() + 7 * 864e5); d.setHours(23, 59, 0, 0); // mặc định: 23:59, 1 tuần sau
+  document.getElementById('hw-deadline').value = toLocalInput(d);
+  document.getElementById('hw-note').value = '';
+  document.getElementById('hw-class').disabled = false;
+  document.getElementById('hw-form-title').textContent = '➕ Assign Homework';
+  document.getElementById('hw-submit').textContent = '📌 Assign';
+  document.getElementById('hw-cancel-edit').classList.add('hidden');
+}
+async function submitHomework() {
+  var p = {
+    classId: document.getElementById('hw-class').value,
+    book: document.getElementById('hw-book').value.trim(),
+    test: document.getElementById('hw-test').value,
+    part: document.getElementById('hw-part').value,
+    note: document.getElementById('hw-note').value.trim()
+  };
+  var dl = document.getElementById('hw-deadline').value;
+  if (!App.hwEditId && !p.classId) { LD.toast('Select a class.', 'err'); return; }
+  if (!p.book) { LD.toast('Enter the book (e.g. Cam17).', 'err'); return; }
+  if (!dl) { LD.toast('Set a deadline.', 'err'); return; }
+  p.deadline = new Date(dl).toISOString();
+  if (!App.hwEditId && new Date(dl).getTime() < Date.now()) { LD.toast('The deadline is in the past.', 'err'); return; }
+  var btn = document.getElementById('hw-submit'), orig = btn.textContent;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  if (App.hwEditId) p.homeworkId = App.hwEditId;
+  var r = await LD.api(App.hwEditId ? 'homework.update' : 'homework.create', p);
+  btn.disabled = false; btn.textContent = orig;
+  if (!r.success) { LD.toast(r.error || 'Could not save', 'err', 4000); return; }
+  LD.toast(App.hwEditId ? 'Homework updated.' : 'Homework assigned — students will see it when they log in.', 'ok', 3500);
+  resetHomeworkForm();
+  loadHomework();
+}
+async function loadHomework() {
+  var tb = document.getElementById('hw-tbody');
+  tb.innerHTML = '<tr><td colspan="7"><span class="spinner"></span> Loading…</td></tr>';
+  var r = await LD.api('homework.list', { classId: document.getElementById('hw-filter-class').value });
+  if (!r.success) { tb.innerHTML = '<tr><td colspan="7" style="color:var(--red)">' + LD.esc(r.error || 'Error') + '</td></tr>'; return; }
+  App.homeworkLoaded = true;
+  App.homework = r.data;
+  var now = Date.now();
+  tb.innerHTML = r.data.length ? r.data.map(function (h) {
+    var dl = new Date(h.deadline).getTime(), left = dl - now;
+    var status = left < 0 ? '<span class="badge badge-grey">Closed</span>'
+      : left < 864e5 ? '<span class="badge badge-red">Due &lt; 24h</span>'
+      : '<span class="badge badge-green">Open</span>';
+    if (h.reminderSentAt) status += ' <span class="badge badge-navy" title="Reminder sent ' + LD.esc(LD.fmtDate(h.reminderSentAt)) + '">📧</span>';
+    var pd = h.total ? Math.round(h.done / h.total * 100) : 0, pp = h.total ? Math.round(h.partial / h.total * 100) : 0;
+    var id = LD.esc(h.homeworkId);
+    return '<tr><td><b>' + LD.fmtDate(h.deadline) + '</b></td><td>' + LD.esc(h.className) + '</td><td>' + LD.esc(h.bookTestPart) + '</td>' +
+      '<td style="white-space:normal;max-width:220px;color:var(--grey-600)">' + LD.esc(h.note || '') + '</td>' +
+      '<td><div class="hw-bar"><span class="b-done" style="width:' + pd + '%"></span><span class="b-part" style="width:' + pp + '%"></span></div>' +
+      '<div class="hw-legend">✅ ' + h.done + ' · ⏳ ' + h.partial + ' · ○ ' + h.notStarted + ' / ' + h.total + '</div></td>' +
+      '<td>' + status + '</td>' +
+      '<td style="display:flex;gap:4px">' +
+      '<button class="btn btn-secondary btn-sm" onclick="viewHomeworkProgress(\'' + id + '\')">👥 Progress</button>' +
+      '<button class="btn btn-secondary btn-sm" title="Edit" onclick="editHomework(\'' + id + '\')">✏️</button>' +
+      '<button class="btn btn-secondary btn-sm" title="Email students who have not finished" onclick="remindHomework(\'' + id + '\')">📧</button>' +
+      '<button class="btn btn-secondary btn-sm" title="Remove from Homework Book (results are kept)" style="color:var(--red)" onclick="deleteHomework(\'' + id + '\')">🗑</button>' +
+      '</td></tr>';
+  }).join('') : '<tr><td colspan="7" style="color:var(--grey-400);text-align:center">No homework assigned yet.</td></tr>';
+}
+function editHomework(id) {
+  var h = App.homework.find(function (x) { return x.homeworkId === id; });
+  if (!h) return;
+  App.hwEditId = id;
+  var cls = document.getElementById('hw-class');
+  cls.value = h.classId; cls.disabled = true; // đổi lớp = bài mới → giao bài khác thay vì sửa
+  document.getElementById('hw-book').value = h.book;
+  document.getElementById('hw-test').value = h.test;
+  document.getElementById('hw-part').value = h.part;
+  document.getElementById('hw-deadline').value = toLocalInput(new Date(h.deadline));
+  document.getElementById('hw-note').value = h.note || '';
+  document.getElementById('hw-form-title').textContent = '✏️ Edit ' + h.bookTestPart + ' · ' + h.className;
+  document.getElementById('hw-submit').textContent = '💾 Save';
+  document.getElementById('hw-cancel-edit').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+async function deleteHomework(id) {
+  var h = App.homework.find(function (x) { return x.homeworkId === id; });
+  if (!h || !confirm('Remove ' + h.bookTestPart + ' (' + h.className + ') from the Homework Book?\nStudents\' results are NOT deleted.')) return;
+  var r = await LD.api('homework.delete', { homeworkId: id });
+  if (!r.success) { LD.toast(r.error || 'Error', 'err'); return; }
+  LD.toast('Removed.', 'ok'); loadHomework();
+}
+async function remindHomework(id) {
+  var h = App.homework.find(function (x) { return x.homeworkId === id; });
+  if (!h || !confirm('Email a reminder now to every student in ' + h.className + ' who has not finished ' + h.bookTestPart + '?')) return;
+  LD.toast('Sending…');
+  var r = await LD.api('homework.remind', { homeworkId: id });
+  if (!r.success) { LD.toast(r.error || 'Could not send', 'err', 5000); return; }
+  LD.toast('📧 Sent ' + r.sent + ' reminder(s)' + (r.skippedNoEmail ? ' · ' + r.skippedNoEmail + ' student(s) have no email' : ''), 'ok', 5000);
+  loadHomework();
+}
+async function viewHomeworkProgress(id) {
+  var card = document.getElementById('hw-progress-card'), tb = document.getElementById('hw-progress-tbody');
+  card.classList.remove('hidden');
+  tb.innerHTML = '<tr><td colspan="9"><span class="spinner"></span> Loading…</td></tr>';
+  var r = await LD.api('homework.progress', { homeworkId: id });
+  if (!r.success) { tb.innerHTML = '<tr><td colspan="9" style="color:var(--red)">' + LD.esc(r.error || 'Error') + '</td></tr>'; return; }
+  var h = r.homework;
+  document.getElementById('hw-progress-title').textContent = '👥 ' + h.bookTestPart + ' · ' + h.className + ' · due ' + LD.fmtDate(h.deadline);
+  var dot = function (ok) { return '<span class="part-dot ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + '</span>'; };
+  tb.innerHTML = r.data.length ? r.data.map(function (s) {
+    var missing = s.partsDone === 3 ? '<span class="badge badge-green">Done</span>'
+      : s.partsDone === 0 ? '<span class="badge badge-grey">Not started</span>'
+      : '<span style="color:var(--red);font-weight:700">' + LD.esc(s.missing.join(', ')) + '</span>';
+    return '<tr><td>' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td>' +
+      '<td>' + dot(s.quizDone) + '</td><td>' + dot(s.gapDone) + '</td><td>' + dot(s.dictDone) + '</td>' +
+      '<td>' + missing + '</td><td><b>' + (s.totalScore != null ? s.totalScore + '%' : '—') + '</b></td>' +
+      '<td>' + (s.completedAt ? LD.fmtDate(s.completedAt) + (s.late ? ' <span class="badge badge-red">Late</span>' : '') : '—') + '</td>' +
+      '<td>' + (s.sessionId && s.partsDone > 0 ? '<button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + LD.esc(s.sessionId) + '\')">🔍 Detail</button>' : '') + '</td></tr>';
+  }).join('') : '<tr><td colspan="9" style="color:var(--grey-400)">No students in this class.</td></tr>';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 </script>
 </body>

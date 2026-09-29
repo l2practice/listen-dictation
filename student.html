@@ -161,6 +161,21 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .sc-footer{padding:14px 20px 18px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--grey-100)}
 .sc-footer label{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--grey-600);cursor:pointer}
 .sc-footer .btn{flex:1}
+/* ── Homework banner ─────────────────────────────────────── */
+.hw-banner{background:#fffaf0;border:1.5px solid #e6c85a;border-left:5px solid var(--gold);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px}
+.hw-banner-title{font-family:var(--font-display);font-size:1.05rem;color:var(--black);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hw-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px dashed #ecd9a0}
+.hw-item:first-of-type{border-top:none}
+.hw-item.done{opacity:.6}
+.hw-item-main{flex:1;min-width:220px}
+.hw-btp{font-weight:800;font-size:14.5px;color:var(--navy2)}
+.hw-due{font-size:12px;color:var(--grey-600);margin-top:2px}
+.hw-due.soon{color:var(--red);font-weight:700}
+.hw-chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:100px;margin:4px 4px 0 0;background:var(--grey-100);color:var(--grey-600)}
+.hw-chip.ok{background:var(--green-light);color:var(--green)}
+.hw-note{font-size:12px;color:#7a5800;margin-top:4px}
+.hw-selected{display:flex;align-items:center;gap:8px;background:var(--green-light);color:var(--green);border-radius:8px;padding:7px 11px;font-size:12.5px;font-weight:700;margin-top:10px}
+.hw-selected button{margin-left:auto;background:none;border:none;color:var(--green);font-weight:800;cursor:pointer}
 </style>
 </head>
 <body>
@@ -182,6 +197,8 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <h1 style="font-family:var(--font-display);color:#fff;font-size:1.4rem">🎧 Lis<em style="color:var(--red-mid);font-style:normal">Dictation</em></h1>
       <p style="color:rgba(255,255,255,.55);font-size:12.5px;margin-top:4px">Listen · Analyze · Study · Quiz · Gap-fill · Dictation</p>
     </div>
+
+    <div id="hw-banner" class="hw-banner hidden"></div>
 
     <div class="setup-grid">
       <div>
@@ -253,6 +270,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
                 <option>5</option><option>6</option><option>7</option><option>8</option>
               </select>
             </div>
+            <div id="hw-selected" class="hw-selected hidden"></div>
           </div>
         </div>
         <button class="btn btn-primary btn-full" id="btn-start-session" onclick="startSession()" style="padding:14px;font-size:15px;margin-bottom:16px" disabled>
@@ -430,6 +448,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <div><span>Gap-fill</span><span id="result-gapfill">—</span></div>
       <div><span>Dictation accuracy</span><span id="result-dictation">—</span></div>
     </div>
+    <div id="result-report" style="font-size:13px;color:var(--grey-600);margin-top:16px;line-height:1.6"></div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
       <button class="btn btn-secondary" onclick="goHistory()">📊 History</button>
       <button class="btn btn-primary" onclick="location.href='student.html'">🏠 New Session</button>
@@ -475,8 +494,6 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <th onclick="histSort('totalScore')">Total</th>
             <th>Status</th>
             <th></th>
-            <th onclick="histSort('totalScore')">Total</th>
-            <th>Status</th>
           </tr></thead>
           <tbody id="history-tbody"></tbody>
         </table>
@@ -508,7 +525,8 @@ var App = {
   gapfill: [], gapfillAnswers: [], gapBlankState: [], gapSegments: [], gapSegIdx: 0,
   dictationIdx: 0, dictationAnswers: [], dictationReplaysUsed: [],
   dictMode: 'auto', pausePoints: [], _pausedForCurrentIdx: false,
-  histRows: [], histSortKey: 'startTime', histSortDir: -1
+  histRows: [], histSortKey: 'startTime', histSortDir: -1,
+  homework: [], homeworkId: ''
 };
 
 (function init() {
@@ -526,6 +544,7 @@ var App = {
   updateLdKeyStatus();
   updateGroqKeyStatus();
   checkInProgressHint();
+  loadHomeworkBanner();
 
   // Resume from History (?resume=SESSIONID) — only Dictation is resumable
   var params = new URLSearchParams(location.search);
@@ -929,12 +948,13 @@ async function _doStartSession(btn) {
   if (!btn) btn = document.getElementById('btn-start-session');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating session…';
   try {
-    var r = await LD.api('session.start', { bookTestPart: App.bookTestPart });
+    var r = await LD.api('session.start', { bookTestPart: App.bookTestPart, homeworkId: App.homeworkId || '' });
     if (!r.success) throw new Error(r.error || 'Could not create session');
     App.sessionId = r.sessionId;
     await LD.api('session.saveAnalysis', {
       sessionId: App.sessionId, scriptText: App.rawScript,
-      correctedSentences: App.correctedSentences, cefr: App.cefr, collocations: App.collocations
+      // gloss (nghĩa VI + IPA của từ B2+) lưu kèm CEFRJSON — để resume và để xuất Google Doc
+      correctedSentences: App.correctedSentences, cefr: Object.assign({}, App.cefr, { gloss: App.gloss }), collocations: App.collocations
     });
     goStudy();
   } catch (err) {
@@ -1597,16 +1617,24 @@ async function saveDictationAndExit() {
     if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Exit'; }
   }
 }
+// Cùng quy tắc so từ với checkSentence (bỏ dấu câu / nháy / gạch, không phân biệt hoa thường) —
+// trước đây điểm accuracy dùng quy tắc khác nên câu đã "xanh" vẫn có thể bị tính sai (vd. don’t vs don't).
+function dictWordKey(w) {
+  return String(w || '').replace(/[\u2018\u2019\u02BC\u02B9]/g, "'").replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+function dictScore() {
+  var totalWords = 0, correctWords = 0;
+  App.correctedSentences.forEach(function (s, i) {
+    var actual = s.split(/\s+/).filter(Boolean);
+    var typed = ((App.dictationAnswers[i] && App.dictationAnswers[i].typed) || '').split(/\s+/).filter(Boolean);
+    actual.forEach(function (w, wi) { totalWords++; if (dictWordKey(typed[wi]) === dictWordKey(w)) correctWords++; });
+  });
+  return totalWords ? Math.round(correctWords / totalWords * 100) : 0;
+}
 async function finishDictation() {
   var btn = document.getElementById('btn-finish-dictation');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting…'; }
-  var totalWords = 0, correctWords = 0;
-  App.correctedSentences.forEach(function (s, i) {
-    var actual = s.replace(/[.,!?;:"]/g, '').split(/\s+/);
-    var typed = (App.dictationAnswers[i].typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/);
-    actual.forEach(function (w, wi) { totalWords++; if ((typed[wi] || '').toLowerCase() === w.toLowerCase()) correctWords++; });
-  });
-  var accuracy = totalWords ? Math.round(correctWords / totalWords * 100) : 0;
+  var accuracy = dictScore();
   try {
     var r = await LD.api('session.finishDictation', { sessionId: App.sessionId, answers: App.dictationAnswers, accuracy: accuracy });
     if (!r.success) {
@@ -1617,6 +1645,7 @@ async function finishDictation() {
     document.getElementById('result-total').textContent = r.totalScore + '%';
     loadFinalScoresIntoResult();
     showScreen('screen-result');
+    requestReport(App.sessionId);
   } catch (e) {
     LD.toast('Network error: ' + e.message, 'err');
     if (btn) { btn.disabled = false; btn.textContent = '🏁 Submit'; }
@@ -1628,9 +1657,20 @@ function loadFinalScoresIntoResult() {
   var gTotal = 0, gCorrect = 0;
   App.gapfill.forEach(function (g, gi) { g.blankWordIdx.forEach(function (wi, bi) { gTotal++; if (App.gapBlankState[gi] && App.gapBlankState[gi][bi] && App.gapBlankState[gi][bi].firstTryCorrect) gCorrect++; }); });
   document.getElementById('result-gapfill').textContent = gTotal ? (gCorrect + '/' + gTotal) : '—';
-  var totalWords = 0, correctWords = 0;
-  App.correctedSentences.forEach(function (s, i) { var actual = s.replace(/[.,!?;:"]/g, '').split(/\s+/); var typed = (App.dictationAnswers[i].typed || '').replace(/[.,!?;:"]/g, '').split(/\s+/); actual.forEach(function (w, wi) { totalWords++; if ((typed[wi] || '').toLowerCase() === w.toLowerCase()) correctWords++; }); });
-  document.getElementById('result-dictation').textContent = totalWords ? Math.round(correctWords / totalWords * 100) + '%' : '—';
+  document.getElementById('result-dictation').textContent = App.correctedSentences.length ? dictScore() + '%' : '—';
+}
+// Tạo Google Doc tổng kết + gửi email (server). Không chặn màn hình kết quả; cron mỗi giờ là lưới an toàn.
+async function requestReport(sessionId) {
+  var el = document.getElementById('result-report');
+  el.innerHTML = '<span class="spinner"></span> Creating your summary document (script, vocabulary, answers)…';
+  try {
+    var r = await LD.api('session.exportReport', { sessionId: sessionId });
+    if (!r.success) throw new Error(r.error || 'failed');
+    el.innerHTML = (r.emailed ? '📧 A summary (Google Doc + PDF) has been emailed to you.<br>' : '') +
+      '<a href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="color:var(--red);font-weight:700">📄 Open your summary document</a>';
+  } catch (e) {
+    el.textContent = '📧 Your summary document will be emailed to you within the hour.';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1647,6 +1687,7 @@ async function resumeSession(sessionId) {
     App.bookTestPart = d.BookTestPart || '';
     App.correctedSentences = d.CorrectedScriptJSON || [];
     App.cefr = d.CEFRJSON || null;
+    App.gloss = (d.CEFRJSON && d.CEFRJSON.gloss) || {};
     App.collocations = d.CollocationJSON || [];
     var dj = d.DictationJSON || { currentSentenceIdx: 0, answers: [] };
     App.dictationAnswers = App.correctedSentences.map(function (s, i) { return (dj.answers && dj.answers[i]) || { typed: '', checked: false }; });
@@ -1761,7 +1802,9 @@ function renderHistoryTable() {
       '<td>' + qScore + '</td><td>' + gScore + '</td><td>' + dScore + '</td>' +
       '<td>' + total + '</td>' +
       '<td>' + statusBadge + '</td>' +
-      '<td><button class="btn btn-sm" style="color:var(--red);background:none;border:1.5px solid var(--red);padding:4px 8px" onclick="deleteSession(\'' + r.sessionId + '\',this)" title="Xoá bài này">🗑</button></td>' +
+      '<td>' + (r.isComplete
+        ? (r.docUrl ? '<a href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" title="Summary document" style="text-decoration:none">📄</a>' : '')
+        : '<button class="btn btn-sm" style="color:var(--red);background:none;border:1.5px solid var(--red);padding:4px 8px" onclick="deleteSession(\'' + r.sessionId + '\',this)" title="Xoá bài này">🗑</button>') + '</td>' +
       '</tr>';
   }).join('');
 }
@@ -1825,6 +1868,7 @@ async function expandSession(sessionId, btn) {
     App.bookTestPart = d.BookTestPart || '';
     App.correctedSentences = d.CorrectedScriptJSON || [];
     App.cefr = d.CEFRJSON || null;
+    App.gloss = (d.CEFRJSON && d.CEFRJSON.gloss) || {};
     App.collocations = d.CollocationJSON || [];
 
     var quizDone  = !!d.QuizScore || d.QuizScore === 0;
@@ -1904,6 +1948,84 @@ async function deleteSession(sessionId, btn) {
     LD.toast('Đã xoá bài học.', 'ok');
   } catch(e) { LD.toast('Network error: ' + e.message, 'err'); btn.disabled = false; btn.textContent = '🗑'; }
 }
+// ═══════════════════════════════════════════════════════════
+// HOMEWORK BANNER — bài GV giao (Homework Book)
+// ═══════════════════════════════════════════════════════════
+async function loadHomeworkBanner() {
+  try {
+    var r = await LD.api('homework.mine', {});
+    if (!r || !r.success) return;
+    App.homework = r.data || [];
+    renderHomeworkBanner();
+  } catch (e) {}
+}
+function hwDueText(iso) {
+  var ms = new Date(iso).getTime() - Date.now();
+  var when = LD.fmtDate(iso);
+  if (ms < 0) return { text: 'Overdue — deadline was ' + when, soon: true };
+  var h = Math.floor(ms / 3600000);
+  var rel = h < 1 ? 'less than 1 hour left' : h < 48 ? h + ' hours left' : Math.floor(h / 24) + ' days left';
+  return { text: 'Due ' + when + ' · ' + rel, soon: ms < 864e5 };
+}
+function renderHomeworkBanner() {
+  var el = document.getElementById('hw-banner');
+  var list = App.homework || [];
+  if (!list.length) { el.classList.add('hidden'); return; }
+  var pending = list.filter(function (h) { return !h.completed; }).length;
+  var chip = function (label, ok) { return '<span class="hw-chip' + (ok ? ' ok' : '') + '">' + (ok ? '✓ ' : '○ ') + label + '</span>'; };
+  el.innerHTML = '<div class="hw-banner-title">📚 Homework from your teacher ' +
+    (pending ? '<span class="badge" style="background:var(--red);color:#fff">' + pending + ' to do</span>'
+             : '<span class="badge" style="background:var(--green-light);color:var(--green)">All done 🎉</span>') + '</div>' +
+    list.map(function (h) {
+      var due = hwDueText(h.deadline), id = LD.esc(h.homeworkId), action;
+      if (h.completed) action = '<span class="hw-chip ok">✅ Done' + (h.totalScore != null ? ' · ' + h.totalScore + '%' : '') + '</span>';
+      else if (h.sessionId && h.partsDone > 0) action = '<button class="btn btn-primary btn-sm" onclick="continueHomework(\'' + id + '\',this)">▶ Continue</button>';
+      else action = '<button class="btn btn-primary btn-sm" onclick="startHomework(\'' + id + '\')">▶ Start</button>';
+      return '<div class="hw-item' + (h.completed ? ' done' : '') + '"><div class="hw-item-main">' +
+        '<div class="hw-btp">' + LD.esc(h.bookTestPart) + '</div>' +
+        '<div class="hw-due' + (due.soon && !h.completed ? ' soon' : '') + '">' + (h.completed ? 'Due ' + LD.fmtDate(h.deadline) : LD.esc(due.text)) + '</div>' +
+        '<div>' + chip('Quiz', h.quizDone) + chip('Gap-fill', h.gapDone) + chip('Dictation', h.dictDone) + '</div>' +
+        (h.note ? '<div class="hw-note">📌 ' + LD.esc(h.note) + '</div>' : '') +
+        '</div>' + action + '</div>';
+    }).join('');
+  el.classList.remove('hidden');
+}
+function _selectValue(id, val) {
+  var sel = document.getElementById(id);
+  val = String(val);
+  var has = Array.prototype.some.call(sel.options, function (o) { return o.value === val; });
+  if (!has) {
+    var opt = document.createElement('option'); opt.value = val; opt.textContent = val;
+    var custom = sel.querySelector('option[value="__custom__"]');
+    sel.insertBefore(opt, custom || null);
+  }
+  sel.value = val;
+}
+// Bắt đầu bài được giao: điền sẵn + khoá Book/Test/Part để kết quả khớp đúng bài GV giao
+function startHomework(id) {
+  var h = (App.homework || []).find(function (x) { return x.homeworkId === id; });
+  if (!h) return;
+  App.homeworkId = h.homeworkId;
+  _selectValue('book-input', h.book); _selectValue('test-input', h.test); _selectValue('part-input', h.part);
+  ['book-input', 'test-input', 'part-input'].forEach(function (x) { document.getElementById(x).disabled = true; });
+  var ind = document.getElementById('hw-selected');
+  ind.innerHTML = '📚 Homework: ' + LD.esc(h.bookTestPart) + '<button onclick="clearHomeworkSelection()" title="Practice something else">✕</button>';
+  ind.classList.remove('hidden');
+  document.getElementById('audio-file-input').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  LD.toast('Add the audio and paste the script for ' + h.bookTestPart + ', then Split → Analyze → Start.', 'ok', 5000);
+}
+function clearHomeworkSelection() {
+  App.homeworkId = '';
+  ['book-input', 'test-input', 'part-input'].forEach(function (x) { document.getElementById(x).disabled = false; });
+  document.getElementById('hw-selected').classList.add('hidden');
+}
+function continueHomework(id, btn) {
+  var h = (App.homework || []).find(function (x) { return x.homeworkId === id; });
+  if (!h || !h.sessionId) return;
+  App.homeworkId = h.homeworkId;
+  expandSession(h.sessionId, btn);
+}
+
 function histSort(key) {
   App.histSortDir = App.histSortKey === key ? -App.histSortDir : -1;
   App.histSortKey = key;
