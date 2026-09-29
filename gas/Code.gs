@@ -24,7 +24,7 @@ var CONFIG = {
     CLASSES:  'Classes',
     SESSIONS: 'Sessions',
     SETTINGS: 'Settings',
-    HOMEWORK: 'Homework'
+    REVIEWS:  'Reviews'
   }
 };
 
@@ -74,9 +74,9 @@ function routeAction(action, p, tok) {
   var user = validateUser(tok);
   if (!user) return { success: false, error: 'SESSION_EXPIRED' };
 
-  // Homework Book + Report Doc (Homework.gs)
-  var hw = hwRoute(action, user, p);
-  if (hw) return hw;
+  // Report Doc + New Practice (Reports.gs)
+  var rp = rpRoute(action, user, p);
+  if (rp) return rp;
 
   // Student actions — mọi Role đều dùng chung (Teacher cũng có thể gọi nếu cần test)
   if (action === 'session.start')               return sessionStart(user, p);
@@ -165,12 +165,12 @@ function headerSpec() {
       'QuizJSON', 'GapFillJSON', 'DictationJSON',
       'QuizScore', 'GapFillScore', 'DictationAccuracy', 'TotalScore',
       'CreatedAt',
-      // Homework.gs — ensureColumns tự thêm vào cuối sheet hiện có
-      'HomeworkID', 'DocURL', 'DetailPurgedAt'
+      // Reports.gs — ensureColumns tự thêm vào cuối sheet hiện có
+      'DocURL', 'DetailPurgedAt'
     ],
     Settings: ['Key', 'Value'],
-    Homework: ['HomeworkID', 'ClassID', 'ClassName', 'Book', 'Test', 'Part', 'BookTestPart',
-               'Deadline', 'Note', 'Status', 'CreatedBy', 'CreatedAt']
+    // Reports.gs — mốc GV đã tick "Done" cho từng nhóm Lớp + Book/Test/Part trong tab New Practice
+    Reviews: ['GroupKey', 'ClassID', 'BookTestPart', 'ReviewedUpTo', 'PrevReviewedUpTo', 'ReviewedAt', 'ReviewedBy']
   };
 }
 function initHeaders(sheet, name) {
@@ -462,8 +462,7 @@ function sessionStart(user, p) {
     var rec = {
       SessionID: id, StudentID: user.studentId, StudentName: user.fullName,
       ClassID: user.classId, ClassName: user.className, BookTestPart: p.bookTestPart || '',
-      StartTime: now, CreatedAt: now,
-      HomeworkID: hwResolveHomeworkId_(user, p.homeworkId, p.bookTestPart)
+      StartTime: now, CreatedAt: now
     };
     var hdrs = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     sheet.appendRow(hdrs.map(function (h) { return rec[h] != null ? rec[h] : ''; }));
@@ -494,7 +493,7 @@ function _getCell(found, colName) {
 }
 
 // Trạng thái từng phần dựa vào CỘT ĐIỂM, không dựa vào JSON — vì JSON chi tiết bị xoá sau 10 ngày
-// (Homework.gs) nhưng kết quả vẫn phải hiện cho GV và SV. get(colName) → giá trị ô.
+// (Reports.gs) nhưng kết quả vẫn phải hiện cho GV và SV. get(colName) → giá trị ô.
 function _progressOf(get) {
   var has = function (v) { return v !== '' && v != null; };
   var dj = {};
@@ -813,7 +812,7 @@ function teacherClearSessionData(p) {
       var d = new Date(st);
       if (d < fromDate || d > toDate) continue;
       if (classId && String(rowData[ci['ClassID']] || '').toUpperCase() !== classId) continue;
-      // An toàn: chỉ xoá chi tiết của bài ĐÃ có Google Doc lưu trữ (Homework.gs)
+      // An toàn: chỉ xoá chi tiết của bài ĐÃ có Google Doc lưu trữ (Reports.gs)
       if (!rowData[ci['DocURL']]) continue;
 
       // Kiểm tra có gì để xoá không
@@ -941,10 +940,6 @@ function studentDeleteSession(user, p) {
       var prog = _progressOf(function (k) { return row[ci[k]]; });
       if (prog.quizDone && prog.gapDone && prog.dictDone) {
         return { success: false, error: 'Bài đã hoàn thành đủ 3 phần — không thể xoá.' };
-      }
-      // Bài thuộc Homework Book (kể cả đang làm dở) là bằng chứng quá trình làm bài cho GV → không cho xoá
-      if (hwIsAssigned_(user, row[ci['HomeworkID']], row[ci['BookTestPart']])) {
-        return { success: false, error: 'Bài này thuộc bài tập GV đã giao — không thể xoá.' };
       }
       sheet.deleteRow(i + 1); // +1 vì data[0] là header, sheet row 1 = data[0]
       return { success: true };

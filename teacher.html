@@ -41,14 +41,20 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .badge-gold{background:#fff3cc;color:#7a5800;font-family:var(--font-mono)}
 .class-card{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--grey-100)}
 .class-card:last-child{border-bottom:none}
-.badge-red{background:var(--red-light);color:var(--red)}
 .hidden{display:none!important}
-.hw-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--grey-100);min-width:120px}
-.hw-bar span{display:block;height:100%}
-.hw-bar .b-done{background:var(--green)}.hw-bar .b-part{background:var(--gold)}
-.hw-legend{font-size:11px;color:var(--grey-600);margin-top:3px;white-space:nowrap}
-.part-dot{display:inline-block;width:22px;text-align:center;font-weight:800}
-.part-dot.ok{color:var(--green)}.part-dot.no{color:var(--grey-400)}
+.np-row td{vertical-align:middle}
+.np-row.done td{opacity:.45}
+.np-class{font-weight:800;color:var(--navy2)}
+.np-btp{font-weight:700}
+.np-period{font-family:var(--font-mono);font-size:12px;color:var(--grey-600)}
+.np-done{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--grey-600);cursor:pointer;user-select:none}
+.np-done input{width:17px;height:17px;accent-color:var(--green);cursor:pointer}
+.np-undo{background:none;border:none;color:var(--red);font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline}
+.np-sub td{background:var(--grey-100);padding:0 12px 12px}
+.np-sub table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden}
+.np-sub th,.np-sub td.c{padding:8px 10px;font-size:12.5px;border-bottom:1px solid var(--grey-100);text-align:left}
+.np-sub th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--grey-600)}
+.tab-count{display:inline-block;min-width:18px;padding:0 6px;margin-left:4px;border-radius:100px;background:var(--red);color:#fff;font-size:11px;line-height:18px}
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -117,13 +123,31 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
 <div class="wrap">
   <div class="tab-strip">
-    <button class="tab-strip-btn active" id="tab-btn-classes" onclick="switchTab('classes')">🏫 Classes</button>
-    <button class="tab-strip-btn" id="tab-btn-homework" onclick="switchTab('homework')">📚 Homework Book</button>
+    <button class="tab-strip-btn active" id="tab-btn-practice" onclick="switchTab('practice')">🆕 New Practice<span class="tab-count hidden" id="np-count"></span></button>
+    <button class="tab-strip-btn" id="tab-btn-classes" onclick="switchTab('classes')">🏫 Classes</button>
     <button class="tab-strip-btn" id="tab-btn-sessions" onclick="switchTab('sessions')">📊 Results</button>
   </div>
 
   <!-- ═══ CLASSES ═══ -->
-  <div id="tab-classes">
+  <!-- ═══ NEW PRACTICE ═══ -->
+  <div id="tab-practice">
+    <div class="card">
+      <div class="card-title">🆕 New Practice
+        <span style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:11px;color:var(--grey-400);font-weight:400">Completed sessions (all 3 parts) you have not marked Done yet</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadNewPractice()">🔄 Refresh</button>
+        </span>
+      </div>
+      <div style="overflow:auto">
+        <table class="ld-table">
+          <thead><tr><th>Class</th><th>New session</th><th>Period</th><th>Submissions</th><th>Avg total</th><th></th><th>Done</th></tr></thead>
+          <tbody id="np-tbody"><tr><td colspan="7" style="color:var(--grey-400)">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-classes" class="hidden">
     <div class="card">
       <div class="card-title">➕ Create New Class</div>
       <div class="form-row">
@@ -145,55 +169,6 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <div style="overflow:auto">
         <table class="ld-table"><thead><tr><th>Student ID</th><th>Full Name</th><th>Email</th><th>Status</th><th></th></tr></thead>
           <tbody id="roster-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ HOMEWORK BOOK ═══ -->
-  <div id="tab-homework" class="hidden">
-    <div class="card">
-      <div class="card-title"><span id="hw-form-title">➕ Assign Homework</span>
-        <span style="font-size:11px;color:var(--grey-400);font-weight:400">Students see unfinished homework as a banner when they log in</span>
-      </div>
-      <div class="form-row">
-        <div><label class="form-label">Class</label><select class="form-select" id="hw-class" style="min-width:150px"></select></div>
-        <div><label class="form-label">Book</label><input class="form-input" id="hw-book" list="hw-book-list" placeholder="Cam17" style="width:110px"></div>
-        <div><label class="form-label">Test</label><select class="form-select" id="hw-test"></select></div>
-        <div><label class="form-label">Part</label><select class="form-select" id="hw-part"></select></div>
-        <div><label class="form-label">Deadline</label><input class="form-input" type="datetime-local" id="hw-deadline"></div>
-        <div style="flex:1;min-width:180px"><label class="form-label">Note (optional)</label><input class="form-input" id="hw-note" placeholder="e.g. Focus on numbers &amp; spelling" style="width:100%"></div>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn-primary" id="hw-submit" onclick="submitHomework()">📌 Assign</button>
-        <button class="btn btn-secondary hidden" id="hw-cancel-edit" onclick="resetHomeworkForm()">Cancel edit</button>
-      </div>
-      <datalist id="hw-book-list"></datalist>
-    </div>
-
-    <div class="card">
-      <div class="card-title">📚 Homework Book
-        <span style="display:flex;gap:8px;align-items:center">
-          <select class="form-select" id="hw-filter-class" onchange="loadHomework()" style="min-width:150px"></select>
-          <button class="btn btn-secondary btn-sm" onclick="loadHomework()">🔄 Refresh</button>
-        </span>
-      </div>
-      <div style="overflow:auto">
-        <table class="ld-table">
-          <thead><tr><th>Deadline</th><th>Class</th><th>Book / Test / Part</th><th>Note</th><th>Progress</th><th>Status</th><th></th></tr></thead>
-          <tbody id="hw-tbody"><tr><td colspan="7" style="color:var(--grey-400)">Loading…</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card hidden" id="hw-progress-card">
-      <div class="card-title"><span id="hw-progress-title">Progress</span>
-        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('hw-progress-card').classList.add('hidden')">✕ Close</button>
-      </div>
-      <div style="overflow:auto">
-        <table class="ld-table">
-          <thead><tr><th>Student ID</th><th>Full Name</th><th title="Quiz">Q</th><th title="Gap-fill">G</th><th title="Dictation">D</th><th>Missing</th><th>Total</th><th>Completed</th><th></th></tr></thead>
-          <tbody id="hw-progress-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -272,7 +247,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         </div>
       </div>
       <div style="font-size:11.5px;color:var(--grey-600);margin-top:8px">
-        🗄 Completed work is saved to a Google Doc. After 10 days (from submission or the homework deadline, whichever is later) the detail is removed from the sheet — scores stay here and <b>📄 Open Docs</b> opens the Doc.
+        🗄 Completed work is saved to a Google Doc. 10 days after completion the detail is removed from the sheet — scores stay here and <b>📄 Open Docs</b> opens the Doc.
       </div>
       <div style="margin-top:10px">
         <input class="form-input" id="sess-search" placeholder="🔍 Filter by Student's name/ book…" style="width:100%;max-width:300px" oninput="renderSessionsTable()">
@@ -331,18 +306,17 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 <script src="ld-common.js"></script>
 <script>
 var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false,
-  homework: [], hwEditId: null, homeworkLoaded: false };
-var BOOKS = ['Cam11', 'Cam12', 'Cam13', 'Cam14', 'Cam15', 'Cam16', 'Cam17', 'Cam18', 'Cam19', 'Cam20', 'Cam21'];
+  practice: [], practiceOpen: {} };
 
 (function init() {
   var s = LD.session.require('Teacher');
   if (!s) return;
   document.getElementById('tb-user').textContent = '👤 ' + s.user.fullName;
-  initHomeworkForm();
   loadClasses();
+  loadNewPractice(); // tab mặc định khi GV đăng nhập
 })();
 
-var TABS = ['classes', 'homework', 'sessions'];
+var TABS = ['practice', 'classes', 'sessions'];
 function switchTab(tab) {
   TABS.forEach(function (t) {
     document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
@@ -350,7 +324,6 @@ function switchTab(tab) {
   });
   // Khi GV mở tab Sessions lần đầu: chỉ load filter options (lớp + book), KHÔNG load toàn bộ sessions
   if (tab === 'sessions' && !App.filterOptionsLoaded) loadFilterOptions();
-  if (tab === 'homework' && !App.homeworkLoaded) loadHomework();
 }
 
 // ── CLASSES ──
@@ -371,7 +344,6 @@ async function loadClasses() {
   var r = await LD.api('teacher.getClasses', {});
   if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(r.error) + '</span>'; return; }
   App.classes = r.data;
-  fillHomeworkClassSelects();
   // filter options sẽ được merge vào khi GV mở tab Sessions (loadFilterOptions)
   el.innerHTML = r.data.length ? r.data.map(function (c) {
     return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-gold">' + c.ClassID + '</span> ' +
@@ -665,135 +637,71 @@ function detailsButton(sessionId, purged, docUrl) {
   return '<button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + LD.esc(sessionId) + '\')">🔍 Details</button>';
 }
 
-// ── HOMEWORK BOOK ──
-function initHomeworkForm() {
-  document.getElementById('hw-book-list').innerHTML = BOOKS.map(function (b) { return '<option value="' + b + '">'; }).join('');
-  var nums = function (n) { var o = ''; for (var i = 1; i <= n; i++) o += '<option>' + i + '</option>'; return o; };
-  document.getElementById('hw-test').innerHTML = nums(15);
-  document.getElementById('hw-part').innerHTML = nums(8);
-  resetHomeworkForm();
+// ── NEW PRACTICE ──
+function fmtDay(iso) {
+  var d = new Date(iso);
+  return isNaN(d) ? '—' : d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
-function fillHomeworkClassSelects() {
-  var active = App.classes.filter(function (c) { return c.Status === 'Active'; });
-  var opts = active.map(function (c) { return '<option value="' + LD.esc(c.ClassID) + '">' + LD.esc(c.ClassName) + '</option>'; }).join('');
-  var sel = document.getElementById('hw-class'), keep = sel.value;
-  sel.innerHTML = '<option value="">— Select class —</option>' + opts;
-  if (keep) sel.value = keep;
-  var f = document.getElementById('hw-filter-class'), keepF = f.value;
-  f.innerHTML = '<option value="">— All classes —</option>' + App.classes.map(function (c) {
-    return '<option value="' + LD.esc(c.ClassID) + '">' + LD.esc(c.ClassName) + '</option>';
-  }).join('');
-  if (keepF) f.value = keepF;
-}
-// datetime-local cần giờ địa phương dạng YYYY-MM-DDTHH:mm
-function toLocalInput(d) {
-  var z = function (n) { return (n < 10 ? '0' : '') + n; };
-  return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes());
-}
-function resetHomeworkForm() {
-  App.hwEditId = null;
-  var d = new Date(Date.now() + 7 * 864e5); d.setHours(23, 59, 0, 0); // mặc định: 23:59, 1 tuần sau
-  document.getElementById('hw-deadline').value = toLocalInput(d);
-  document.getElementById('hw-note').value = '';
-  document.getElementById('hw-class').disabled = false;
-  document.getElementById('hw-form-title').textContent = '➕ Assign Homework';
-  document.getElementById('hw-submit').textContent = '📌 Assign';
-  document.getElementById('hw-cancel-edit').classList.add('hidden');
-}
-async function submitHomework() {
-  var p = {
-    classId: document.getElementById('hw-class').value,
-    book: document.getElementById('hw-book').value.trim(),
-    test: document.getElementById('hw-test').value,
-    part: document.getElementById('hw-part').value,
-    note: document.getElementById('hw-note').value.trim()
-  };
-  var dl = document.getElementById('hw-deadline').value;
-  if (!App.hwEditId && !p.classId) { LD.toast('Select a class.', 'err'); return; }
-  if (!p.book) { LD.toast('Enter the book (e.g. Cam17).', 'err'); return; }
-  if (!dl) { LD.toast('Set a deadline.', 'err'); return; }
-  p.deadline = new Date(dl).toISOString();
-  if (!App.hwEditId && new Date(dl).getTime() < Date.now()) { LD.toast('The deadline is in the past.', 'err'); return; }
-  var btn = document.getElementById('hw-submit'), orig = btn.textContent;
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
-  if (App.hwEditId) p.homeworkId = App.hwEditId;
-  var r = await LD.api(App.hwEditId ? 'homework.update' : 'homework.create', p);
-  btn.disabled = false; btn.textContent = orig;
-  if (!r.success) { LD.toast(r.error || 'Could not save', 'err', 4000); return; }
-  LD.toast(App.hwEditId ? 'Homework updated.' : 'Homework assigned — students will see it when they log in.', 'ok', 3500);
-  resetHomeworkForm();
-  loadHomework();
-}
-async function loadHomework() {
-  var tb = document.getElementById('hw-tbody');
+async function loadNewPractice() {
+  var tb = document.getElementById('np-tbody');
   tb.innerHTML = '<tr><td colspan="7"><span class="spinner"></span> Loading…</td></tr>';
-  var r = await LD.api('homework.list', { classId: document.getElementById('hw-filter-class').value });
+  var r = await LD.api('practice.new', {});
   if (!r.success) { tb.innerHTML = '<tr><td colspan="7" style="color:var(--red)">' + LD.esc(r.error || 'Error') + '</td></tr>'; return; }
-  App.homeworkLoaded = true;
-  App.homework = r.data;
-  var now = Date.now();
-  tb.innerHTML = r.data.length ? r.data.map(function (h) {
-    var dl = new Date(h.deadline).getTime(), left = dl - now;
-    var status = left < 0 ? '<span class="badge badge-grey">Closed</span>'
-      : left < 864e5 ? '<span class="badge badge-red">Due &lt; 24h</span>'
-      : '<span class="badge badge-green">Open</span>';
-    var pd = h.total ? Math.round(h.done / h.total * 100) : 0, pp = h.total ? Math.round(h.partial / h.total * 100) : 0;
-    var id = LD.esc(h.homeworkId);
-    return '<tr><td><b>' + LD.fmtDate(h.deadline) + '</b></td><td>' + LD.esc(h.className) + '</td><td>' + LD.esc(h.bookTestPart) + '</td>' +
-      '<td style="white-space:normal;max-width:220px;color:var(--grey-600)">' + LD.esc(h.note || '') + '</td>' +
-      '<td><div class="hw-bar"><span class="b-done" style="width:' + pd + '%"></span><span class="b-part" style="width:' + pp + '%"></span></div>' +
-      '<div class="hw-legend">✅ ' + h.done + ' · ⏳ ' + h.partial + ' · ○ ' + h.notStarted + ' / ' + h.total + '</div></td>' +
-      '<td>' + status + '</td>' +
-      '<td style="display:flex;gap:4px">' +
-      '<button class="btn btn-secondary btn-sm" onclick="viewHomeworkProgress(\'' + id + '\')">👥 Progress</button>' +
-      '<button class="btn btn-secondary btn-sm" title="Edit" onclick="editHomework(\'' + id + '\')">✏️</button>' +
-      '<button class="btn btn-secondary btn-sm" title="Remove from Homework Book (results are kept)" style="color:var(--red)" onclick="deleteHomework(\'' + id + '\')">🗑</button>' +
-      '</td></tr>';
-  }).join('') : '<tr><td colspan="7" style="color:var(--grey-400);text-align:center">No homework assigned yet.</td></tr>';
+  App.practice = r.data.map(function (g) { g._done = false; return g; });
+  renderNewPractice();
 }
-function editHomework(id) {
-  var h = App.homework.find(function (x) { return x.homeworkId === id; });
-  if (!h) return;
-  App.hwEditId = id;
-  var cls = document.getElementById('hw-class');
-  cls.value = h.classId; cls.disabled = true; // đổi lớp = bài mới → giao bài khác thay vì sửa
-  document.getElementById('hw-book').value = h.book;
-  document.getElementById('hw-test').value = h.test;
-  document.getElementById('hw-part').value = h.part;
-  document.getElementById('hw-deadline').value = toLocalInput(new Date(h.deadline));
-  document.getElementById('hw-note').value = h.note || '';
-  document.getElementById('hw-form-title').textContent = '✏️ Edit ' + h.bookTestPart + ' · ' + h.className;
-  document.getElementById('hw-submit').textContent = '💾 Save';
-  document.getElementById('hw-cancel-edit').classList.remove('hidden');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+function updatePracticeCount() {
+  var n = App.practice.filter(function (g) { return !g._done; }).length;
+  var el = document.getElementById('np-count');
+  el.textContent = n; el.classList.toggle('hidden', !n);
 }
-async function deleteHomework(id) {
-  var h = App.homework.find(function (x) { return x.homeworkId === id; });
-  if (!h || !confirm('Remove ' + h.bookTestPart + ' (' + h.className + ') from the Homework Book?\nStudents\' results are NOT deleted.')) return;
-  var r = await LD.api('homework.delete', { homeworkId: id });
-  if (!r.success) { LD.toast(r.error || 'Error', 'err'); return; }
-  LD.toast('Removed.', 'ok'); loadHomework();
+function renderNewPractice() {
+  var tb = document.getElementById('np-tbody');
+  updatePracticeCount();
+  if (!App.practice.length) { tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--grey-400);padding:28px">🎉 No new practice — you are up to date.</td></tr>'; return; }
+  tb.innerHTML = App.practice.map(function (g, i) {
+    var open = !!App.practiceOpen[g.groupKey];
+    var row = '<tr class="np-row' + (g._done ? ' done' : '') + '">' +
+      '<td class="np-class">' + LD.esc(g.className) + '</td>' +
+      '<td class="np-btp">' + LD.esc(g.bookTestPart) + '</td>' +
+      '<td class="np-period">' + fmtDay(g.from) + ' – ' + fmtDay(g.to) + '</td>' +
+      '<td>' + g.count + ' student' + (g.count > 1 ? 's' : '') + '</td>' +
+      '<td><b>' + (g.avgScore != null ? g.avgScore + '%' : '—') + '</b></td>' +
+      '<td><button class="btn btn-secondary btn-sm" onclick="togglePracticeGroup(' + i + ')">' + (open ? '▲ Hide' : '👥 View') + '</button></td>' +
+      '<td>' + (g._done
+        ? '✓ Done <button class="np-undo" onclick="undoPracticeDone(' + i + ')">Undo</button>'
+        : '<label class="np-done"><input type="checkbox" onchange="markPracticeDone(' + i + ',this)"></label>') + '</td></tr>';
+    if (!open) return row;
+    return row + '<tr class="np-sub"><td colspan="7"><table><thead><tr><th>Student</th><th>Completed</th><th>Quiz</th><th>Gap-fill</th><th>Dictation</th><th>Total</th><th>Details</th></tr></thead><tbody>' +
+      g.sessions.map(function (s) {
+        return '<tr><td class="c">' + LD.esc(s.studentName) + ' <span style="color:var(--grey-400)">(' + LD.esc(s.studentId) + ')</span></td>' +
+          '<td class="c">' + LD.fmtDate(s.endTime) + '</td>' +
+          '<td class="c">' + s.quizScore + '%</td><td class="c">' + s.gapFillScore + '%</td><td class="c">' + s.dictationAccuracy + '%</td>' +
+          '<td class="c"><b>' + (s.totalScore != null ? s.totalScore + '%' : '—') + '</b></td>' +
+          '<td class="c">' + detailsButton(s.sessionId, s.detailPurged, s.docUrl) + '</td></tr>';
+      }).join('') + '</tbody></table></td></tr>';
+  }).join('');
 }
-async function viewHomeworkProgress(id) {
-  var card = document.getElementById('hw-progress-card'), tb = document.getElementById('hw-progress-tbody');
-  card.classList.remove('hidden');
-  tb.innerHTML = '<tr><td colspan="9"><span class="spinner"></span> Loading…</td></tr>';
-  var r = await LD.api('homework.progress', { homeworkId: id });
-  if (!r.success) { tb.innerHTML = '<tr><td colspan="9" style="color:var(--red)">' + LD.esc(r.error || 'Error') + '</td></tr>'; return; }
-  var h = r.homework;
-  document.getElementById('hw-progress-title').textContent = '👥 ' + h.bookTestPart + ' · ' + h.className + ' · due ' + LD.fmtDate(h.deadline);
-  var dot = function (ok) { return '<span class="part-dot ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✓' : '○') + '</span>'; };
-  tb.innerHTML = r.data.length ? r.data.map(function (s) {
-    var missing = s.partsDone === 3 ? '<span class="badge badge-green">Done</span>'
-      : s.partsDone === 0 ? '<span class="badge badge-grey">Not started</span>'
-      : '<span style="color:var(--red);font-weight:700">' + LD.esc(s.missing.join(', ')) + '</span>';
-    return '<tr><td>' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td>' +
-      '<td>' + dot(s.quizDone) + '</td><td>' + dot(s.gapDone) + '</td><td>' + dot(s.dictDone) + '</td>' +
-      '<td>' + missing + '</td><td><b>' + (s.totalScore != null ? s.totalScore + '%' : '—') + '</b></td>' +
-      '<td>' + (s.completedAt ? LD.fmtDate(s.completedAt) + (s.late ? ' <span class="badge badge-red">Late</span>' : '') : '—') + '</td>' +
-      '<td>' + (s.sessionId && s.partsDone > 0 ? detailsButton(s.sessionId, s.detailPurged, s.docUrl) : '') + '</td></tr>';
-  }).join('') : '<tr><td colspan="9" style="color:var(--grey-400)">No students in this class.</td></tr>';
-  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function togglePracticeGroup(i) {
+  var k = App.practice[i].groupKey;
+  App.practiceOpen[k] = !App.practiceOpen[k];
+  renderNewPractice();
+}
+async function markPracticeDone(i, cb) {
+  var g = App.practice[i];
+  cb.disabled = true;
+  // upTo = bài mới nhất đang hiển thị → bài nộp sau thời điểm này vẫn hiện lại ở lần đăng nhập sau
+  var r = await LD.api('practice.markDone', { classId: g.classId, bookTestPart: g.bookTestPart, upTo: g.to });
+  if (!r.success) { cb.checked = false; cb.disabled = false; LD.toast(r.error || 'Could not save', 'err'); return; }
+  g._done = true;
+  renderNewPractice();
+}
+async function undoPracticeDone(i) {
+  var g = App.practice[i];
+  var r = await LD.api('practice.undoDone', { classId: g.classId, bookTestPart: g.bookTestPart });
+  if (!r.success) { LD.toast(r.error || 'Could not undo', 'err'); return; }
+  g._done = false;
+  renderNewPractice();
 }
 </script>
 </body>

@@ -161,18 +161,6 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .sc-footer{padding:14px 20px 18px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--grey-100)}
 .sc-footer label{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--grey-600);cursor:pointer}
 .sc-footer .btn{flex:1}
-/* ── Homework banner ─────────────────────────────────────── */
-.hw-banner{background:#fffaf0;border:1.5px solid #e6c85a;border-left:5px solid var(--gold);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px}
-.hw-banner-title{font-family:var(--font-display);font-size:1.05rem;color:var(--black);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.hw-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px dashed #ecd9a0}
-.hw-item:first-of-type{border-top:none}
-.hw-item-main{flex:1;min-width:220px}
-.hw-btp{font-weight:800;font-size:14.5px;color:var(--navy2)}
-.hw-due{font-size:12px;color:var(--grey-600);margin-top:2px}
-.hw-due.soon{color:var(--red);font-weight:700}
-.hw-chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:100px;margin:4px 4px 0 0;background:var(--grey-100);color:var(--grey-600)}
-.hw-chip.ok{background:var(--green-light);color:var(--green)}
-.hw-note{font-size:12px;color:#7a5800;margin-top:4px}
 </style>
 </head>
 <body>
@@ -194,8 +182,6 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
       <h1 style="font-family:var(--font-display);color:#fff;font-size:1.4rem">🎧 Lis<em style="color:var(--red-mid);font-style:normal">Dictation</em></h1>
       <p style="color:rgba(255,255,255,.55);font-size:12.5px;margin-top:4px">Listen · Analyze · Study · Quiz · Gap-fill · Dictation</p>
     </div>
-
-    <div id="hw-banner" class="hw-banner hidden"></div>
 
     <div class="setup-grid">
       <div>
@@ -521,8 +507,7 @@ var App = {
   gapfill: [], gapfillAnswers: [], gapBlankState: [], gapSegments: [], gapSegIdx: 0,
   dictationIdx: 0, dictationAnswers: [], dictationReplaysUsed: [],
   dictMode: 'auto', pausePoints: [], _pausedForCurrentIdx: false,
-  histRows: [], histSortKey: 'startTime', histSortDir: -1,
-  homework: []
+  histRows: [], histSortKey: 'startTime', histSortDir: -1
 };
 
 (function init() {
@@ -540,7 +525,6 @@ var App = {
   updateLdKeyStatus();
   updateGroqKeyStatus();
   checkInProgressHint();
-  loadHomeworkBanner();
 
   // Resume from History (?resume=SESSIONID) — only Dictation is resumable
   var params = new URLSearchParams(location.search);
@@ -1964,45 +1948,6 @@ async function deleteSession(sessionId, btn) {
     LD.toast('Đã xoá bài học.', 'ok');
   } catch(e) { LD.toast('Network error: ' + e.message, 'err'); btn.disabled = false; btn.textContent = '🗑'; }
 }
-// ═══════════════════════════════════════════════════════════
-// HOMEWORK BANNER — bài GV giao (Homework Book)
-// ═══════════════════════════════════════════════════════════
-async function loadHomeworkBanner() {
-  try {
-    var r = await LD.api('homework.mine', {});
-    if (!r || !r.success) return;
-    App.homework = r.data || [];
-    renderHomeworkBanner();
-  } catch (e) {}
-}
-function hwDueText(iso) {
-  var ms = new Date(iso).getTime() - Date.now();
-  var when = LD.fmtDate(iso);
-  if (ms < 0) return { text: 'Overdue — deadline was ' + when, soon: true };
-  var h = Math.floor(ms / 3600000);
-  var rel = h < 1 ? 'less than 1 hour left' : h < 48 ? h + ' hours left' : Math.floor(h / 24) + ' days left';
-  return { text: 'Due ' + when + ' · ' + rel, soon: ms < 864e5 };
-}
-// Chỉ thông báo — không khoá bài. Server chỉ trả bài CHƯA xong; SV làm xong đủ 3 phần là bài tự biến mất.
-function renderHomeworkBanner() {
-  var el = document.getElementById('hw-banner');
-  var list = App.homework || [];
-  if (!list.length) { el.classList.add('hidden'); return; }
-  var chip = function (label, ok) { return '<span class="hw-chip' + (ok ? ' ok' : '') + '">' + (ok ? '✓ ' : '○ ') + label + '</span>'; };
-  el.innerHTML = '<div class="hw-banner-title">📚 Homework from your teacher ' +
-    '<span class="badge" style="background:var(--red);color:#fff">' + list.length + ' to do</span></div>' +
-    list.map(function (h) {
-      var due = hwDueText(h.deadline);
-      return '<div class="hw-item"><div class="hw-item-main">' +
-        '<div class="hw-btp">' + LD.esc(h.bookTestPart) + '</div>' +
-        '<div class="hw-due' + (due.soon ? ' soon' : '') + '">' + LD.esc(due.text) + '</div>' +
-        '<div>' + chip('Quiz', h.quizDone) + chip('Gap-fill', h.gapDone) + chip('Dictation', h.dictDone) + '</div>' +
-        (h.note ? '<div class="hw-note">📌 ' + LD.esc(h.note) + '</div>' : '') +
-        '</div></div>';
-    }).join('');
-  el.classList.remove('hidden');
-}
-
 function histSort(key) {
   App.histSortDir = App.histSortKey === key ? -App.histSortDir : -1;
   App.histSortKey = key;
