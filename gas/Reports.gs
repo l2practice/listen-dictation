@@ -19,6 +19,7 @@ var RP = {
   PURGE_AFTER_DAYS: 10,
   EXPORT_BATCH: 8,          // số Doc tạo tối đa mỗi lần cron chạy (quota tạo Docs tài khoản cá nhân ~250/ngày)
   PURGE_BATCH: 80,
+  NEW_PRACTICE_PER_CLASS: 2,       // tab New Practice: số bài mới nhất hiện cho mỗi lớp
   NEW_PRACTICE_BACKFILL_DAYS: 30,  // lần đầu cài: chỉ coi bài hoàn thành trong 30 ngày gần nhất là "mới"
   REPORT_FOLDER: 'LisDictation — Student Reports',
   // 'link' = ai có link đều xem được → SV mở được Doc từ app mà không cần được share riêng
@@ -389,6 +390,13 @@ function rpNewPractice() {
     return g;
   });
   data.sort(function (a, b) { return a.className.localeCompare(b.className) || rpTime_(b.to) - rpTime_(a.to); });
+  // Mỗi lớp chỉ hiện RP.NEW_PRACTICE_PER_CLASS bài mới nhất (theo ngày hoàn thành gần nhất)
+  var perClass = {};
+  data = data.filter(function (g) {
+    var k = String(g.classId).toUpperCase();
+    perClass[k] = (perClass[k] || 0) + 1;
+    return perClass[k] <= RP.NEW_PRACTICE_PER_CLASS;
+  });
   return { success: true, data: data };
 }
 
