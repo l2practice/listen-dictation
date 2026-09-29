@@ -84,8 +84,12 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 .dt-w-ok{color:#3fb950;font-weight:700}
 .dt-w-bad{color:#f85149;font-weight:700;text-decoration:line-through}
 .dt-w-miss{color:#d29922;font-weight:800}
-.dt-blank{background:rgba(200,16,46,.18);border:1px solid #c8102e;border-radius:5px;padding:0 6px;color:#ff7b8a;font-weight:700}
-.dt-blank.correct{background:rgba(46,160,67,.18);border-color:#2ea043;color:#56d364}
+.dt-gf-sum{font-size:12.5px;color:#8b949e;margin-bottom:10px}
+.dt-gf-script{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:16px 20px;font-size:14.5px;line-height:2}
+.dt-gf-script p{margin:0 0 6px}
+.dt-gf-no{color:#8b949e;font-size:12px}
+.dt-gf-ok{color:#3fb950;font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.dt-gf-bad{color:#f85149;font-weight:800;text-decoration:line-through}
 .dt-q{background:#161b22;border:1px solid #30363d;border-radius:11px;padding:14px 16px;margin-bottom:12px}
 .dt-q-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 9px;border-radius:100px;margin-bottom:8px}
 .dt-q-tag.content{background:rgba(200,16,46,.18);color:#ff7b8a}
@@ -605,31 +609,29 @@ function renderDictationDetail() {
       '<div class="typed">Typed: ' + html + '</div></div>';
   }).join('');
 }
+// Toàn bộ script; ô điền gạch dưới. Đúng lần đầu → xanh đậm gạch dưới; sai → từ SV điền gạch ngang đỏ + từ đúng xanh.
+// firstTryCorrect/firstTryGiven = lần thử ĐẦU (điểm mastery-learning) — SV có thể thử lại đến khi đúng.
 function renderGapFillDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-gapfill');
   var gj = d.GapFillJSON;
   var sentences = d.CorrectedScriptJSON || [];
   if (!gj || !gj.answers || !gj.answers.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Gap-fill part yet.</div>'; return; }
-  var bySentence = {};
-  gj.answers.forEach(function (a) { (bySentence[a.sentenceIdx] = bySentence[a.sentenceIdx] || []).push(a); });
-  pane.innerHTML = Object.keys(bySentence).map(function (si) {
-    si = Number(si);
-    var sentence = sentences[si] || '';
-    var parts = sentence.split(/(\s+)/);
-    var blanks = bySentence[si];
-    // firstTryCorrect reflects the student's FIRST attempt (the mastery-learning score); the
-    // student may have retried until correct, so show what they typed the first time, not the
-    // final (always-correct) value — that's the meaningful signal for a teacher reviewing mistakes.
-    var allOk = blanks.every(function (b) { return b.firstTryCorrect; });
-    var out = parts.map(function (w, wi) {
-      var b = blanks.find(function (x) { return x.wordIdx === wi; });
-      if (!b) return LD.esc(w);
-      var ok = !!b.firstTryCorrect;
-      var shown = b.firstTryGiven != null ? b.firstTryGiven : b.given;
-      return '<span class="dt-blank' + (ok ? ' correct' : '') + '">' + LD.esc(shown || '(blank)') + (ok ? '' : ' → ' + LD.esc(b.actual)) + '</span>';
-    }).join('');
-    return '<div class="dt-sentence ' + (allOk ? 'ok' : 'bad') + '"><div class="sn">Sentence ' + (si + 1) + (allOk ? '' : ' · needed a retry') + '</div><div class="typed">' + out + '</div></div>';
-  }).join('');
+  var blanks = {};
+  gj.answers.forEach(function (a) { (blanks[a.sentenceIdx] = blanks[a.sentenceIdx] || {})[a.wordIdx] = a; });
+  var wrong = gj.answers.filter(function (a) { return !a.firstTryCorrect; }).length;
+  pane.innerHTML = '<div class="dt-gf-sum">Correct on the first try: <b>' + (gj.answers.length - wrong) + '/' + gj.answers.length + '</b></div>' +
+    '<div class="dt-gf-script">' + sentences.map(function (sentence, si) {
+      var bs = blanks[si] || {};
+      return '<p><span class="dt-gf-no">' + (si + 1) + '.</span> ' + sentence.split(/(\s+)/).map(function (tok, wi) {
+        var b = bs[wi];
+        if (!b) return LD.esc(tok);
+        var m = tok.match(/^([^A-Za-z0-9']*)(.*?)([^A-Za-z0-9']*)$/);
+        var core = m[2] || b.actual;
+        var shown = b.firstTryGiven != null ? b.firstTryGiven : b.given;
+        return LD.esc(m[1]) + (b.firstTryCorrect ? '' : '<span class="dt-gf-bad">' + LD.esc(shown || '(blank)') + '</span> ') +
+          '<span class="dt-gf-ok">' + LD.esc(core) + '</span>' + LD.esc(m[3]);
+      }).join('') + '</p>';
+    }).join('') + '</div>';
 }
 function renderQuizDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-quiz');

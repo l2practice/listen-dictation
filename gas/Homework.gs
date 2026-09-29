@@ -418,16 +418,43 @@ function hwBuildDoc_(r) {
   });
   if (!qs.length) para('—', GREY);
 
-  // 5. Gap-fill
+  // 5. Gap-fill — toàn bộ script; ô điền được gạch dưới:
+  //   đúng lần đầu → gạch dưới, đậm, xanh;  sai → từ SV điền gạch ngang đỏ đậm + từ đúng xanh bên cạnh
   heading('5. Gap-fill Review');
   var ga = gap.answers || [];
-  var wrong = ga.filter(function (a) { return !a.firstTryCorrect; });
-  para('Đúng ngay lần đầu: ' + (ga.length - wrong.length) + '/' + ga.length, GREY, 10);
-  if (wrong.length) {
-    table([['Câu', 'Lần đầu bạn điền', 'Đáp án']].concat(wrong.map(function (a) {
-      return [a.sentenceIdx + 1, a.firstTryGiven != null ? a.firstTryGiven : (a.given || ''), a.actual];
-    })));
-  }
+  var wrongCount = ga.filter(function (a) { return !a.firstTryCorrect; }).length;
+  para('Đúng ngay lần đầu: ' + (ga.length - wrongCount) + '/' + ga.length, GREY, 10);
+  var blanksBySentence = {};
+  ga.forEach(function (a) { (blanksBySentence[a.sentenceIdx] = blanksBySentence[a.sentenceIdx] || {})[a.wordIdx] = a; });
+  sentences.forEach(function (sent, si) {
+    var blanks = blanksBySentence[si] || {};
+    var text = (si + 1) + '. ', styles = [];
+    // wordIdx của Gap-fill là chỉ số trong sent.split(/(\s+)/) — tách giống hệt student.html buildGapFill
+    String(sent).split(/(\s+)/).forEach(function (tok, wi) {
+      var b = blanks[wi];
+      if (!b) { text += tok; return; }
+      var m = tok.match(/^([^A-Za-z0-9']*)(.*?)([^A-Za-z0-9']*)$/);   // giữ dấu câu ngoài ô trống
+      var core = m[2] || b.actual;
+      text += m[1];
+      if (b.firstTryCorrect) {
+        styles.push({ s: text.length, e: text.length + core.length - 1, color: GREEN, underline: true });
+        text += core;
+      } else {
+        var given = String(b.firstTryGiven != null ? b.firstTryGiven : (b.given || '')) || '(trống)';
+        styles.push({ s: text.length, e: text.length + given.length - 1, color: RED, strike: true });
+        text += given + ' ';
+        styles.push({ s: text.length, e: text.length + core.length - 1, color: GREEN, underline: true });
+        text += core;
+      }
+      text += m[3];
+    });
+    var t = body.appendParagraph(text).editAsText();
+    styles.forEach(function (st) {
+      t.setBold(st.s, st.e, true).setForegroundColor(st.s, st.e, st.color);
+      if (st.underline) t.setUnderline(st.s, st.e, true);
+      if (st.strike) t.setStrikethrough(st.s, st.e, true);
+    });
+  });
 
   // 6. Dictation
   heading('6. Dictation Review');
