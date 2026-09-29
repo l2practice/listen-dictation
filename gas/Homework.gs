@@ -298,11 +298,10 @@ function hwListForStudent(user) {
     o.completed = st.partsDone === 3; o.overdue = !o.completed && dl > 0 && now > dl;
     return o;
   }).filter(function (o) {
-    // Bài xong: ẩn sau khi quá hạn 7 ngày. Bài chưa xong: hiện tới 30 ngày sau hạn (đánh dấu trễ).
-    var dl = hwTime_(o.deadline);
-    return o.completed ? (now - dl < 7 * 864e5) : (now - dl < 30 * 864e5);
+    // Banner chỉ nhắc bài CHƯA xong: làm đủ 3 phần là biến mất. Bài trễ vẫn hiện tới 30 ngày sau hạn.
+    return !o.completed && now - hwTime_(o.deadline) < 30 * 864e5;
   });
-  data.sort(function (a, b) { return (a.completed - b.completed) || (hwTime_(a.deadline) - hwTime_(b.deadline)); });
+  data.sort(function (a, b) { return hwTime_(a.deadline) - hwTime_(b.deadline); });
   return { success: true, data: data };
 }
 
