@@ -368,8 +368,7 @@ function rpReviews_() {
 function rpNewPractice() {
   var since = rpTime_(getSetting('rp_new_since'));
   var rv = rpReviews_().map;
-  var d = rpReadSessionCols_(['SessionID', 'StudentID', 'StudentName', 'ClassID', 'ClassName', 'BookTestPart', 'EndTime',
-                              'QuizScore', 'GapFillScore', 'DictationAccuracy', 'TotalScore', 'DocURL', 'DetailPurgedAt']);
+  var d = rpReadSessionCols_(['ClassID', 'ClassName', 'BookTestPart', 'EndTime', 'QuizScore', 'GapFillScore', 'DictationAccuracy']);
   var c = d.cols, groups = {};
   for (var i = 0; i < d.n; i++) {
     if (rpPartsOf_(c.QuizScore[i], c.GapFillScore[i], c.DictationAccuracy[i]).partsDone < 3) continue;
@@ -380,22 +379,12 @@ function rpNewPractice() {
     if (end <= reviewedUpTo) continue;
     var g = groups[key] || (groups[key] = {
       groupKey: key, classId: String(c.ClassID[i]), className: String(c.ClassName[i] || classNameOf(c.ClassID[i])),
-      bookTestPart: String(c.BookTestPart[i]), from: end, to: end, sessions: []
+      bookTestPart: String(c.BookTestPart[i]), from: end, to: end
     });
     g.from = Math.min(g.from, end); g.to = Math.max(g.to, end);
-    g.sessions.push({
-      sessionId: String(c.SessionID[i]), studentId: String(c.StudentID[i]), studentName: String(c.StudentName[i] || ''),
-      endTime: new Date(end).toISOString(), totalScore: rpHas_(c.TotalScore[i]) ? c.TotalScore[i] : null,
-      quizScore: c.QuizScore[i], gapFillScore: c.GapFillScore[i], dictationAccuracy: c.DictationAccuracy[i],
-      docUrl: String(c.DocURL[i] || ''), detailPurged: rpHas_(c.DetailPurgedAt[i])
-    });
   }
   var data = Object.keys(groups).map(function (k) {
     var g = groups[k];
-    g.sessions.sort(function (a, b) { return rpTime_(b.endTime) - rpTime_(a.endTime); });
-    var scores = g.sessions.map(function (s) { return Number(s.totalScore); }).filter(function (x) { return !isNaN(x); });
-    g.count = g.sessions.length;
-    g.avgScore = scores.length ? Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length) : null;
     g.from = new Date(g.from).toISOString(); g.to = new Date(g.to).toISOString();
     return g;
   });
