@@ -22,7 +22,9 @@ var CONFIG = {
   TABS: {
     USERS:    'Users',
     CLASSES:  'Classes',
-    SESSIONS: 'Sessions',
+    RESULTS:  'Results',         // 1 dòng/bài: thông tin + điểm (nhẹ) — mọi danh sách chỉ đọc tab này
+    DETAILS:  'SessionDetails',  // 1 dòng/bài: script + bài làm JSON (nặng) — chỉ đọc đúng 1 dòng khi cần
+    LEGACY:   'Sessions',        // tab cũ (1 tab chứa tất cả) — chỉ đọc khi chạy rp_migrateSessions()
     SETTINGS: 'Settings',
     REVIEWS:  'Reviews'
   }
@@ -106,7 +108,6 @@ function routeAction(action, p, tok) {
     if (action === 'teacher.getFilteredSessions') return teacherGetFilteredSessions(p);
     if (action === 'teacher.getSessionDetail')   return teacherGetSessionDetail(p);
     if (action === 'teacher.exportSessions')     return teacherExportSessions(p);
-    if (action === 'teacher.clearSessionData')   return teacherClearSessionData(p);
     if (action === 'teacher.getFilterOptions')   return teacherGetFilterOptions(p);
   }
 
@@ -158,15 +159,17 @@ function headerSpec() {
   return {
     Users: ['StudentID', 'FullName', 'ClassID', 'Email', 'Phone', 'Password', 'Role', 'Status', 'SessionToken', 'RegisteredAt'],
     Classes: ['ClassID', 'ClassName', 'AcademicYear', 'Semester', 'TeacherName', 'TeacherEmail', 'Status', 'CreatedAt'],
-    Sessions: [
+    // Kết quả: nhẹ, không có JSON. DictInProgress/DictSavedAt/DictSentenceIdx = Dictation đang lưu dở.
+    Results: [
       'SessionID', 'StudentID', 'StudentName', 'ClassID', 'ClassName', 'BookTestPart',
       'StartTime', 'EndTime', 'DurationMin',
-      'ScriptText', 'CorrectedScriptJSON', 'CEFRJSON', 'CollocationJSON',
-      'QuizJSON', 'GapFillJSON', 'DictationJSON',
-      'QuizScore', 'GapFillScore', 'DictationAccuracy', 'TotalScore',
-      'CreatedAt',
-      // Reports.gs — ensureColumns tự thêm vào cuối sheet hiện có
-      'DocURL', 'DetailPurgedAt'
+      'QuizScore', 'GapFillScore', 'DictationAccuracy', 'TotalScore', 'CreatedAt',
+      'DocURL', 'DetailPurgedAt', 'DictInProgress', 'DictSavedAt', 'DictSentenceIdx'
+    ],
+    // Chi tiết: nặng. Sau 10 ngày (đã có Doc) cả dòng bị xoá — Results giữ điểm + link Doc.
+    SessionDetails: [
+      'SessionID', 'StudentID', 'ScriptText', 'CorrectedScriptJSON', 'CEFRJSON', 'CollocationJSON',
+      'QuizJSON', 'GapFillJSON', 'DictationJSON', 'CreatedAt'
     ],
     Settings: ['Key', 'Value'],
     // Reports.gs — mốc GV đã tick "Done" cho từng nhóm Lớp + Book/Test/Part trong tab New Practice
@@ -306,31 +309,29 @@ function authTeacherLogin(p) {
   return r;
 }
 
+// Chạy ở MỌI request → không đọc cả tab Users: TextFinder tìm token ngay trên Google rồi đọc đúng 1 dòng
 function validateUser(token) {
   if (!token) return null;
-  var tok = String(token);
-  var allRows = getSheet(CONFIG.TABS.USERS).getDataRange().getValues();
-  if (allRows.length < 2) return null;
-  var hdrs = allRows[0];
-  var iSID  = hdrs.indexOf('StudentID'), iName = hdrs.indexOf('FullName');
-  var iCls  = hdrs.indexOf('ClassID'),   iEmail = hdrs.indexOf('Email');
-  var iRole = hdrs.indexOf('Role'),      iStat = hdrs.indexOf('Status');
-  var iTok  = hdrs.indexOf('SessionToken');
-  for (var i = 1; i < allRows.length; i++) {
-    var row = allRows[i];
-    if (String(row[iStat]) === 'Archived') continue;
-    var tokens = String(row[iTok] || '').split(',');
-    var match = false;
-    for (var j = 0; j < tokens.length; j++) { if (tokens[j].trim() === tok) { match = true; break; } }
-    if (!match) continue;
-    var classId = String(row[iCls] || '');
-    return {
-      studentId: String(row[iSID] || ''), fullName: String(row[iName] || ''),
-      classId: classId, className: classNameOf(classId),
-      email: String(row[iEmail] || ''), role: String(row[iRole] || 'Student')
-    };
-  }
-  return null;
+  var tok = String(token).trim();
+  if (!tok) return null;
+  var sheet = getSheet(CONFIG.TABS.USERS), n = sheet.getLastRow() - 1;
+  if (n < 1) return null;
+  var hdrs = _headers(CONFIG.TABS.USERS);
+  var iTok = hdrs.indexOf('SessionToken');
+  if (iTok < 0) return null;
+  var cell = sheet.getRange(2, iTok + 1, n, 1).createTextFinder(tok).matchEntireCell(false).findNext();
+  if (!cell) return null;
+  var row = sheet.getRange(cell.getRow(), 1, 1, hdrs.length).getValues()[0];
+  var col = function (k) { return row[hdrs.indexOf(k)]; };
+  // Ô chứa tối đa 10 token nối bằng dấu phẩy → xác nhận khớp NGUYÊN token, không chỉ chứa chuỗi con
+  var match = String(col('SessionToken') || '').split(',').some(function (t) { return t.trim() === tok; });
+  if (!match || String(col('Status')) === 'Archived') return null;
+  var classId = String(col('ClassID') || '');
+  return {
+    studentId: String(col('StudentID') || ''), fullName: String(col('FullName') || ''),
+    classId: classId, className: classNameOf(classId),
+    email: String(col('Email') || ''), role: String(col('Role') || 'Student')
+  };
 }
 
 function authForgotPassword(p) {
@@ -453,68 +454,110 @@ function teacherArchiveStudent(p) {
   } catch (e) { return { success: false, error: e.message }; }
 }
 
-// ─── SESSIONS ───────────────────────────────────────────────
-function sessionStart(user, p) {
-  try {
-    var id = genId(), now = nowIso();
-    var sheet = getSheet(CONFIG.TABS.SESSIONS);
-    // Ghi theo tên cột (không theo vị trí) — sheet có thể có thêm cột mới ở cuối
-    var rec = {
-      SessionID: id, StudentID: user.studentId, StudentName: user.fullName,
-      ClassID: user.classId, ClassName: user.className, BookTestPart: p.bookTestPart || '',
-      StartTime: now, CreatedAt: now
-    };
-    var hdrs = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    sheet.appendRow(hdrs.map(function (h) { return rec[h] != null ? rec[h] : ''; }));
-    return { success: true, sessionId: id };
-  } catch (e) { return { success: false, error: e.message }; }
+// ─── SESSIONS: Results (nhẹ) + SessionDetails (nặng) ─────────────
+// Nguyên tắc đọc dữ liệu để app không chậm dần theo thời gian:
+//  - Tìm 1 bài: TextFinder tìm SessionID ngay trên Google (không tải cả cột về) rồi đọc đúng 1 dòng.
+//  - Danh sách: chỉ đọc các cột cần trong Results, gộp thành 1 lần đọc (_readCols).
+//  - SessionDetails: KHÔNG BAO GIỜ đọc cả tab.
+var _hdrCache = {};
+function _headers(tab) {
+  if (!_hdrCache[tab]) { var sh = getSheet(tab); _hdrCache[tab] = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]; }
+  return _hdrCache[tab];
 }
 
-function _findSessionRow(sessionId, studentId) {
-  var sheet = getSheet(CONFIG.TABS.SESSIONS);
-  var data = sheet.getDataRange().getValues(), hdrs = data[0];
-  var iId = hdrs.indexOf('SessionID'), iSid = hdrs.indexOf('StudentID');
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][iId]) === String(sessionId)) {
-      if (studentId && String(data[i][iSid]) !== String(studentId)) return null; // chống mở nhầm session người khác
-      return { sheet: sheet, hdrs: hdrs, rowIdx: i + 1, row: data[i] };
-    }
-  }
-  return null;
+// Đọc các cột theo tên — 1 lần gọi cho dải cột nhỏ nhất bao trọn các cột cần. Trả về mảng object.
+function _readCols(tab, names) {
+  var sheet = getSheet(tab), hdrs = _headers(tab), n = sheet.getLastRow() - 1;
+  var idx = names.map(function (k) { return hdrs.indexOf(k); });
+  var have = idx.filter(function (c) { return c >= 0; });
+  if (n < 1 || !have.length) return [];
+  var c0 = Math.min.apply(null, have), c1 = Math.max.apply(null, have);
+  var vals = sheet.getRange(2, c0 + 1, n, c1 - c0 + 1).getValues();
+  return vals.map(function (row, r) {
+    var o = { _row: r + 2 };
+    names.forEach(function (k, j) { o[k] = idx[j] >= 0 ? row[idx[j] - c0] : ''; });
+    return o;
+  });
+}
+
+// Tìm dòng theo SessionID (cột A) bằng TextFinder → chỉ đọc đúng dòng đó
+function _findRowById(tab, sessionId) {
+  if (!sessionId) return null;
+  var sheet = getSheet(tab), hdrs = _headers(tab), n = sheet.getLastRow() - 1;
+  var col = hdrs.indexOf('SessionID');
+  if (col < 0 || n < 1) return null;
+  var cell = sheet.getRange(2, col + 1, n, 1).createTextFinder(String(sessionId)).matchEntireCell(true).findNext();
+  if (!cell) return null;
+  var rowIdx = cell.getRow();
+  return { sheet: sheet, hdrs: hdrs, rowIdx: rowIdx, row: sheet.getRange(rowIdx, 1, 1, hdrs.length).getValues()[0] };
 }
 function _setCell(found, colName, value) {
   var idx = found.hdrs.indexOf(colName);
   if (idx < 0) return;
   found.sheet.getRange(found.rowIdx, idx + 1).setValue(value);
+  found.row[idx] = value;
 }
 function _getCell(found, colName) {
   var idx = found.hdrs.indexOf(colName);
   return idx < 0 ? '' : found.row[idx];
 }
+function _rowObj(found) { var o = {}; found.hdrs.forEach(function (h, i) { o[h] = found.row[i]; }); return o; }
+function _iso(v) { return v instanceof Date ? v.toISOString() : v; }
+function _has(v) { return v !== '' && v != null; }
 
-// Trạng thái từng phần dựa vào CỘT ĐIỂM, không dựa vào JSON — vì JSON chi tiết bị xoá sau 10 ngày
-// (Reports.gs) nhưng kết quả vẫn phải hiện cho GV và SV. get(colName) → giá trị ô.
+// Session của SV: dòng Results (+ dòng SessionDetails nếu cần). studentId = null → GV, không gate.
+function _findSession(sessionId, studentId, withDetail) {
+  var r = _findRowById(CONFIG.TABS.RESULTS, sessionId);
+  if (!r) return null;
+  if (studentId && String(_getCell(r, 'StudentID')) !== String(studentId)) return null; // chống mở bài người khác
+  return { res: r, det: withDetail ? _findRowById(CONFIG.TABS.DETAILS, sessionId) : null };
+}
+function _detailOrCreate(f) {
+  if (f.det) return f.det;
+  var sheet = getSheet(CONFIG.TABS.DETAILS), hdrs = _headers(CONFIG.TABS.DETAILS);
+  var rec = { SessionID: _getCell(f.res, 'SessionID'), StudentID: _getCell(f.res, 'StudentID'), CreatedAt: nowIso() };
+  sheet.appendRow(hdrs.map(function (h) { return rec[h] != null ? rec[h] : ''; }));
+  f.det = _findRowById(CONFIG.TABS.DETAILS, rec.SessionID);
+  return f.det;
+}
+
+// Trạng thái từng phần — chỉ dựa vào cột trong Results. get(colName) → giá trị ô.
 function _progressOf(get) {
-  var has = function (v) { return v !== '' && v != null; };
-  var dj = {};
-  try { dj = JSON.parse(get('DictationJSON') || '{}') || {}; } catch (e) {}
-  var quizDone = has(get('QuizScore')), gapDone = has(get('GapFillScore'));
-  var dictDone = has(get('DictationAccuracy')) || dj.completed === true;
-  var dictInProgress = !dictDone && dj.completed === false;
+  var quizDone = _has(get('QuizScore')), gapDone = _has(get('GapFillScore')), dictDone = _has(get('DictationAccuracy'));
+  var dictInProgress = !dictDone && !!get('DictInProgress');
   return {
     quizDone: quizDone, gapDone: gapDone, dictDone: dictDone, dictInProgress: dictInProgress,
-    hasActivity: quizDone || gapDone || dictDone || dictInProgress || !!get('QuizJSON') || !!get('GapFillJSON')
+    isComplete: quizDone && gapDone && dictDone,
+    hasActivity: quizDone || gapDone || dictDone || dictInProgress
   };
+}
+var RESULT_LIST_COLS = ['SessionID', 'StudentID', 'StudentName', 'ClassID', 'ClassName', 'BookTestPart',
+  'StartTime', 'EndTime', 'DurationMin', 'QuizScore', 'GapFillScore', 'DictationAccuracy', 'TotalScore',
+  'DocURL', 'DetailPurgedAt', 'DictInProgress', 'DictSavedAt', 'DictSentenceIdx'];
+
+function sessionStart(user, p) {
+  try {
+    // Mở đầu bằng chữ cái: mã toàn số/dạng "12E45…" sẽ bị Sheets tự đổi thành số và hỏng mã
+    var id = 'S' + genId().substring(0, 15), now = nowIso();
+    var res = { SessionID: id, StudentID: user.studentId, StudentName: user.fullName, ClassID: user.classId,
+                ClassName: user.className, BookTestPart: p.bookTestPart || '', StartTime: now, CreatedAt: now };
+    var det = { SessionID: id, StudentID: user.studentId, CreatedAt: now };
+    // Ghi theo tên cột (không theo vị trí) — tab có thể có thêm cột mới ở cuối
+    getSheet(CONFIG.TABS.RESULTS).appendRow(_headers(CONFIG.TABS.RESULTS).map(function (h) { return res[h] != null ? res[h] : ''; }));
+    getSheet(CONFIG.TABS.DETAILS).appendRow(_headers(CONFIG.TABS.DETAILS).map(function (h) { return det[h] != null ? det[h] : ''; }));
+    return { success: true, sessionId: id };
+  } catch (e) { return { success: false, error: e.message }; }
 }
 
 function sessionSaveAnalysis(user, p) {
   try {
-    var f = _findSessionRow(p.sessionId, user.studentId);
+    var f = _findSession(p.sessionId, user.studentId, true);
     if (!f) return { success: false, error: 'Không tìm thấy session.' };
-    _setCell(f, 'ScriptText', p.scriptText || '');
-    _setCell(f, 'CorrectedScriptJSON', JSON.stringify(p.correctedSentences || []));
-    _setCell(f, 'CEFRJSON', JSON.stringify(p.cefr || {}));
-    _setCell(f, 'CollocationJSON', JSON.stringify(p.collocations || []));
+    var d = _detailOrCreate(f);
+    _setCell(d, 'ScriptText', p.scriptText || '');
+    _setCell(d, 'CorrectedScriptJSON', JSON.stringify(p.correctedSentences || []));
+    _setCell(d, 'CEFRJSON', JSON.stringify(p.cefr || {}));
+    _setCell(d, 'CollocationJSON', JSON.stringify(p.collocations || []));
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
 }
@@ -524,11 +567,11 @@ function sessionSaveQuiz(user, p) {
   try {
     var answers = p.answers || [];
     if (answers.length !== 15) return { success: false, error: 'Quiz phải làm đủ 15/15 câu mới được lưu (hiện ' + answers.length + ').' };
-    var f = _findSessionRow(p.sessionId, user.studentId);
+    var f = _findSession(p.sessionId, user.studentId, true);
     if (!f) return { success: false, error: 'Không tìm thấy session.' };
-    // Lưu cả "questions" (đề bài AI đã sinh) — không chỉ đáp án — để GV xem lại được SV đã chọn gì so với câu hỏi gốc.
-    _setCell(f, 'QuizJSON', JSON.stringify({ questions: p.questions || [], answers: answers, correct: p.correct, total: 15, savedAt: nowIso() }));
-    _setCell(f, 'QuizScore', p.score != null ? p.score : Math.round((p.correct || 0) / 15 * 100));
+    // Lưu cả "questions" (đề bài AI đã sinh) — để GV xem lại SV đã chọn gì so với câu hỏi gốc.
+    _setCell(_detailOrCreate(f), 'QuizJSON', JSON.stringify({ questions: p.questions || [], answers: answers, correct: p.correct, total: 15, savedAt: nowIso() }));
+    _setCell(f.res, 'QuizScore', p.score != null ? p.score : Math.round((p.correct || 0) / 15 * 100));
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
 }
@@ -537,10 +580,10 @@ function sessionSaveGapFill(user, p) {
     var answers = p.answers || [];
     var total = p.total || answers.length;
     if (!total || answers.length !== total) return { success: false, error: 'Gap-fill phải điền hết mới được lưu (' + answers.length + '/' + total + ').' };
-    var f = _findSessionRow(p.sessionId, user.studentId);
+    var f = _findSession(p.sessionId, user.studentId, true);
     if (!f) return { success: false, error: 'Không tìm thấy session.' };
-    _setCell(f, 'GapFillJSON', JSON.stringify({ answers: answers, correct: p.correct, total: total, savedAt: nowIso() }));
-    _setCell(f, 'GapFillScore', p.score != null ? p.score : Math.round((p.correct || 0) / total * 100));
+    _setCell(_detailOrCreate(f), 'GapFillJSON', JSON.stringify({ answers: answers, correct: p.correct, total: total, savedAt: nowIso() }));
+    _setCell(f.res, 'GapFillScore', p.score != null ? p.score : Math.round((p.correct || 0) / total * 100));
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
 }
@@ -557,115 +600,131 @@ function _compactDictAnswers(answers) {
 // Dictation: DUY NHẤT cho phép checkpoint (đã chốt). Gọi bao nhiêu lần cũng được, ghi đè.
 function sessionSaveDictationProgress(user, p) {
   try {
-    var f = _findSessionRow(p.sessionId, user.studentId);
+    var f = _findSession(p.sessionId, user.studentId, true);
     if (!f) return { success: false, error: 'Không tìm thấy session.' };
-    _setCell(f, 'DictationJSON', JSON.stringify({
-      currentSentenceIdx: p.currentSentenceIdx || 0,
-      answers: _compactDictAnswers(p.answers),
-      completed: false,
-      savedAt: nowIso()
+    var now = nowIso(), idx = p.currentSentenceIdx || 0;
+    _setCell(_detailOrCreate(f), 'DictationJSON', JSON.stringify({
+      currentSentenceIdx: idx, answers: _compactDictAnswers(p.answers), completed: false, savedAt: now
     }));
-    return { success: true, sessionId: p.sessionId }; // sessionId = "IDsavesession" cho My History
+    _setCell(f.res, 'DictInProgress', true);
+    _setCell(f.res, 'DictSavedAt', now);
+    _setCell(f.res, 'DictSentenceIdx', idx);
+    return { success: true, sessionId: p.sessionId };
   } catch (e) { return { success: false, error: e.message }; }
 }
 function sessionFinishDictation(user, p) {
   try {
-    var f = _findSessionRow(p.sessionId, user.studentId);
+    var f = _findSession(p.sessionId, user.studentId, true);
     if (!f) return { success: false, error: 'Không tìm thấy session.' };
     var accuracy = p.accuracy != null ? p.accuracy : 0;
-    _setCell(f, 'DictationJSON', JSON.stringify({ answers: _compactDictAnswers(p.answers), accuracy: accuracy, completed: true, savedAt: nowIso() }));
-    _setCell(f, 'DictationAccuracy', accuracy);
-    var quizScore = Number(_getCell(f, 'QuizScore')) || 0;
-    var gapScore = Number(_getCell(f, 'GapFillScore')) || 0;
+    _setCell(_detailOrCreate(f), 'DictationJSON', JSON.stringify({ answers: _compactDictAnswers(p.answers), accuracy: accuracy, completed: true, savedAt: nowIso() }));
+    var quizScore = Number(_getCell(f.res, 'QuizScore')) || 0;
+    var gapScore = Number(_getCell(f.res, 'GapFillScore')) || 0;
     var total = Math.round((quizScore + gapScore + accuracy) / 3);
-    _setCell(f, 'TotalScore', total);
-    _setCell(f, 'EndTime', nowIso());
-    var start = new Date(_getCell(f, 'StartTime'));
-    var durMin = isNaN(start.getTime()) ? '' : Math.round((Date.now() - start.getTime()) / 60000);
-    _setCell(f, 'DurationMin', durMin);
+    var start = new Date(_getCell(f.res, 'StartTime'));
+    // Ghi các cột liền nhau của Results trong 1 lần nếu được — ít lời gọi hơn
+    _setCell(f.res, 'DictationAccuracy', accuracy);
+    _setCell(f.res, 'TotalScore', total);
+    _setCell(f.res, 'EndTime', nowIso());
+    _setCell(f.res, 'DurationMin', isNaN(start.getTime()) ? '' : Math.round((Date.now() - start.getTime()) / 60000));
+    _setCell(f.res, 'DictInProgress', '');
     return { success: true, totalScore: total };
   } catch (e) { return { success: false, error: e.message }; }
 }
 
-function studentGetHistory(user, p) {
-  try {
-    var rows = sheetToObjects(getSheet(CONFIG.TABS.SESSIONS)).filter(function (r) {
-      if (String(r.StudentID) !== String(user.studentId)) return false;
-      return _progressOf(function (k) { return r[k]; }).dictDone;
-    });
-    rows.sort(function (a, b) { return new Date(b.StartTime) - new Date(a.StartTime); });
-    return {
-      success: true, data: rows.map(function (r) {
-        return {
-          sessionId: r.SessionID, bookTestPart: r.BookTestPart, startTime: r.StartTime, endTime: r.EndTime,
-          durationMin: r.DurationMin, quizScore: r.QuizScore, gapFillScore: r.GapFillScore,
-          dictationAccuracy: r.DictationAccuracy, totalScore: r.TotalScore
-        };
-      })
-    };
-  } catch (e) { return { success: false, error: e.message }; }
-}
-function studentGetInProgress(user) {
-  try {
-    var rows = sheetToObjects(getSheet(CONFIG.TABS.SESSIONS)).filter(function (r) {
-      if (String(r.StudentID) !== String(user.studentId)) return false;
-      if (!r.DictationJSON) return false;
-      try { return JSON.parse(r.DictationJSON).completed === false; } catch (e) { return false; }
-    });
-    rows.sort(function (a, b) { return new Date(b.StartTime) - new Date(a.StartTime); });
-    return {
-      success: true, data: rows.map(function (r) {
-        var dj = {}; try { dj = JSON.parse(r.DictationJSON); } catch (e) {}
-        return { sessionId: r.SessionID, bookTestPart: r.BookTestPart, startTime: r.StartTime, savedAt: dj.savedAt, currentSentenceIdx: dj.currentSentenceIdx };
-      })
-    };
-  } catch (e) { return { success: false, error: e.message }; }
+// Ghép Results + SessionDetails thành 1 object như trước (frontend không phải đổi)
+function _sessionObject(f) {
+  var obj = _rowObj(f.res);
+  var det = f.det ? _rowObj(f.det) : {};
+  ['ScriptText', 'CorrectedScriptJSON', 'CEFRJSON', 'CollocationJSON', 'QuizJSON', 'GapFillJSON', 'DictationJSON'].forEach(function (k) {
+    if (k === 'ScriptText') { obj[k] = det[k] || ''; return; }
+    try { obj[k] = det[k] ? JSON.parse(det[k]) : null; } catch (e) { obj[k] = null; }
+  });
+  return serRows([obj])[0];
 }
 function studentResumeSession(user, p) {
   try {
-    var f = _findSessionRow(p.sessionId, user.studentId); // gate: StudentID + SessionID
+    var f = _findSession(p.sessionId, user.studentId, true); // gate: StudentID + SessionID
     if (!f) return { success: false, error: 'Không tìm thấy hoặc không có quyền mở session này.' };
-    var obj = {}; f.hdrs.forEach(function (h, i) { obj[h] = f.row[i]; });
-    ['CorrectedScriptJSON', 'CEFRJSON', 'CollocationJSON', 'QuizJSON', 'GapFillJSON', 'DictationJSON'].forEach(function (k) {
-      try { obj[k] = obj[k] ? JSON.parse(obj[k]) : null; } catch (e) { obj[k] = null; }
-    });
-    return { success: true, data: obj };
-  } catch (e) { return { success: false, error: e.message }; }
-}
-
-// ─── TEACHER: SESSIONS DASHBOARD ──────────────────────────────
-// Chỉ trả cột tóm tắt cho bảng — không kèm JSON blob nặng, đúng tinh thần "nhẹ payload".
-function teacherGetAllSessions(p) {
-  try {
-    var rows = sheetToObjects(getSheet(CONFIG.TABS.SESSIONS));
-    // Đã chốt: chỉ hiện session khi SV đã hoàn thành ÍT NHẤT 1 phần (Quiz/Gap-fill/Dictation).
-    // Session mới tạo (mới paste script, mới học vocab) chưa làm gì thì KHÔNG hiện cho GV.
-    rows = rows.filter(function (r) { return _progressOf(function (k) { return r[k]; }).hasActivity; });
-    if (p && p.classId) rows = rows.filter(function (r) { return String(r.ClassID).toUpperCase() === String(p.classId).toUpperCase(); });
-    if (p && p.fromDate) rows = rows.filter(function (r) { return new Date(r.StartTime) >= new Date(p.fromDate); });
-    if (p && p.toDate) rows = rows.filter(function (r) { return new Date(r.StartTime) <= new Date(p.toDate); });
-    return {
-      success: true, data: rows.map(function (r) {
-        return {
-          sessionId: r.SessionID, studentId: r.StudentID, studentName: r.StudentName,
-          className: r.ClassName, bookTestPart: r.BookTestPart,
-          startTime: r.StartTime, endTime: r.EndTime, durationMin: r.DurationMin,
-          quizScore: r.QuizScore, gapFillScore: r.GapFillScore, dictationAccuracy: r.DictationAccuracy,
-          totalScore: r.TotalScore
-        };
-      })
-    };
+    return { success: true, data: _sessionObject(f) };
   } catch (e) { return { success: false, error: e.message }; }
 }
 function teacherGetSessionDetail(p) {
   try {
-    var f = _findSessionRow(p.sessionId, null); // GV được xem mọi SV, không gate theo studentId
+    var f = _findSession(p.sessionId, null, true); // GV được xem mọi SV
     if (!f) return { success: false, error: 'Không tìm thấy session.' };
-    var obj = {}; f.hdrs.forEach(function (h, i) { obj[h] = f.row[i]; });
-    ['CorrectedScriptJSON', 'CEFRJSON', 'CollocationJSON', 'QuizJSON', 'GapFillJSON', 'DictationJSON'].forEach(function (k) {
-      try { obj[k] = obj[k] ? JSON.parse(obj[k]) : null; } catch (e) { obj[k] = null; }
-    });
-    return { success: true, data: obj };
+    return { success: true, data: _sessionObject(f) };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+// ─── DANH SÁCH (chỉ đọc Results) ─────────────────────────────
+function _summary(r) {
+  var prog = _progressOf(function (k) { return r[k]; });
+  return {
+    sessionId: r.SessionID, studentId: r.StudentID, studentName: r.StudentName, classId: r.ClassID,
+    className: r.ClassName, bookTestPart: r.BookTestPart,
+    startTime: _iso(r.StartTime), endTime: _iso(r.EndTime), durationMin: r.DurationMin,
+    quizScore: prog.quizDone ? r.QuizScore : null, gapFillScore: prog.gapDone ? r.GapFillScore : null,
+    dictationAccuracy: prog.dictDone ? r.DictationAccuracy : null, totalScore: _has(r.TotalScore) ? r.TotalScore : null,
+    quizDone: prog.quizDone, gapDone: prog.gapDone, dictDone: prog.dictDone,
+    isComplete: prog.isComplete, dictInProgress: prog.dictInProgress,
+    docUrl: r.DocURL || '', detailPurged: _has(r.DetailPurgedAt)
+  };
+}
+function _byNewest(a, b) { return new Date(b.startTime) - new Date(a.startTime); }
+
+function studentGetHistory(user, p) {
+  try {
+    var rows = _readCols(CONFIG.TABS.RESULTS, RESULT_LIST_COLS)
+      .filter(function (r) { return String(r.StudentID) === String(user.studentId) && _has(r.DictationAccuracy); })
+      .map(_summary).sort(_byNewest);
+    return { success: true, data: rows };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+function studentGetInProgress(user) {
+  try {
+    var rows = _readCols(CONFIG.TABS.RESULTS, RESULT_LIST_COLS)
+      .filter(function (r) { return String(r.StudentID) === String(user.studentId) && _progressOf(function (k) { return r[k]; }).dictInProgress; })
+      .map(function (r) { return { sessionId: r.SessionID, bookTestPart: r.BookTestPart, startTime: _iso(r.StartTime), savedAt: _iso(r.DictSavedAt), currentSentenceIdx: Number(r.DictSentenceIdx) || 0 }; });
+    rows.sort(function (a, b) { return new Date(b.savedAt || b.startTime) - new Date(a.savedAt || a.startTime); });
+    return { success: true, data: rows };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+// Top 5 bài Dictation đang lưu dở
+function studentGetInProgressTop5(user) {
+  var r = studentGetInProgress(user);
+  if (r.success) r.data = r.data.slice(0, 5);
+  return r;
+}
+// Chỉ trả tên bài + điểm. Bài chưa làm phần nào (mới dán script) không hiện.
+function studentGetHistorySummary(user, p) {
+  try {
+    var fromDate = (p && p.fromDate) ? new Date(p.fromDate) : null;
+    var rows = _readCols(CONFIG.TABS.RESULTS, RESULT_LIST_COLS).filter(function (r) {
+      if (String(r.StudentID) !== String(user.studentId)) return false;
+      if (!_progressOf(function (k) { return r[k]; }).hasActivity) return false;
+      if (fromDate) { var d = new Date(r.StartTime); if (isNaN(d.getTime()) || d < fromDate) return false; }
+      return true;
+    }).map(_summary).sort(_byNewest);
+    return { success: true, data: rows };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+// ─── TEACHER: SESSIONS DASHBOARD ──────────────────────────────
+// Chỉ hiện session khi SV đã hoàn thành ÍT NHẤT 1 phần (Quiz/Gap-fill/Dictation).
+function teacherGetAllSessions(p) {
+  try {
+    var classId = p && p.classId ? String(p.classId).toUpperCase() : '';
+    var from = p && p.fromDate ? new Date(p.fromDate) : null, to = p && p.toDate ? new Date(p.toDate + 'T23:59:59') : null;
+    var rows = _readCols(CONFIG.TABS.RESULTS, RESULT_LIST_COLS).filter(function (r) {
+      if (!_progressOf(function (k) { return r[k]; }).hasActivity) return false;
+      if (classId && String(r.ClassID).toUpperCase() !== classId) return false;
+      var d = new Date(r.StartTime);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    }).map(_summary).sort(_byNewest);
+    return { success: true, data: rows };
   } catch (e) { return { success: false, error: e.message }; }
 }
 function teacherExportSessions(p) {
@@ -678,281 +737,64 @@ function teacherExportSessions(p) {
   return { success: true, csv: lines.join('\n') };
 }
 
-// ─── TEACHER: FILTERED SESSIONS (lazy load — GV phải chọn filter trước) ────
-// Trả về summary nhẹ: không kèm JSON blobs. GV phải chọn ít nhất classId hoặc fromDate.
+// Lazy load — GV phải chọn ít nhất 1 bộ lọc trước khi tải
 function teacherGetFilteredSessions(p) {
   try {
     if (!p || (!p.classId && !p.fromDate && !p.bookFilter)) {
       return { success: false, error: 'Vui lòng chọn ít nhất một bộ lọc (lớp, ngày bắt đầu, hoặc book) trước khi tải.' };
     }
-    var sheet = getSheet(CONFIG.TABS.SESSIONS);
-    var data = sheet.getDataRange().getValues();
-    if (data.length < 2) return { success: true, data: [] };
-    var hdrs = data[0];
-    // Map header → col index một lần cho hiệu suất
-    var ci = {};
-    hdrs.forEach(function(h,i){ ci[h]=i; });
-
     var fromDate = p.fromDate ? new Date(p.fromDate) : null;
     var toDate = p.toDate ? new Date(p.toDate + 'T23:59:59') : null;
     var classId = p.classId ? String(p.classId).toUpperCase() : '';
     var bookFilter = p.bookFilter ? String(p.bookFilter).toLowerCase() : '';
-    var testFilter = p.testFilter ? String(p.testFilter).trim() : '';
-    var partFilter = p.partFilter ? String(p.partFilter).trim() : '';
-
-    var results = [];
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      // Bỏ qua session chưa làm gì (không có Quiz/GapFill/Dictation)
-      if (!_progressOf(function (k) { return row[ci[k]]; }).hasActivity) continue;
-      // Filter class
-      if (classId && String(row[ci['ClassID']] || '').toUpperCase() !== classId) continue;
-      // Filter date
-      var st = row[ci['StartTime']];
-      if (st) {
-        var d = new Date(st);
-        if (fromDate && d < fromDate) continue;
-        if (toDate && d > toDate) continue;
+    var testRe = p.testFilter ? new RegExp('Test\\s*' + String(p.testFilter).trim() + '(\\s|$)', 'i') : null;
+    var partRe = p.partFilter ? new RegExp('Part\\s*' + String(p.partFilter).trim() + '(\\s|$)', 'i') : null;
+    var results = _readCols(CONFIG.TABS.RESULTS, RESULT_LIST_COLS).filter(function (r) {
+      if (!_progressOf(function (k) { return r[k]; }).hasActivity) return false;
+      if (classId && String(r.ClassID || '').toUpperCase() !== classId) return false;
+      if (r.StartTime) {
+        var d = new Date(r.StartTime);
+        if (fromDate && d < fromDate) return false;
+        if (toDate && d > toDate) return false;
       }
-      // Filter book/test/part — match từng phần của BookTestPart (vd "Cam14 Test 3 Part 2")
-      var btp = String(row[ci['BookTestPart']] || '');
-      if (bookFilter && btp.toLowerCase().indexOf(bookFilter.toLowerCase()) < 0) continue;
-      if (testFilter) {
-        // Match "Test X" hoặc "TestX" — flexible
-        var testRe = new RegExp('Test\\s*' + testFilter + '(\\s|$)', 'i');
-        if (!testRe.test(btp)) continue;
-      }
-      if (partFilter) {
-        var partRe = new RegExp('Part\\s*' + partFilter + '(\\s|$)', 'i');
-        if (!partRe.test(btp)) continue;
-      }
-      results.push({
-        sessionId: row[ci['SessionID']], studentId: row[ci['StudentID']],
-        studentName: row[ci['StudentName']], classId: row[ci['ClassID']],
-        className: row[ci['ClassName']], bookTestPart: row[ci['BookTestPart']],
-        startTime: row[ci['StartTime']] instanceof Date ? row[ci['StartTime']].toISOString() : row[ci['StartTime']],
-        endTime: row[ci['EndTime']] instanceof Date ? row[ci['EndTime']].toISOString() : row[ci['EndTime']],
-        durationMin: row[ci['DurationMin']],
-        quizScore: row[ci['QuizScore']], gapFillScore: row[ci['GapFillScore']],
-        dictationAccuracy: row[ci['DictationAccuracy']], totalScore: row[ci['TotalScore']],
-        docUrl: row[ci['DocURL']] || '', detailPurged: !!row[ci['DetailPurgedAt']]
-      });
-    }
-    // Sắp xếp mới nhất lên đầu
-    results.sort(function(a,b){ return new Date(b.startTime) - new Date(a.startTime); });
+      var btp = String(r.BookTestPart || '');
+      if (bookFilter && btp.toLowerCase().indexOf(bookFilter) < 0) return false;
+      if (testRe && !testRe.test(btp)) return false;
+      if (partRe && !partRe.test(btp)) return false;
+      return true;
+    }).map(_summary).sort(_byNewest);
     return { success: true, data: results, count: results.length };
   } catch (e) { return { success: false, error: e.message }; }
 }
 
-// Trả danh sách book, test, part có trong sheet — cho filter dropdown
+// Danh sách book + lớp có trong Results — cho filter dropdown
 function teacherGetFilterOptions(p) {
   try {
-    var sheet = getSheet(CONFIG.TABS.SESSIONS);
-    var data = sheet.getDataRange().getValues();
-    if (data.length < 2) return { success: true, books: [], classes: [] };
-    var hdrs = data[0];
-    var iBtp = hdrs.indexOf('BookTestPart'), iCls = hdrs.indexOf('ClassName'), iCid = hdrs.indexOf('ClassID');
     var booksSet = {}, classesMap = {};
-    for (var i = 1; i < data.length; i++) {
-      var btp = String(data[i][iBtp] || '').trim();
-      // Trích Book (phần đầu trước số test, vd "Cam14 Test 3 Part 2" → "Cam14")
-      if (btp) {
-        var book = btp.split(/\s+/)[0];
-        if (book) booksSet[book] = true;
-      }
-      var cid = String(data[i][iCid] || '').trim();
-      var cn = String(data[i][iCls] || '').trim();
+    _readCols(CONFIG.TABS.RESULTS, ['ClassID', 'ClassName', 'BookTestPart']).forEach(function (r) {
+      var book = String(r.BookTestPart || '').trim().split(/\s+/)[0];
+      if (book) booksSet[book] = true;
+      var cid = String(r.ClassID || '').trim(), cn = String(r.ClassName || '').trim();
       if (cid && cn) classesMap[cid] = cn;
-    }
+    });
     return {
-      success: true,
-      books: Object.keys(booksSet).sort(),
-      classes: Object.keys(classesMap).map(function(id){ return { classId: id, className: classesMap[id] }; })
-        .sort(function(a,b){ return a.className.localeCompare(b.className); })
+      success: true, books: Object.keys(booksSet).sort(),
+      classes: Object.keys(classesMap).map(function (id) { return { classId: id, className: classesMap[id] }; })
+        .sort(function (a, b) { return a.className.localeCompare(b.className); })
     };
   } catch (e) { return { success: false, error: e.message }; }
 }
 
-// ─── TEACHER: CLEAR SESSION DATA ────────────────────────────
-// Xoá: ScriptText, CorrectedScriptJSON, CEFRJSON, CollocationJSON, QuizJSON, GapFillJSON, DictationJSON
-// Giữ lại: điểm số, ngày giờ làm, tên bài, thông tin SV
-// Dùng batch setValues() — KHÔNG gọi setValue() từng cell (sẽ timeout với sheet lớn)
-function teacherClearSessionData(p) {
-  try {
-    if (!p || !p.fromDate || !p.toDate) {
-      return { success: false, error: 'Cần chọn khoảng ngày để clear.' };
-    }
-    var fromDate = new Date(p.fromDate);
-    var toDate = new Date(p.toDate + 'T23:59:59');
-    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-      return { success: false, error: 'Ngày không hợp lệ.' };
-    }
-    var classId = p.classId ? String(p.classId).toUpperCase() : '';
-
-    var sheet = getSheet(CONFIG.TABS.SESSIONS);
-    var data = sheet.getDataRange().getValues();
-    if (data.length < 2) return { success: true, cleared: 0 };
-    var hdrs = data[0];
-    var ci = {};
-    hdrs.forEach(function(h, i) { ci[h] = i; });
-
-    var CLEAR_COLS = ['ScriptText','CorrectedScriptJSON','CEFRJSON','CollocationJSON','QuizJSON','GapFillJSON','DictationJSON'];
-    var clearIdx = CLEAR_COLS.map(function(c) { return ci[c]; }).filter(function(i) { return i >= 0; });
-    if (!clearIdx.length) return { success: true, cleared: 0 };
-
-    // Đọc toàn bộ range một lần — ghi lại toàn bộ một lần (batch)
-    var colMin = Math.min.apply(null, clearIdx); // cột đầu tiên cần xoá (0-indexed)
-    var colMax = Math.max.apply(null, clearIdx); // cột cuối cùng cần xoá (0-indexed)
-    var numCols = colMax - colMin + 1;
-    var numRows = data.length - 1; // số hàng dữ liệu (bỏ header)
-
-    // Đọc sub-range chính xác (chỉ những cột cần xoá)
-    var subRange = sheet.getRange(2, colMin + 1, numRows, numCols);
-    var subValues = subRange.getValues(); // numRows × numCols
-
-    // relative index của từng CLEAR_COL trong sub-range
-    var relIdx = clearIdx.map(function(ci) { return ci - colMin; });
-
-    var clearedCount = 0;
-    for (var i = 0; i < numRows; i++) {
-      var rowData = data[i + 1]; // data[0] = headers
-      var st = rowData[ci['StartTime']];
-      if (!st) continue;
-      var d = new Date(st);
-      if (d < fromDate || d > toDate) continue;
-      if (classId && String(rowData[ci['ClassID']] || '').toUpperCase() !== classId) continue;
-      // An toàn: chỉ xoá chi tiết của bài ĐÃ có Google Doc lưu trữ (Reports.gs)
-      if (!rowData[ci['DocURL']]) continue;
-
-      // Kiểm tra có gì để xoá không
-      var hasData = relIdx.some(function(ri) {
-        return String(subValues[i][ri] || '').length > 0;
-      });
-      if (!hasData) continue;
-
-      // Xoá trong bản sao — sẽ ghi lại 1 lần sau
-      relIdx.forEach(function(ri) { subValues[i][ri] = ''; });
-      clearedCount++;
-    }
-
-    if (clearedCount > 0) {
-      // Ghi toàn bộ sub-range 1 lần duy nhất — không phụ thuộc số session
-      subRange.setValues(subValues);
-    }
-
-    return {
-      success: true, cleared: clearedCount,
-      message: 'Đã xoá dữ liệu chi tiết của ' + clearedCount + ' session(s). Điểm số và thông tin làm bài vẫn được giữ lại.'
-    };
-  } catch (e) { return { success: false, error: e.message }; }
-}
-
-// ─── STUDENT: LIGHTWEIGHT HISTORY ───────────────────────────
-// Chỉ trả tên bài + điểm. Các bài thiếu điểm (incomplete) được đánh dấu để client biết cần fetch thêm.
-function studentGetHistorySummary(user, p) {
-  try {
-    var sheet = getSheet(CONFIG.TABS.SESSIONS);
-    var data = sheet.getDataRange().getValues();
-    if (data.length < 2) return { success: true, data: [] };
-    var hdrs = data[0];
-    var ci = {};
-    hdrs.forEach(function(h,i){ ci[h]=i; });
-
-    // fromDate filter — chỉ lấy session trong khoảng thời gian
-    var fromDate = (p && p.fromDate) ? new Date(p.fromDate) : null;
-
-    var rows = [];
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      if (String(row[ci['StudentID']]) !== String(user.studentId)) continue;
-      // Chỉ hiện session đã bắt đầu làm ít nhất 1 phần
-      var prog = _progressOf(function (k) { return row[ci[k]]; });
-      if (!prog.hasActivity) continue;
-      // fromDate filter
-      if (fromDate) {
-        var st = row[ci['StartTime']];
-        var sessionDate = st instanceof Date ? st : new Date(st);
-        if (isNaN(sessionDate.getTime()) || sessionDate < fromDate) continue;
-      }
-
-      var quizDone = prog.quizDone, gapDone = prog.gapDone, dictDone = prog.dictDone;
-
-      rows.push({
-        sessionId: row[ci['SessionID']],
-        bookTestPart: row[ci['BookTestPart']],
-        startTime: row[ci['StartTime']] instanceof Date ? row[ci['StartTime']].toISOString() : row[ci['StartTime']],
-        endTime: row[ci['EndTime']] instanceof Date ? row[ci['EndTime']].toISOString() : row[ci['EndTime']],
-        durationMin: row[ci['DurationMin']],
-        quizScore: quizDone ? row[ci['QuizScore']] : null,
-        gapFillScore: gapDone ? row[ci['GapFillScore']] : null,
-        dictationAccuracy: dictDone ? row[ci['DictationAccuracy']] : null,
-        totalScore: row[ci['TotalScore']],
-        quizDone: quizDone, gapDone: gapDone, dictDone: dictDone,
-        isComplete: quizDone && gapDone && dictDone,
-        dictInProgress: prog.dictInProgress,
-        docUrl: row[ci['DocURL']] || ''
-      });
-    }
-    rows.sort(function(a,b){ return new Date(b.startTime) - new Date(a.startTime); });
-    return { success: true, data: rows };
-  } catch (e) { return { success: false, error: e.message }; }
-}
-
-// Top 5 in-progress dictation sessions (nhẹ hơn getInProgress — không load toàn bộ DictationJSON)
-function studentGetInProgressTop5(user) {
-  try {
-    var sheet = getSheet(CONFIG.TABS.SESSIONS);
-    var data = sheet.getDataRange().getValues();
-    if (data.length < 2) return { success: true, data: [] };
-    var hdrs = data[0];
-    var ci = {};
-    hdrs.forEach(function(h,i){ ci[h]=i; });
-
-    var rows = [];
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      if (String(row[ci['StudentID']]) !== String(user.studentId)) continue;
-      var dj = String(row[ci['DictationJSON']] || '');
-      if (!dj) continue;
-      var parsed; try { parsed = JSON.parse(dj); } catch(e) { continue; }
-      if (parsed.completed !== false) continue;
-      rows.push({
-        sessionId: row[ci['SessionID']],
-        bookTestPart: row[ci['BookTestPart']],
-        startTime: row[ci['StartTime']] instanceof Date ? row[ci['StartTime']].toISOString() : row[ci['StartTime']],
-        savedAt: parsed.savedAt || '',
-        currentSentenceIdx: parsed.currentSentenceIdx || 0
-      });
-    }
-    rows.sort(function(a,b){ return new Date(b.savedAt || b.startTime) - new Date(a.savedAt || a.startTime); });
-    return { success: true, data: rows.slice(0, 5) }; // chỉ 5 bài gần nhất
-  } catch (e) { return { success: false, error: e.message }; }
-}
-
-// Sinh viên tự xoá session của mình — chỉ được xoá nếu đúng StudentID
+// SV tự xoá bài của mình — chỉ bài CHƯA hoàn thành đủ 3 phần (bài đã xong là kết quả chính thức cho GV)
 function studentDeleteSession(user, p) {
   try {
-    var sheet = getSheet(CONFIG.TABS.SESSIONS);
-    var data = sheet.getDataRange().getValues();
-    if (data.length < 2) return { success: false, error: 'Session không tồn tại.' };
-    var hdrs = data[0];
-    var ci = {};
-    hdrs.forEach(function(h, i) { ci[h] = i; });
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      if (String(row[ci['SessionID']]) !== String(p.sessionId)) continue;
-      // Kiểm tra quyền: chỉ xoá được session của chính mình
-      if (String(row[ci['StudentID']]) !== String(user.studentId)) {
-        return { success: false, error: 'Bạn không có quyền xoá bài này.' };
-      }
-      // Bài đã nộp đủ 3 phần là kết quả chính thức cho GV thống kê → không cho SV xoá
-      var prog = _progressOf(function (k) { return row[ci[k]]; });
-      if (prog.quizDone && prog.gapDone && prog.dictDone) {
-        return { success: false, error: 'Bài đã hoàn thành đủ 3 phần — không thể xoá.' };
-      }
-      sheet.deleteRow(i + 1); // +1 vì data[0] là header, sheet row 1 = data[0]
-      return { success: true };
+    var f = _findSession(p.sessionId, user.studentId, true);
+    if (!f) return { success: false, error: 'Không tìm thấy session hoặc bạn không có quyền xoá bài này.' };
+    if (_progressOf(function (k) { return _getCell(f.res, k); }).isComplete) {
+      return { success: false, error: 'Bài đã hoàn thành đủ 3 phần — không thể xoá.' };
     }
-    return { success: false, error: 'Không tìm thấy session.' };
+    if (f.det) f.det.sheet.deleteRow(f.det.rowIdx);
+    f.res.sheet.deleteRow(f.res.rowIdx);
+    return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
 }

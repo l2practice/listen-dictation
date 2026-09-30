@@ -6,27 +6,28 @@
 //  1. Report Doc: SV nộp đủ 3 phần (Quiz, Gap-fill, Dictation) → tự tạo Google Doc
 //     (script, word levels, collocations, quiz/gap-fill/dictation review).
 //     SV mở từ cột "Details" (Open Docs) trong History.
-//  2. Auto-purge: 10 ngày sau ngày hoàn thành → tự xoá JSON chi tiết trong sheet Sessions,
-//     không báo SV. Điểm số giữ nguyên; GV bấm "Open Docs" để xem lại.
+//  2. Auto-purge: 10 ngày sau ngày hoàn thành → tự xoá dòng chi tiết trong tab SessionDetails,
+//     không báo SV. Điểm số trong tab Results giữ nguyên; GV/SV bấm "Open Docs" để xem lại.
 //  3. New Practice (GV): gom bài mới hoàn thành theo Lớp + Book/Test/Part, kèm khoảng ngày.
 //     GV tick Done → ẩn; SV nộp thêm sau đó → nhóm hiện lại với khoảng ngày mới.
 //
 // Cài đặt (1 lần): chạy hàm rp_setup() trong editor → cấp quyền Docs/Drive/Trigger
-//   → Deploy ▸ Manage deployments ▸ Edit ▸ Version: New version (giữ nguyên URL /exec).
+//   → Deploy ▸ Manage deployments ▸ Edit ▸ Version: New version (giữ nguyên URL /exec)
+//   → chạy rp_migrateSessions() để chuyển dữ liệu từ tab Sessions cũ sang Results + SessionDetails.
 // ============================================================
 
 var RP = {
   PURGE_AFTER_DAYS: 10,
   EXPORT_BATCH: 8,          // số Doc tạo tối đa mỗi lần cron chạy (quota tạo Docs tài khoản cá nhân ~250/ngày)
   PURGE_BATCH: 80,
+  MIGRATE_BATCH: 400,              // rp_migrateSessions: số bài chuyển mỗi lần chạy (tránh quá 6 phút)
   NEW_PRACTICE_PER_CLASS: 2,       // tab New Practice: số bài mới nhất hiện cho mỗi lớp
   NEW_PRACTICE_BACKFILL_DAYS: 30,  // lần đầu cài: chỉ coi bài hoàn thành trong 30 ngày gần nhất là "mới"
   REPORT_FOLDER: 'LisDictation — Student Reports',
   // 'link' = ai có link đều xem được → SV mở được Doc từ app mà không cần được share riêng
   // 'private' = chỉ GV xem được Doc (SV bấm Open Docs sẽ bị Google từ chối)
   DOC_SHARING: 'link',
-  TZ: 'Asia/Ho_Chi_Minh',
-  DETAIL_COLS: ['ScriptText', 'CorrectedScriptJSON', 'CEFRJSON', 'CollocationJSON', 'QuizJSON', 'GapFillJSON', 'DictationJSON']
+  TZ: 'Asia/Ho_Chi_Minh'
 };
 
 // ─── ROUTER (gọi từ routeAction trong Code.gs) ───────────────
@@ -45,7 +46,8 @@ function rpRoute(action, user, p) {
 
 // ─── SETUP + CRON ────────────────────────────────────────────
 function rp_setup() {
-  getSheet(CONFIG.TABS.SESSIONS); // ensureColumns → thêm DocURL, DetailPurgedAt
+  getSheet(CONFIG.TABS.RESULTS);  // ensureColumns → thêm DocURL, DetailPurgedAt, DictInProgress…
+  getSheet(CONFIG.TABS.DETAILS);
   getSheet(CONFIG.TABS.REVIEWS);
   if (!getSetting('rp_new_since')) setSetting('rp_new_since', new Date(Date.now() - RP.NEW_PRACTICE_BACKFILL_DAYS * 864e5).toISOString());
   // xoá trigger cũ (kể cả 'hw_hourly' của bản Homework Book trước) rồi cài lại
@@ -104,36 +106,7 @@ function rpAlignWords_(target, typed) {
   var correct = ops.filter(function (o) { return o.op === 'ok'; }).length;
   return { ops: ops, correct: correct, total: n };
 }
-function rpSheetHeaders_(sheet) { return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]; }
-
-// Đọc riêng vài cột của Sessions (tránh kéo cả JSON blob nặng)
-function rpReadSessionCols_(names) {
-  var sheet = getSheet(CONFIG.TABS.SESSIONS);
-  var hdrs = rpSheetHeaders_(sheet), n = sheet.getLastRow() - 1, cols = {};
-  names.forEach(function (name) {
-    var c = hdrs.indexOf(name);
-    cols[name] = (c >= 0 && n > 0) ? sheet.getRange(2, c + 1, n, 1).getValues().map(function (r) { return r[0]; }) : [];
-  });
-  return { sheet: sheet, hdrs: hdrs, n: Math.max(n, 0), cols: cols };
-}
-
-// Tìm 1 session theo ID mà chỉ đọc cột SessionID + đúng 1 hàng
-function rpFindSession_(sessionId) {
-  var sheet = getSheet(CONFIG.TABS.SESSIONS);
-  var hdrs = rpSheetHeaders_(sheet), iId = hdrs.indexOf('SessionID'), n = sheet.getLastRow() - 1;
-  if (iId < 0 || n < 1) return null;
-  var ids = sheet.getRange(2, iId + 1, n, 1).getValues();
-  for (var i = 0; i < ids.length; i++) {
-    if (String(ids[i][0]) === String(sessionId)) {
-      var row = sheet.getRange(i + 2, 1, 1, hdrs.length).getValues()[0];
-      return { sheet: sheet, hdrs: hdrs, rowIdx: i + 2, row: row };
-    }
-  }
-  return null;
-}
-function rpRowObj_(f) { var o = {}; f.hdrs.forEach(function (h, i) { o[h] = f.row[i]; }); return o; }
-
-// Tiến độ 3 phần của 1 hàng Sessions — dựa vào cột ĐIỂM (không phụ thuộc JSON, vì JSON bị xoá sau 10 ngày)
+// Tiến độ 3 phần — dựa vào cột ĐIỂM trong Results
 function rpPartsOf_(quizScore, gapScore, dictAcc) {
   var q = rpHas_(quizScore), g = rpHas_(gapScore), d = rpHas_(dictAcc);
   var missing = [];
@@ -145,8 +118,7 @@ function rpPartsOf_(quizScore, gapScore, dictAcc) {
 
 // ─── REPORT DOC ──────────────────────────────────────────────
 function rpExportForStudent(user, p) {
-  var f = rpFindSession_(p.sessionId);
-  if (!f || String(f.row[f.hdrs.indexOf('StudentID')]) !== String(user.studentId)) return { success: false, error: 'Không tìm thấy session.' };
+  if (!_findSession(p.sessionId, user.studentId, false)) return { success: false, error: 'Không tìm thấy session.' };
   return rpExportSession_(p.sessionId);
 }
 
@@ -155,20 +127,22 @@ function rpExportSession_(sessionId) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return { success: false, error: 'Hệ thống đang bận, thử lại sau.' };
   try {
-    var f = rpFindSession_(sessionId);
+    var f = _findSession(sessionId, null, false);
     if (!f) return { success: false, error: 'Không tìm thấy session.' };
-    var r = rpRowObj_(f);
-    var parts = rpPartsOf_(r.QuizScore, r.GapFillScore, r.DictationAccuracy);
+    var res = _rowObj(f.res);
+    var parts = rpPartsOf_(res.QuizScore, res.GapFillScore, res.DictationAccuracy);
     if (parts.partsDone < 3) return { success: false, error: 'Bài chưa hoàn thành đủ 3 phần.' };
-    var docUrl = String(r.DocURL || '');
+    var docUrl = String(res.DocURL || '');
     if (!docUrl) {
+      var det = _findRowById(CONFIG.TABS.DETAILS, sessionId);
+      var r = Object.assign({}, det ? _rowObj(det) : {}, res); // chỉ đọc đúng 1 dòng chi tiết
       if (!r.CorrectedScriptJSON) {
         // Chi tiết đã bị xoá trước đây (vd. nút Clear Data cũ) → đánh dấu để cron không thử lại mãi
-        if (!rpHas_(r.DetailPurgedAt)) _setCell(f, 'DetailPurgedAt', 'no-detail');
+        if (!rpHas_(res.DetailPurgedAt)) _setCell(f.res, 'DetailPurgedAt', 'no-detail');
         return { success: false, error: 'Không còn dữ liệu chi tiết để tạo Doc.' };
       }
       docUrl = rpBuildDoc_(r).url;
-      _setCell(f, 'DocURL', docUrl);
+      _setCell(f.res, 'DocURL', docUrl);
     }
     return { success: true, docUrl: docUrl };
   } finally { lock.releaseLock(); }
@@ -330,42 +304,34 @@ function rpBuildDoc_(r) {
 
 // Cron: tạo Doc cho bài đã xong đủ 3 phần mà chưa có Doc (SV đóng tab ngay sau khi nộp, bài cũ trước khi cài…)
 function rpExportPending_() {
-  var d = rpReadSessionCols_(['SessionID', 'QuizScore', 'GapFillScore', 'DictationAccuracy', 'DocURL', 'DetailPurgedAt']);
-  var c = d.cols, done = 0, tries = 0;
-  for (var i = 0; i < d.n && done < RP.EXPORT_BATCH && tries < RP.EXPORT_BATCH * 3; i++) {
-    if (rpPartsOf_(c.QuizScore[i], c.GapFillScore[i], c.DictationAccuracy[i]).partsDone < 3) continue;
-    if (c.DocURL[i] || rpHas_(c.DetailPurgedAt[i])) continue;
+  var rows = _readCols(CONFIG.TABS.RESULTS, ['SessionID', 'QuizScore', 'GapFillScore', 'DictationAccuracy', 'DocURL', 'DetailPurgedAt']);
+  var done = 0, tries = 0;
+  for (var i = 0; i < rows.length && done < RP.EXPORT_BATCH && tries < RP.EXPORT_BATCH * 3; i++) {
+    var r = rows[i];
+    if (rpPartsOf_(r.QuizScore, r.GapFillScore, r.DictationAccuracy).partsDone < 3) continue;
+    if (r.DocURL || rpHas_(r.DetailPurgedAt)) continue;
     tries++;
-    var r = rpExportSession_(c.SessionID[i]);
-    if (r.success) done++;
+    if (rpExportSession_(r.SessionID).success) done++;
   }
   return done;
 }
 
-// Cron: xoá JSON chi tiết của bài đã có Doc, PURGE_AFTER_DAYS ngày sau ngày hoàn thành. Không báo SV.
-// Điểm số giữ nguyên. KHÔNG BAO GIỜ xoá bài chưa có Doc hoặc chưa làm đủ 3 phần.
+// Cron: PURGE_AFTER_DAYS ngày sau ngày hoàn thành → xoá hẳn dòng trong SessionDetails. Không báo SV.
+// Results giữ nguyên điểm + DocURL. KHÔNG BAO GIỜ xoá bài chưa có Doc hoặc chưa làm đủ 3 phần.
 function rpPurgeOld_() {
-  var cutoff = Date.now() - RP.PURGE_AFTER_DAYS * 864e5;
-  var d = rpReadSessionCols_(['SessionID', 'EndTime', 'QuizScore', 'GapFillScore', 'DictationAccuracy', 'DocURL', 'DetailPurgedAt']);
-  var c = d.cols, sheet = d.sheet, hdrs = d.hdrs, iId = hdrs.indexOf('SessionID');
-  var cols = RP.DETAIL_COLS.map(function (n) { return hdrs.indexOf(n); }).filter(function (x) { return x >= 0; }).sort(function (a, b) { return a - b; });
-  // gom các cột liền nhau thành từng dải để clear 1 lần/dải
-  var runs = [];
-  cols.forEach(function (ci) {
-    var last = runs[runs.length - 1];
-    if (last && ci === last.start + last.len) last.len++; else runs.push({ start: ci, len: 1 });
-  });
-  var purged = 0;
-  for (var i = 0; i < d.n && purged < RP.PURGE_BATCH; i++) {
-    if (!c.DocURL[i] || rpHas_(c.DetailPurgedAt[i])) continue;
-    if (rpPartsOf_(c.QuizScore[i], c.GapFillScore[i], c.DictationAccuracy[i]).partsDone < 3) continue;
-    var end = rpTime_(c.EndTime[i]);
+  var cutoff = Date.now() - RP.PURGE_AFTER_DAYS * 864e5, purged = 0;
+  var rows = _readCols(CONFIG.TABS.RESULTS, ['SessionID', 'EndTime', 'QuizScore', 'GapFillScore', 'DictationAccuracy', 'DocURL', 'DetailPurgedAt']);
+  for (var i = 0; i < rows.length && purged < RP.PURGE_BATCH; i++) {
+    var r = rows[i];
+    if (!r.DocURL || rpHas_(r.DetailPurgedAt)) continue;
+    if (rpPartsOf_(r.QuizScore, r.GapFillScore, r.DictationAccuracy).partsDone < 3) continue;
+    var end = rpTime_(r.EndTime);
     if (!end || end > cutoff) continue;
-    var rowIdx = i + 2;
-    // Hàng có thể bị dịch nếu SV xoá session trong lúc cron chạy → xác minh lại SessionID trước khi xoá
-    if (String(sheet.getRange(rowIdx, iId + 1).getValue()) !== String(c.SessionID[i])) continue;
-    runs.forEach(function (run) { sheet.getRange(rowIdx, run.start + 1, 1, run.len).clearContent(); });
-    sheet.getRange(rowIdx, hdrs.indexOf('DetailPurgedAt') + 1).setValue(nowIso());
+    // Tìm lại theo SessionID ngay lúc xoá (hàng có thể đã dịch nếu SV xoá bài khác trong lúc cron chạy)
+    var det = _findRowById(CONFIG.TABS.DETAILS, r.SessionID);
+    if (det) det.sheet.deleteRow(det.rowIdx);
+    var res = _findRowById(CONFIG.TABS.RESULTS, r.SessionID);
+    if (res) _setCell(res, 'DetailPurgedAt', nowIso());
     purged++;
   }
   return purged;
@@ -391,21 +357,21 @@ function rpReviews_() {
 function rpNewPractice() {
   var since = rpTime_(getSetting('rp_new_since'));
   var rv = rpReviews_().map;
-  var d = rpReadSessionCols_(['ClassID', 'ClassName', 'BookTestPart', 'EndTime', 'QuizScore', 'GapFillScore', 'DictationAccuracy']);
-  var c = d.cols, groups = {};
-  for (var i = 0; i < d.n; i++) {
-    if (rpPartsOf_(c.QuizScore[i], c.GapFillScore[i], c.DictationAccuracy[i]).partsDone < 3) continue;
-    var end = rpTime_(c.EndTime[i]);
-    if (!end) continue;
-    var key = rpGroupKey_(c.ClassID[i], c.BookTestPart[i]);
+  var rows = _readCols(CONFIG.TABS.RESULTS, ['ClassID', 'ClassName', 'BookTestPart', 'EndTime', 'QuizScore', 'GapFillScore', 'DictationAccuracy']);
+  var groups = {};
+  rows.forEach(function (r) {
+    if (rpPartsOf_(r.QuizScore, r.GapFillScore, r.DictationAccuracy).partsDone < 3) return;
+    var end = rpTime_(r.EndTime);
+    if (!end) return;
+    var key = rpGroupKey_(r.ClassID, r.BookTestPart);
     var reviewedUpTo = rv[key] ? rpTime_(rv[key].ReviewedUpTo) : since;
-    if (end <= reviewedUpTo) continue;
+    if (end <= reviewedUpTo) return;
     var g = groups[key] || (groups[key] = {
-      groupKey: key, classId: String(c.ClassID[i]), className: String(c.ClassName[i] || classNameOf(c.ClassID[i])),
-      bookTestPart: String(c.BookTestPart[i]), from: end, to: end
+      groupKey: key, classId: String(r.ClassID), className: String(r.ClassName || classNameOf(r.ClassID)),
+      bookTestPart: String(r.BookTestPart), from: end, to: end
     });
     g.from = Math.min(g.from, end); g.to = Math.max(g.to, end);
-  }
+  });
   var data = Object.keys(groups).map(function (k) {
     var g = groups[k];
     g.from = new Date(g.from).toISOString(); g.to = new Date(g.to).toISOString();
@@ -448,24 +414,45 @@ function rpMarkDone(user, p, done) {
   return { success: true };
 }
 
-// ─── CHẠY 1 LẦN: làm gọn DictationJSON cũ ────────────────────
-// Bản cũ lưu mỗi câu kèm resultHtml (cả câu script dạng HTML). Hàm này giữ lại đúng
-// typed/checked/attempted cho mọi session → sheet nhẹ đi đáng kể. Chạy lại nhiều lần cũng an toàn.
-function rp_compactDictation() {
-  var sheet = getSheet(CONFIG.TABS.SESSIONS), hdrs = rpSheetHeaders_(sheet);
-  var c = hdrs.indexOf('DictationJSON'), n = sheet.getLastRow() - 1;
-  if (c < 0 || n < 1) return 0;
-  var vals = sheet.getRange(2, c + 1, n, 1).getValues(), changed = 0, before = 0, after = 0;
-  vals.forEach(function (row, i) {
-    if (!row[0]) return;
-    var dj = rpJson_(row[0], null);
-    if (!dj || !dj.answers) return;
-    var out = JSON.stringify(Object.assign({}, dj, { answers: _compactDictAnswers(dj.answers) }));
-    before += String(row[0]).length;
-    after += out.length;
-    // ghi từng ô đã đổi (không ghi đè cả cột) → không đè lên bài SV đang lưu cùng lúc
-    if (out !== row[0]) { sheet.getRange(i + 2, c + 1).setValue(out); changed++; }
+// ─── CHẠY 1 LẦN: chuyển tab Sessions cũ → Results + SessionDetails ─────
+// - Tab Sessions cũ KHÔNG bị sửa/xoá (giữ làm bản sao lưu). Xoá tay khi đã kiểm tra xong.
+// - Bỏ qua bài đã có trong Results → chạy lại nhiều lần cũng an toàn (vd. khi báo "còn … bài").
+// - DictationJSON được làm gọn: chỉ giữ câu SV gõ (bỏ resultHtml = cả câu script dạng HTML).
+// - Bài đã bị xoá chi tiết trước đây (hoặc đã quá 10 ngày và có Doc) → chỉ tạo dòng Results.
+function rp_migrateSessions() {
+  var legacy = getSS().getSheetByName(CONFIG.TABS.LEGACY);
+  if (!legacy || legacy.getLastRow() < 2) { Logger.log('Không có tab Sessions cũ để chuyển.'); return 0; }
+  var data = legacy.getDataRange().getValues(), hdrs = data.shift();
+  var existing = {};
+  _readCols(CONFIG.TABS.RESULTS, ['SessionID']).forEach(function (r) { existing[String(r.SessionID)] = true; });
+  var resHdrs = _headers(CONFIG.TABS.RESULTS), detHdrs = _headers(CONFIG.TABS.DETAILS);
+  var resRows = [], detRows = [], left = 0;
+  data.forEach(function (row) {
+    var o = {}; hdrs.forEach(function (h, i) { o[h] = row[i]; });
+    var id = String(o.SessionID || '');
+    if (!id || existing[id]) return;
+    if (resRows.length >= RP.MIGRATE_BATCH) { left++; return; }
+    existing[id] = true;
+    var dj = rpJson_(o.DictationJSON, null);
+    if (dj && dj.answers) {
+      dj.answers = _compactDictAnswers(dj.answers);
+      o.DictationJSON = JSON.stringify(dj);
+      if (dj.completed === false && !rpHas_(o.DictationAccuracy)) {
+        o.DictInProgress = true; o.DictSavedAt = dj.savedAt || ''; o.DictSentenceIdx = dj.currentSentenceIdx || 0;
+      }
+    }
+    var hasDetail = !!(o.CorrectedScriptJSON || o.QuizJSON || o.GapFillJSON || o.DictationJSON);
+    if (!hasDetail && rpPartsOf_(o.QuizScore, o.GapFillScore, o.DictationAccuracy).partsDone === 3 && !rpHas_(o.DetailPurgedAt)) {
+      o.DetailPurgedAt = 'no-detail'; // đã bị nút Clear Data cũ xoá
+    }
+    resRows.push(resHdrs.map(function (h) { return rpHas_(o[h]) ? o[h] : ''; }));
+    if (hasDetail && !rpHas_(o.DetailPurgedAt)) detRows.push(detHdrs.map(function (h) { return rpHas_(o[h]) ? o[h] : ''; }));
   });
-  Logger.log('Compacted ' + changed + ' session(s): DictationJSON ' + before + ' → ' + after + ' characters.');
-  return changed;
+  // Ghi hàng loạt 1 lần/tab (nhanh hơn appendRow từng dòng rất nhiều)
+  var rs = getSheet(CONFIG.TABS.RESULTS), ds = getSheet(CONFIG.TABS.DETAILS);
+  if (resRows.length) rs.getRange(rs.getLastRow() + 1, 1, resRows.length, resHdrs.length).setValues(resRows);
+  if (detRows.length) ds.getRange(ds.getLastRow() + 1, 1, detRows.length, detHdrs.length).setValues(detRows);
+  Logger.log('Đã chuyển ' + resRows.length + ' bài (' + detRows.length + ' có chi tiết).' +
+             (left ? ' Còn ' + left + ' bài — chạy lại rp_migrateSessions() để chuyển tiếp.' : ' Xong toàn bộ.'));
+  return resRows.length;
 }
