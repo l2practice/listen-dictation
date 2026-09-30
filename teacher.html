@@ -530,9 +530,6 @@ function switchDetailTab(tab) {
     document.getElementById('dt-pane-' + t).classList.toggle('active', t === tab);
   });
 }
-// Same rule as student.html checkSentence: ignore punctuation/apostrophes/dashes and case
-function dtWordKey(w) { return String(w || '').replace(/[\u2018\u2019\u02BC\u02B9]/g, "'").replace(/[^a-z0-9]/gi, '').toLowerCase(); }
-function dtWc(text) { return (String(text || '').match(/\b[\w'-]+\b/g) || []).length; }
 function renderDetailHeader() {
   var d = DetailApp.data;
   document.getElementById('dt-title').textContent = d.StudentName + ' — ' + (d.BookTestPart || 'Untitled');
@@ -560,19 +557,19 @@ function renderDictationDetail() {
   var sentences = d.CorrectedScriptJSON || [];
   if (!dj || !sentences.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Dictation part yet.</div>'; return; }
   var answers = dj.answers || [];
+  // Cùng cách chấm với trang SV (LD.alignWords): thiếu/thừa 1 từ không làm lệch cả câu
   pane.innerHTML = sentences.map(function (s, i) {
     var st = answers[i] || { typed: '', checked: false };
-    var actualWords = s.split(/\s+/).filter(Boolean);
-    var typedWords = (st.typed || '').split(/\s+/).filter(Boolean);
-    var allOk = true;
-    var html = actualWords.map(function (w, wi) {
-      var tw = dtWordKey(typedWords[wi]);
-      var ok = tw === dtWordKey(w);
-      if (!ok) allOk = false;
-      return '<span class="' + (ok ? 'dt-w-ok' : (tw ? 'dt-w-bad' : 'dt-w-miss')) + '">' + LD.esc(w) + '</span>';
+    var al = LD.alignWords(s, st.typed || '');
+    var html = al.ops.map(function (o) {
+      if (o.op === 'ok') return '<span class="dt-w-ok">' + LD.esc(o.t) + '</span>';
+      if (o.op === 'miss') return '<span class="dt-w-miss" title="missing">' + LD.esc(o.t) + '</span>';
+      if (o.op === 'extra') return '<span class="dt-w-bad" title="extra word">' + LD.esc(o.y) + '</span>';
+      return '<span class="dt-w-bad" title="typed">' + LD.esc(o.y) + '</span> <span class="dt-w-miss" title="correct">' + LD.esc(o.t) + '</span>';
     }).join(' ');
-    return '<div class="dt-sentence ' + (st.checked ? (allOk ? 'ok' : 'bad') : '') + '">' +
-      '<div class="sn">Sentence ' + (i + 1) + ' · ' + dtWc(s) + ' words' + (st.checked ? '' : ' · not checked yet') + '</div>' +
+    var attempted = st.checked || st.attempted || st.resultHtml || st.typed;
+    return '<div class="dt-sentence ' + (attempted ? (al.allCorrect ? 'ok' : 'bad') : '') + '">' +
+      '<div class="sn">Sentence ' + (i + 1) + ' · ' + al.correct + '/' + al.total + ' words' + (attempted ? '' : ' · not attempted') + '</div>' +
       '<div class="target">Target: ' + LD.esc(s) + '</div>' +
       '<div class="typed">Typed: ' + html + '</div></div>';
   }).join('');

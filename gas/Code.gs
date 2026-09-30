@@ -545,6 +545,15 @@ function sessionSaveGapFill(user, p) {
   } catch (e) { return { success: false, error: e.message }; }
 }
 
+// Chỉ lưu câu SV gõ + trạng thái — câu gốc đã có trong CorrectedScriptJSON.
+// Lọc ở server để trang cũ còn trong cache (gửi kèm resultHtml = cả câu script dạng HTML) không làm sheet phình.
+function _compactDictAnswers(answers) {
+  return (answers || []).map(function (a) {
+    a = a || {};
+    return { typed: String(a.typed || ''), checked: !!a.checked, attempted: !!(a.attempted || a.checked || a.resultHtml) };
+  });
+}
+
 // Dictation: DUY NHẤT cho phép checkpoint (đã chốt). Gọi bao nhiêu lần cũng được, ghi đè.
 function sessionSaveDictationProgress(user, p) {
   try {
@@ -552,7 +561,7 @@ function sessionSaveDictationProgress(user, p) {
     if (!f) return { success: false, error: 'Không tìm thấy session.' };
     _setCell(f, 'DictationJSON', JSON.stringify({
       currentSentenceIdx: p.currentSentenceIdx || 0,
-      answers: p.answers || [],
+      answers: _compactDictAnswers(p.answers),
       completed: false,
       savedAt: nowIso()
     }));
@@ -564,7 +573,7 @@ function sessionFinishDictation(user, p) {
     var f = _findSessionRow(p.sessionId, user.studentId);
     if (!f) return { success: false, error: 'Không tìm thấy session.' };
     var accuracy = p.accuracy != null ? p.accuracy : 0;
-    _setCell(f, 'DictationJSON', JSON.stringify({ answers: p.answers || [], accuracy: accuracy, completed: true, savedAt: nowIso() }));
+    _setCell(f, 'DictationJSON', JSON.stringify({ answers: _compactDictAnswers(p.answers), accuracy: accuracy, completed: true, savedAt: nowIso() }));
     _setCell(f, 'DictationAccuracy', accuracy);
     var quizScore = Number(_getCell(f, 'QuizScore')) || 0;
     var gapScore = Number(_getCell(f, 'GapFillScore')) || 0;

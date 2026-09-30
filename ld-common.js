@@ -184,5 +184,36 @@
     return h > 0 ? (h + 'h' + (m ? m + 'p' : '')) : (m + ' phút');
   };
 
+  /*── DICTATION: so khớp câu gõ với câu gốc ────────
+    So theo DÃY từ (Levenshtein cấp từ), KHÔNG theo vị trí: thiếu/thừa 1 từ chỉ tính sai
+    đúng từ đó, không làm lệch cả phần sau của câu. Bỏ qua dấu câu, nháy, gạch, hoa/thường
+    (don't = don’t = dont). Token chỉ toàn dấu câu (vd. "—") không tính là từ.
+    Trả về ops theo thứ tự câu gốc: ok | sub (gõ sai) | miss (thiếu) | extra (thừa). */
+  LD.wordKey = function (w) {
+    return String(w || '').replace(/[‘’ʼʹ]/g, "'").replace(/[^a-z0-9]/gi, '').toLowerCase();
+  };
+  LD.alignWords = function (target, typed) {
+    var words = function (s) { return String(s || '').split(/\s+/).filter(function (w) { return LD.wordKey(w); }); };
+    var a = words(target), b = words(typed);
+    var ka = a.map(LD.wordKey), kb = b.map(LD.wordKey);
+    var n = a.length, m = b.length, d = [], i, j;
+    for (i = 0; i <= n; i++) { d[i] = [i]; }
+    for (j = 1; j <= m; j++) d[0][j] = j;
+    for (i = 1; i <= n; i++) for (j = 1; j <= m; j++) {
+      d[i][j] = Math.min(d[i - 1][j - 1] + (ka[i - 1] === kb[j - 1] ? 0 : 1), d[i - 1][j] + 1, d[i][j - 1] + 1);
+    }
+    var ops = [];
+    i = n; j = m;
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && ka[i - 1] === kb[j - 1] && d[i][j] === d[i - 1][j - 1]) { ops.push({ op: 'ok', t: a[i - 1], y: b[j - 1] }); i--; j--; }
+      else if (i > 0 && j > 0 && d[i][j] === d[i - 1][j - 1] + 1) { ops.push({ op: 'sub', t: a[i - 1], y: b[j - 1] }); i--; j--; }
+      else if (i > 0 && d[i][j] === d[i - 1][j] + 1) { ops.push({ op: 'miss', t: a[i - 1] }); i--; }
+      else { ops.push({ op: 'extra', y: b[j - 1] }); j--; }
+    }
+    ops.reverse();
+    var correct = ops.filter(function (o) { return o.op === 'ok'; }).length;
+    return { ops: ops, correct: correct, total: n, allCorrect: correct === n && m === n };
+  };
+
   global.LD = LD;
 })(window);

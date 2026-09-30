@@ -81,6 +81,7 @@
 .sb-result .w-correct{color:var(--green);font-weight:700}
 .sb-result .w-wrong{color:var(--red);font-weight:700;font-family:var(--font-mono)}
 .sb-result .w-missing{color:#e67e22;font-weight:800}
+.sb-result .w-extra{color:var(--red);text-decoration:line-through;font-family:var(--font-mono);opacity:.8}
 .sb-hint{background:#f0fdf4;border:1.5px solid var(--green);border-radius:8px;padding:8px 12px;margin-top:6px;font-size:13px}
 .sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:14px;resize:none;overflow:hidden;line-height:1.6;min-height:42px;box-sizing:border-box;display:block}
 .sb-input:focus{border-color:var(--blue)}
@@ -1424,8 +1425,8 @@ function renderDictation() {
     if (st.resultHtml) document.getElementById('sb-result-' + i).innerHTML = st.resultHtml;
   });
   var done = App.dictationAnswers.filter(function (a) { return a.checked; }).length;
-  // "Attempted" = checked (correct) OR has been checked at least once (resultHtml set = Check was pressed)
-  var attempted = App.dictationAnswers.filter(function (a) { return a.checked || !!a.resultHtml; }).length;
+  // "Attempted" = checked (correct) OR Check was pressed at least once
+  var attempted = App.dictationAnswers.filter(function (a) { return a.checked || a.attempted; }).length;
   var pct = Math.round(done / App.correctedSentences.length * 100);
   document.getElementById('dict-progress-fill').style.width = pct + '%';
   document.getElementById('dict-progress-label').textContent = done + '/' + App.correctedSentences.length;
@@ -1456,88 +1457,60 @@ function onDictInput(i, v) {
   if (hint) hint.classList.add('hidden');
   updateWordTotal();
 }
+// ── Chấm 1 câu Dictation (thuần: không đụng DOM) ──
+// LD.alignWords so theo dãy từ → thiếu/thừa 1 từ chỉ sai đúng từ đó, không lệch cả câu.
+function charDiff(actual, typed) {
+  var prefix = 0;
+  while (prefix < actual.length && prefix < typed.length && actual[prefix] === typed[prefix]) prefix++;
+  if (prefix === actual.length && typed.length > actual.length) {
+    return '<span style="color:var(--green)">' + LD.esc(actual) + '</span><span style="color:var(--red)">*</span>';
+  }
+  if (prefix === typed.length && actual.length > typed.length) {
+    return '<span style="color:var(--green)">' + LD.esc(typed) + '</span><span style="color:var(--red)">' + '*'.repeat(actual.length - typed.length) + '</span>';
+  }
+  var correctPart = actual.slice(0, prefix);
+  return (correctPart ? '<span style="color:var(--green)">' + LD.esc(correctPart) + '</span>' : '') +
+         '<span style="color:var(--red)">' + '*'.repeat(actual.length - prefix || typed.length - prefix || 1) + '</span>';
+}
+function gradeDictSentence(i, st) {
+  st = st || App.dictationAnswers[i];
+  var res = LD.alignWords(App.correctedSentences[i], st.typed || '');
+  res.html = res.ops.map(function (o) {
+    if (o.op === 'ok') return '<span class="w-correct">' + LD.esc(o.t) + '</span>';
+    if (o.op === 'miss') return '<span style="color:var(--grey-400);font-family:var(--font-mono)" title="Missing word">' + '*'.repeat(LD.wordKey(o.t).length) + '</span>';
+    if (o.op === 'extra') return '<span class="w-extra" title="Extra word">' + LD.esc(o.y) + '</span>';
+    return '<span class="w-wrong" title="You typed: ' + LD.esc(o.y) + '">' + charDiff(LD.wordKey(o.t), LD.wordKey(o.y)) + '</span>';
+  }).join(' ');
+  res.accuracy = res.total ? res.correct / res.total : 0;
+  return res;
+}
+function showDictHint(i, res) {
+  var hintDiv = document.getElementById('sb-hint-' + i);
+  if (!hintDiv) return;
+  // Đúng từ 90% trở lên → hiện đáp án, tô các từ cần sửa
+  if (!res.allCorrect && res.accuracy >= 0.9) {
+    var hintHtml = res.ops.filter(function (o) { return o.op !== 'extra'; }).map(function (o) {
+      return o.op === 'ok' ? '<span>' + LD.esc(o.t) + '</span>'
+        : '<span style="color:var(--green);font-weight:800;text-decoration:underline">' + LD.esc(o.t) + '</span>';
+    }).join(' ');
+    var extras = res.ops.filter(function (o) { return o.op === 'extra'; }).length;
+    hintDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--grey-500);margin-bottom:4px">💡 Answer (words to fix highlighted' +
+      (extras ? ' · remove ' + extras + ' extra word' + (extras > 1 ? 's' : '') : '') + ')</div><div style="font-size:13.5px;line-height:2">' + hintHtml + '</div>';
+    hintDiv.classList.remove('hidden');
+  } else hintDiv.classList.add('hidden');
+}
 function checkSentence(i) {
   var inputEl = document.getElementById('sb-input-' + i);
-  var typed = (inputEl ? inputEl.value : '').trim();
-  App.dictationAnswers[i].typed = typed;
-
-  // Normalize curly apostrophes in both sides before comparison
-  var sentenceNorm = App.correctedSentences[i]
-    .replace(/[\u2018\u2019\u02BC\u02B9]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u2013\u2014\u2012]/g, '-');
-  var actualWords = sentenceNorm.split(/\s+/).filter(Boolean);
-  var typedWords  = typed.split(/\s+/).filter(Boolean);
-
-  function normalize(w) {
-    return w
-      .replace(/[\u2018\u2019\u02BC\u02B9]/g, "'")
-      .replace(/[\u201C\u201D]/g, '"')
-      .replace(/[\u2013\u2014\u2012]/g, '-');
-  }
-  // Compare only letters+digits — ignore ALL punctuation, apostrophes, dashes
-  // don't → dont, won't → wont, well-known → wellknown, 42 → 42, 1st → 1st
-  function cleanW(w) {
-    return normalize(w).replace(/[^a-z0-9]/gi, '').toLowerCase();
-  }
-
-  // ── Smart diff: character-level comparison for wrong words ──
-  function charDiff(actual, typed) {
-    var prefix = 0;
-    while (prefix < actual.length && prefix < typed.length && actual[prefix] === typed[prefix]) prefix++;
-    if (prefix === actual.length && typed.length > actual.length) {
-      return '<span style="color:var(--green)">' + LD.esc(actual) + '</span>' +
-             '<span style="color:var(--red)">*</span>';
-    }
-    if (prefix === typed.length && actual.length > typed.length) {
-      var missing = actual.length - typed.length;
-      return '<span style="color:var(--green)">' + LD.esc(typed) + '</span>' +
-             '<span style="color:var(--red)">' + '*'.repeat(missing) + '</span>';
-    }
-    var correctPart = actual.slice(0, prefix);
-    var wrongLen = actual.length - prefix;
-    return (correctPart ? '<span style="color:var(--green)">' + LD.esc(correctPart) + '</span>' : '') +
-           '<span style="color:var(--red)">' + '*'.repeat(wrongLen || typed.length - prefix || 1) + '</span>';
-  }
-
-  var allCorrect = true;
-  var correctCount = 0;
-  var html = actualWords.map(function (w, wi) {
-    var ca = cleanW(w), ct = cleanW(typedWords[wi] || '');
-    if (ca === ct) {
-      correctCount++;
-      return '<span class="w-correct">' + LD.esc(w) + '</span>';
-    }
-    allCorrect = false;
-    if (!ct) {
-      return '<span style="color:var(--grey-400);font-family:var(--font-mono)">' + '*'.repeat(ca.length || 4) + '</span>';
-    }
-    return '<span class="w-wrong" title="You typed: ' + LD.esc(typedWords[wi]) + '">' +
-           charDiff(ca, ct) + '</span>';
-  }).join(' ');
-
-  // Save result HTML for re-render persistence
-  App.dictationAnswers[i].resultHtml = html;
-  document.getElementById('sb-result-' + i).innerHTML = html;
-
-  // ── Show Hints at ≥90% accuracy ──
-  var accuracy = actualWords.length ? correctCount / actualWords.length : 0;
-  var hintDiv = document.getElementById('sb-hint-' + i);
-  if (!allCorrect && accuracy >= 0.9 && hintDiv) {
-    var hintHtml = actualWords.map(function(w, wi) {
-      var ca = cleanW(w), ct = cleanW(typedWords[wi] || '');
-      if (ca === ct) return '<span>' + LD.esc(w) + '</span>';
-      return '<span style="color:var(--green);font-weight:800;text-decoration:underline">' + LD.esc(w) + '</span>';
-    }).join(' ');
-    hintDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--grey-500);margin-bottom:4px">💡 Hint (differences highlighted)</div><div style="font-size:13.5px;line-height:2">' + hintHtml + '</div>';
-    hintDiv.classList.remove('hidden');
-  } else if (hintDiv) {
-    hintDiv.classList.add('hidden');
-  }
+  App.dictationAnswers[i].typed = (inputEl ? inputEl.value : '').trim();
+  App.dictationAnswers[i].attempted = true;
+  var res = gradeDictSentence(i), allCorrect = res.allCorrect;
+  // resultHtml CHỈ giữ trong bộ nhớ để hiển thị — không gửi lên server (xem dictAnswersForSave)
+  App.dictationAnswers[i].resultHtml = res.html;
+  document.getElementById('sb-result-' + i).innerHTML = res.html;
+  showDictHint(i, res);
 
   if (allCorrect) {
     App.dictationAnswers[i].checked = true;
-    App.dictationAnswers[i].resultHtml = html;
     if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
     App._pausedForCurrentIdx = false;
     renderDictation();
@@ -1588,7 +1561,7 @@ async function saveDictationAndExit() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
   try {
     var r = await LD.api('session.saveDictationProgress', {
-      sessionId: App.sessionId, currentSentenceIdx: App.dictationIdx, answers: App.dictationAnswers
+      sessionId: App.sessionId, currentSentenceIdx: App.dictationIdx, answers: dictAnswersForSave()
     });
     if (r.success) { LD.toast('Saved — resume it from "History → In Progress".', 'ok', 3500); goHistory(); }
     else { LD.toast(r.error || 'Could not save', 'err'); if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Exit'; } }
@@ -1597,26 +1570,37 @@ async function saveDictationAndExit() {
     if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Exit'; }
   }
 }
-// Cùng quy tắc so từ với checkSentence (bỏ dấu câu / nháy / gạch, không phân biệt hoa thường) —
-// trước đây điểm accuracy dùng quy tắc khác nên câu đã "xanh" vẫn có thể bị tính sai (vd. don’t vs don't).
-function dictWordKey(w) {
-  return String(w || '').replace(/[\u2018\u2019\u02BC\u02B9]/g, "'").replace(/[^a-z0-9]/gi, '').toLowerCase();
-}
+// Điểm Dictation = số từ đúng / tổng số từ, chấm cùng cách với nút Check (LD.alignWords)
 function dictScore() {
   var totalWords = 0, correctWords = 0;
   App.correctedSentences.forEach(function (s, i) {
-    var actual = s.split(/\s+/).filter(Boolean);
-    var typed = ((App.dictationAnswers[i] && App.dictationAnswers[i].typed) || '').split(/\s+/).filter(Boolean);
-    actual.forEach(function (w, wi) { totalWords++; if (dictWordKey(typed[wi]) === dictWordKey(w)) correctWords++; });
+    var r = LD.alignWords(s, (App.dictationAnswers[i] && App.dictationAnswers[i].typed) || '');
+    totalWords += r.total; correctWords += r.correct;
   });
   return totalWords ? Math.round(correctWords / totalWords * 100) : 0;
+}
+// Chỉ gửi những gì SV gõ — câu gốc đã có trong CorrectedScriptJSON, không lưu lại lần nữa.
+// (Trước đây mỗi câu gửi kèm resultHtml = cả câu script bọc HTML → sheet nặng gấp nhiều lần.)
+function dictAnswersForSave() {
+  return App.dictationAnswers.map(function (a) {
+    return { typed: a.typed || '', checked: !!a.checked, attempted: !!(a.attempted || a.checked || a.resultHtml) };
+  });
+}
+// Khi làm tiếp bài dở: dựng lại phần kết quả từ câu đã gõ (vì resultHtml không còn được lưu)
+function restoreDictAnswers(saved) {
+  App.dictationAnswers = App.correctedSentences.map(function (s, i) {
+    var a = (saved && saved[i]) || {};
+    var st = { typed: a.typed || '', checked: !!a.checked, attempted: !!(a.attempted || a.checked || a.resultHtml) };
+    if (st.attempted) st.resultHtml = gradeDictSentence(i, st).html;
+    return st;
+  });
 }
 async function finishDictation() {
   var btn = document.getElementById('btn-finish-dictation');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting…'; }
   var accuracy = dictScore();
   try {
-    var r = await LD.api('session.finishDictation', { sessionId: App.sessionId, answers: App.dictationAnswers, accuracy: accuracy });
+    var r = await LD.api('session.finishDictation', { sessionId: App.sessionId, answers: dictAnswersForSave(), accuracy: accuracy });
     if (!r.success) {
       LD.toast(r.error || 'Could not submit', 'err');
       if (btn) { btn.disabled = false; btn.textContent = '🏁 Submit'; }
@@ -1688,7 +1672,7 @@ async function resumeSession(sessionId) {
     App.gloss = (d.CEFRJSON && d.CEFRJSON.gloss) || {};
     App.collocations = d.CollocationJSON || [];
     var dj = d.DictationJSON || { currentSentenceIdx: 0, answers: [] };
-    App.dictationAnswers = App.correctedSentences.map(function (s, i) { return (dj.answers && dj.answers[i]) || { typed: '', checked: false }; });
+    restoreDictAnswers(dj.answers);
     App.dictationIdx = dj.currentSentenceIdx || 0;
     showScreen('screen-dictation');
     _initDictAudio();
@@ -1891,9 +1875,7 @@ async function expandSession(sessionId, btn) {
       } else {
         // Resume dictation
         var dj = d.DictationJSON || { currentSentenceIdx: 0, answers: [] };
-        App.dictationAnswers = App.correctedSentences.map(function (s, i) {
-          return (dj.answers && dj.answers[i]) || { typed: '', checked: false };
-        });
+        restoreDictAnswers(dj.answers);
         App.dictationIdx = dj.currentSentenceIdx || 0;
         showScreen('screen-dictation');
         _initDictAudio();

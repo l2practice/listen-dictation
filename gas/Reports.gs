@@ -83,6 +83,27 @@ function rpJson_(v, fb) { if (!v) return fb; if (typeof v === 'object') return v
 function rpWordKey_(w) {
   return String(w || '').replace(/[‘’ʼʹ]/g, "'").replace(/[^a-z0-9]/gi, '').toLowerCase();
 }
+// Cùng thuật toán với LD.alignWords (ld-common.js): so theo dãy từ, thiếu/thừa 1 từ không làm lệch cả câu
+function rpAlignWords_(target, typed) {
+  var words = function (s) { return String(s || '').split(/\s+/).filter(function (w) { return rpWordKey_(w); }); };
+  var a = words(target), b = words(typed), ka = a.map(rpWordKey_), kb = b.map(rpWordKey_);
+  var n = a.length, m = b.length, d = [], i, j;
+  for (i = 0; i <= n; i++) d[i] = [i];
+  for (j = 1; j <= m; j++) d[0][j] = j;
+  for (i = 1; i <= n; i++) for (j = 1; j <= m; j++)
+    d[i][j] = Math.min(d[i - 1][j - 1] + (ka[i - 1] === kb[j - 1] ? 0 : 1), d[i - 1][j] + 1, d[i][j - 1] + 1);
+  var ops = [];
+  i = n; j = m;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && ka[i - 1] === kb[j - 1] && d[i][j] === d[i - 1][j - 1]) { ops.push({ op: 'ok', t: a[i - 1], y: b[j - 1] }); i--; j--; }
+    else if (i > 0 && j > 0 && d[i][j] === d[i - 1][j - 1] + 1) { ops.push({ op: 'sub', t: a[i - 1], y: b[j - 1] }); i--; j--; }
+    else if (i > 0 && d[i][j] === d[i - 1][j] + 1) { ops.push({ op: 'miss', t: a[i - 1] }); i--; }
+    else { ops.push({ op: 'extra', y: b[j - 1] }); j--; }
+  }
+  ops.reverse();
+  var correct = ops.filter(function (o) { return o.op === 'ok'; }).length;
+  return { ops: ops, correct: correct, total: n };
+}
 function rpSheetHeaders_(sheet) { return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]; }
 
 // Đọc riêng vài cột của Sessions (tránh kéo cả JSON blob nặng)
@@ -285,12 +306,13 @@ function rpBuildDoc_(r) {
   var da = dict.answers || [];
   sentences.forEach(function (s, i) {
     var typed = String((da[i] && da[i].typed) || '');
-    var target = s.split(/\s+/).filter(Boolean), tw = typed.split(/\s+/).filter(Boolean);
-    var errs = [];
-    target.forEach(function (w, wi) {
-      if (rpWordKey_(w) !== rpWordKey_(tw[wi])) errs.push(w + (tw[wi] ? ' (bạn: ' + tw[wi] + ')' : ' (thiếu)'));
+    var al = rpAlignWords_(s, typed), errs = [];
+    al.ops.forEach(function (o) {
+      if (o.op === 'sub') errs.push(o.t + ' (bạn: ' + o.y + ')');
+      else if (o.op === 'miss') errs.push(o.t + ' (thiếu)');
+      else if (o.op === 'extra') errs.push('(thừa: ' + o.y + ')');
     });
-    var p = para((errs.length ? '✗ ' : '✓ ') + 'Câu ' + (i + 1) + ' — ' + (target.length - errs.length) + '/' + target.length + ' từ');
+    var p = para((errs.length ? '✗ ' : '✓ ') + 'Câu ' + (i + 1) + ' — ' + al.correct + '/' + al.total + ' từ');
     p.editAsText().setBold(true).setForegroundColor(errs.length ? RED : GREEN);
     para('   Target: ' + s, null, 10);
     if (errs.length) {
@@ -424,4 +446,26 @@ function rpMarkDone(user, p, done) {
   set('ReviewedAt', nowIso());
   set('ReviewedBy', user.email || user.fullName || '');
   return { success: true };
+}
+
+// ─── CHẠY 1 LẦN: làm gọn DictationJSON cũ ────────────────────
+// Bản cũ lưu mỗi câu kèm resultHtml (cả câu script dạng HTML). Hàm này giữ lại đúng
+// typed/checked/attempted cho mọi session → sheet nhẹ đi đáng kể. Chạy lại nhiều lần cũng an toàn.
+function rp_compactDictation() {
+  var sheet = getSheet(CONFIG.TABS.SESSIONS), hdrs = rpSheetHeaders_(sheet);
+  var c = hdrs.indexOf('DictationJSON'), n = sheet.getLastRow() - 1;
+  if (c < 0 || n < 1) return 0;
+  var vals = sheet.getRange(2, c + 1, n, 1).getValues(), changed = 0, before = 0, after = 0;
+  vals.forEach(function (row, i) {
+    if (!row[0]) return;
+    var dj = rpJson_(row[0], null);
+    if (!dj || !dj.answers) return;
+    var out = JSON.stringify(Object.assign({}, dj, { answers: _compactDictAnswers(dj.answers) }));
+    before += String(row[0]).length;
+    after += out.length;
+    // ghi từng ô đã đổi (không ghi đè cả cột) → không đè lên bài SV đang lưu cùng lúc
+    if (out !== row[0]) { sheet.getRange(i + 2, c + 1).setValue(out); changed++; }
+  });
+  Logger.log('Compacted ' + changed + ' session(s): DictationJSON ' + before + ' → ' + after + ' characters.');
+  return changed;
 }
