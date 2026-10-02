@@ -17,7 +17,7 @@
     enabled: false = app vẫn dùng Apps Script + Google Sheet như cũ.
     Chỉ bật true SAU KHI đã chạy xong các bước chuyển dữ liệu trong gas/FirebaseLD.gs. */
   var LD_FIREBASE = global.LD_FIREBASE || {
-    enabled: false,
+    enabled: true,
     config: {
       apiKey: 'AIzaSyABj5BoT_Bz8aGJ6bys8LWCLAFhut5VJL8',
       authDomain: 'listendictation-4c26e.firebaseapp.com',
