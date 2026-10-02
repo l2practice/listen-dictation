@@ -72,6 +72,8 @@ function routeAction(action, p, tok) {
   if (action === 'auth.forgotPassword')  return authForgotPassword(p);
   if (action === 'auth.verifyCode')      return authVerifyCode(p);
   if (action === 'auth.resetPassword')   return authResetPassword(p);
+  // Bản Firebase: tạo tài khoản / quên mật khẩu (FirebaseLD.gs) — không cần token Sheet
+  if (String(action).indexOf('fb.') === 0) return fbRoute(action, p);
 
   var user = validateUser(tok);
   if (!user) return { success: false, error: 'SESSION_EXPIRED' };

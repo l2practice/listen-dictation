@@ -1,0 +1,77 @@
+rules_version = '2';
+// LisDictation — dán vào Firebase console → Firestore Database → Rules → Publish.
+//
+// Tài khoản chỉ được tạo bởi Apps Script (gas/FirebaseLD.gs, quyền quản trị).
+// Tài khoản GV mang custom claim role == 'teacher'. Mọi tài liệu thuộc lớp đều có
+// teacherUid → GV chỉ thấy lớp/SV của mình; SV chỉ thấy bài của chính mình.
+// Apps Script chạy với quyền chủ project nên không bị các quy tắc này giới hạn.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn()  { return request.auth != null; }
+    function isTeacher() { return signedIn() && request.auth.token.role == 'teacher'; }
+    function isMe(uid)   { return signedIn() && request.auth.uid == uid; }
+    function owns(data)  { return isTeacher() && data.teacherUid == request.auth.uid; }
+    function profile()   { return get(/databases/$(db)/documents/users/$(request.auth.uid)).data; }
+    function unchanged(f) {
+      return request.resource.data.get(f, null) == resource.data.get(f, null);
+    }
+
+    // Hồ sơ. Do Apps Script tạo/sửa; GV chỉ được khoá/mở khoá SV lớp mình.
+    match /users/{uid} {
+      allow read: if isMe(uid) || owns(resource.data);
+      allow update: if owns(resource.data)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['archived']);
+      allow create, delete: if false;
+    }
+    // sha256(email) → mã SV, để đăng nhập bằng email. Chỉ đọc từng cái (phải biết email), không liệt kê được.
+    match /loginIndex/{h} {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
+    // Tên lớp: SV cũng đọc được (không nhạy cảm).
+    match /classes/{id} {
+      allow read: if signedIn();
+      allow create: if isTeacher() && request.resource.data.teacherUid == request.auth.uid
+                    && request.resource.data.classId == id;
+      allow update: if owns(resource.data) && unchanged('teacherUid') && unchanged('classId');
+      allow delete: if false;
+    }
+
+    // MỘT tài liệu cho mỗi SV: dòng tóm tắt (điểm) của mọi bài. SV tự ghi bài của mình;
+    // lớp và GV phải khớp hồ sơ, SV không tự đổi được. GV chỉ đọc.
+    match /progress/{uid} {
+      allow read: if isMe(uid) || owns(resource.data);
+      allow create: if isMe(uid)
+                    && request.resource.data.classId == profile().classId
+                    && request.resource.data.teacherUid == profile().teacherUid;
+      allow update: if isMe(uid)
+                    && request.resource.data.classId == profile().classId
+                    && unchanged('teacherUid');
+      allow delete: if false;
+    }
+
+    // Script + bài làm của 1 bài. Chủ bài ghi; khi đã nộp đủ 3 phần (compact == true)
+    // thì khoá: không sửa, không xoá được nữa — đó là bản tổng kết giữ vĩnh viễn.
+    match /details/{id} {
+      allow read: if (signedIn() && resource.data.uid == request.auth.uid) || owns(resource.data);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.teacherUid == profile().teacherUid;
+      allow update: if signedIn() && resource.data.uid == request.auth.uid
+                    && resource.data.get('compact', false) != true
+                    && unchanged('uid') && unchanged('teacherUid');
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid
+                    && resource.data.get('compact', false) != true;
+    }
+
+    // Dấu "Done" của GV ở tab New Practice
+    match /reviews/{id} {
+      // get cả khi chưa có tài liệu (lần đầu tick Done); list chỉ của chính mình
+      allow get: if isTeacher() && (resource == null || resource.data.teacherUid == request.auth.uid);
+      allow list: if owns(resource.data);
+      allow create: if isTeacher() && request.resource.data.teacherUid == request.auth.uid;
+      allow update: if owns(resource.data) && unchanged('teacherUid');
+      allow delete: if owns(resource.data);
+    }
+  }
+}

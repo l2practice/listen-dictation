@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report · LisDictation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ld-theme.css">
+<style>
+.topbar{background:linear-gradient(90deg,var(--black) 0%,var(--navy2) 45%,var(--red-dark) 100%);min-height:56px;display:flex;align-items:center;padding:8px 20px;gap:12px;position:sticky;top:0;z-index:10;border-bottom:2px solid var(--gold);flex-wrap:wrap}
+.topbar-brand{font-family:var(--font-display);color:#fff;font-size:1rem}
+.topbar-brand em{color:var(--red-mid);font-style:normal}
+.topbar-right{margin-left:auto;display:flex;gap:8px}
+.topbar-btn{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,.9);font-size:12.5px;cursor:pointer;font-family:var(--font-body);font-weight:600;text-decoration:none}
+.page{max-width:900px;margin:22px auto 60px;background:#fff;border:1px solid var(--grey-200);border-radius:var(--radius-lg);padding:34px 40px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+@media(max-width:640px){.page{padding:22px 16px;margin:12px 8px 40px}}
+h1{font-family:var(--font-display);font-size:1.7rem;color:var(--black);line-height:1.25}
+.meta{color:var(--grey-600);font-size:13px;margin:6px 0 18px}
+.scores{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px}
+@media(max-width:520px){.scores{grid-template-columns:repeat(2,1fr)}}
+.score{border:1px solid var(--grey-200);border-radius:12px;padding:12px;text-align:center}
+.score .n{font-family:var(--font-display);font-size:1.6rem;font-weight:700;color:var(--navy2)}
+.score .l{font-size:11px;color:var(--grey-600);text-transform:uppercase;letter-spacing:.05em}
+.score.total .n{color:var(--red)}
+h2{font-family:var(--font-display);font-size:1.25rem;color:var(--navy2);margin:30px 0 10px;padding-bottom:6px;border-bottom:1.5px solid var(--grey-200)}
+.muted{color:var(--grey-600);font-size:13px}
+.script p,.gap p{margin:0 0 6px;line-height:1.85;font-size:15px}
+.no{color:var(--grey-400);font-size:12px;margin-right:4px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+th{background:var(--grey-100);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--grey-600)}
+th,td{padding:7px 10px;border-bottom:1px solid var(--grey-200)}
+.lv{display:inline-block;min-width:30px;text-align:center;font-weight:800;font-size:11px;border-radius:6px;padding:1px 6px;color:#fff}
+.lv-B2{background:#8B5CF6}.lv-C1{background:#EC4899}.lv-C2{background:#DC2626}
+.ipa{font-family:var(--font-mono);font-size:12.5px;color:var(--grey-600)}
+.dist{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.dist span{font-size:12px;background:var(--grey-100);border-radius:100px;padding:2px 10px;color:var(--grey-800)}
+.q{margin:0 0 14px}
+.q-title{font-weight:700}
+.q.ok .q-title{color:var(--green)}.q.bad .q-title{color:var(--red)}
+.q div{font-size:13.5px;margin-left:22px}
+.ans-ok{color:var(--green)}.ans-bad{color:var(--red)}.expl{color:var(--grey-600)}
+.g-ok{color:var(--green);font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.g-bad{color:var(--red);font-weight:800;text-decoration:line-through}
+.dict{margin:0 0 14px}
+.dict .h{font-weight:700}
+.dict.ok .h{color:var(--green)}.dict.bad .h{color:var(--red)}
+.dict div{font-size:13.5px;margin-left:22px;line-height:1.7}
+.d-ok{color:var(--green)}.d-sub{color:var(--red);text-decoration:line-through}.d-fix{color:var(--green);font-weight:800;text-decoration:underline}
+.d-miss{color:#d97706;font-weight:800}.d-extra{color:var(--red);text-decoration:line-through;opacity:.8}
+.center{text-align:center;padding:60px 20px;color:var(--grey-600)}
+@media print{
+  .topbar{display:none}
+  body{background:#fff}
+  .page{border:none;box-shadow:none;margin:0;padding:0;max-width:none}
+  h2{break-after:avoid}
+  .q,.dict,tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-brand">Language <em>Hub</em> · 📄 Report</div>
+  <div class="topbar-right">
+    <button class="topbar-btn" onclick="window.print()">🖨 Print / PDF</button>
+    <a class="topbar-btn" id="back" href="student.html">← Back</a>
+  </div>
+</div>
+<div class="page" id="page"><div class="center"><span class="ld-spin" style="border-color:var(--grey-200);border-top-color:var(--red)"></span> Loading…</div></div>
+
+<script src="ld-common.js"></script>
+<script>
+(function () {
+  var s = LD.session.require();
+  if (!s) return;
+  var isTeacher = s.user.role === 'Teacher';
+  document.getElementById('back').href = isTeacher ? 'teacher.html' : 'student.html';
+  var id = new URLSearchParams(location.search).get('session');
+  if (!id) { show('<div class="center">Missing session.</div>'); return; }
+  LD.api(isTeacher ? 'teacher.getSessionDetail' : 'student.resumeSession', { sessionId: id }).then(function (r) {
+    if (!r || !r.success) { show('<div class="center">⚠️ ' + LD.esc((r && r.error) || 'Could not load this report.') + '</div>'); return; }
+    render(r.data);
+  }).catch(function () { show('<div class="center">⚠️ Could not connect to the server.</div>'); });
+})();
+
+function show(html) { document.getElementById('page').innerHTML = html; }
+function pct(v) { return v === '' || v == null ? '—' : v + '%'; }
+
+function render(d) {
+  var e = LD.esc, sentences = d.CorrectedScriptJSON || [];
+  document.title = (d.BookTestPart || 'Report') + ' · ' + (d.StudentName || '') + ' · LisDictation';
+  var html = '<h1>LisDictation — ' + e(d.BookTestPart || '') + '</h1>' +
+    '<div class="meta">' + e(d.StudentName || '') + (d.StudentID ? ' (' + e(d.StudentID) + ')' : '') + ' · ' + e(d.ClassName || '') +
+    (d.EndTime ? ' · Completed ' + e(LD.fmtDate(d.EndTime)) : '') + (d.DurationMin !== '' && d.DurationMin != null ? ' · ' + e(LD.fmtDuration(d.DurationMin)) : '') + '</div>' +
+    '<div class="scores">' + [['Quiz', d.QuizScore], ['Gap-fill', d.GapFillScore], ['Dictation', d.DictationAccuracy], ['Total', d.TotalScore]].map(function (x, i) {
+      return '<div class="score' + (i === 3 ? ' total' : '') + '"><div class="n">' + pct(x[1]) + '</div><div class="l">' + x[0] + '</div></div>';
+    }).join('') + '</div>';
+
+  if (!sentences.length) {
+    // Bài cũ của bản Google Sheet đã bị dọn chi tiết: còn link Google Doc thì mở Doc
+    var doc = /^https?:/.test(d.DocURL || '') ? d.DocURL : '';
+    show(html + '<div class="center">' + (doc
+      ? '🗄 This older session was archived to Google Docs.<br><br><a class="topbar-btn" style="background:var(--navy2);color:#fff" href="' + e(doc) + '" target="_blank" rel="noopener">📄 Open Google Doc</a>'
+      : 'The detailed answers of this session are not available.') + '</div>');
+    return;
+  }
+
+  // 1. Script
+  html += '<h2>1. Listening Script</h2><div class="script">' +
+    sentences.map(function (t, i) { return '<p><span class="no">' + (i + 1) + '.</span>' + e(t) + '</p>'; }).join('') + '</div>';
+
+  // 2. Word levels
+  var cefr = d.CEFRJSON || {}, counts = cefr.counts || {}, tot = cefr.total || 0, byLevel = cefr.byLevel || {}, gloss = cefr.gloss || {};
+  html += '<h2>2. Word Levels (CEFR)</h2>';
+  if (tot) html += '<div class="dist">' + ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(function (lv) {
+    return '<span><b>' + lv + '</b> ' + (counts[lv] || 0) + ' · ' + Math.round((counts[lv] || 0) / tot * 100) + '%</span>';
+  }).join('') + '<span>' + tot + ' words</span></div>';
+  var vocab = [];
+  ['C2', 'C1', 'B2'].forEach(function (lv) { (byLevel[lv] || []).forEach(function (w) { var g = gloss[String(w).toLowerCase()] || {}; vocab.push([lv, w, g.ipa || '', g.vi || '']); }); });
+  html += vocab.length
+    ? '<table><thead><tr><th>Level</th><th>Word</th><th>IPA</th><th>Nghĩa (VI)</th></tr></thead><tbody>' + vocab.map(function (v) {
+        return '<tr><td><span class="lv lv-' + v[0] + '">' + v[0] + '</span></td><td><b>' + e(v[1]) + '</b></td><td class="ipa">' + e(v[2]) + '</td><td>' + e(v[3]) + '</td></tr>';
+      }).join('') + '</tbody></table>'
+    : '<div class="muted">No B2+ words in this script.</div>';
+
+  // 3. Collocations
+  var col = d.CollocationJSON || [];
+  html += '<h2>3. Phrases &amp; Collocations</h2>' + (col.length
+    ? '<table><thead><tr><th>Phrase</th><th>Nghĩa (VI)</th></tr></thead><tbody>' + col.map(function (c) {
+        return '<tr><td><b>' + e(c.en || c[0] || '') + '</b></td><td>' + e(c.vi || c[1] || '') + '</td></tr>';
+      }).join('') + '</tbody></table>'
+    : '<div class="muted">—</div>');
+
+  // 4. Quiz
+  var qz = d.QuizJSON || {}, qs = qz.questions || [], qa = qz.answers || [];
+  html += '<h2>4. Quiz Review</h2>' + (qs.length ? qs.map(function (q, i) {
+    var chosen = qa[i], ok = chosen === q.a, o = q.o || [];
+    return '<div class="q ' + (ok ? 'ok' : 'bad') + '"><div class="q-title" style="margin-left:0">' + (ok ? '✓ ' : '✗ ') + (i + 1) + '. [' + (q.type === 'content' ? 'Content' : 'Vocab') + '] ' + e(q.q) + '</div>' +
+      (ok ? '' : '<div class="ans-bad">Bạn chọn: ' + e(o[chosen] != null ? o[chosen] : '—') + '</div>') +
+      '<div class="ans-ok">Đáp án: ' + e(o[q.a] != null ? o[q.a] : '—') + '</div>' +
+      (q.e ? '<div class="expl">' + e(q.e) + '</div>' : '') + '</div>';
+  }).join('') : '<div class="muted">—</div>');
+
+  // 5. Gap-fill: toàn bộ script; đúng lần đầu = xanh gạch dưới; sai = gạch ngang đỏ + từ đúng xanh
+  var ga = ((d.GapFillJSON || {}).answers) || [], blanks = {};
+  ga.forEach(function (a) { (blanks[a.sentenceIdx] = blanks[a.sentenceIdx] || {})[a.wordIdx] = a; });
+  var wrong = ga.filter(function (a) { return !a.firstTryCorrect; }).length;
+  html += '<h2>5. Gap-fill Review</h2><div class="muted">Correct on the first try: <b>' + (ga.length - wrong) + '/' + ga.length + '</b></div><div class="gap">' +
+    sentences.map(function (sent, si) {
+      var bs = blanks[si] || {};
+      return '<p><span class="no">' + (si + 1) + '.</span>' + String(sent).split(/(\s+)/).map(function (tok, wi) {
+        var b = bs[wi];
+        if (!b) return e(tok);
+        var m = tok.match(/^([^A-Za-z0-9']*)(.*?)([^A-Za-z0-9']*)$/), core = m[2] || b.actual;
+        var given = b.firstTryGiven != null ? b.firstTryGiven : b.given;
+        return e(m[1]) + (b.firstTryCorrect ? '' : '<span class="g-bad">' + e(given || '(blank)') + '</span> ') + '<span class="g-ok">' + e(core) + '</span>' + e(m[3]);
+      }).join('') + '</p>';
+    }).join('') + '</div>';
+
+  // 6. Dictation (so khớp theo dãy từ — LD.alignWords)
+  var da = ((d.DictationJSON || {}).answers) || [];
+  html += '<h2>6. Dictation Review</h2>' + sentences.map(function (t, i) {
+    var typed = (da[i] && da[i].typed) || '', al = LD.alignWords(t, typed);
+    var line = al.ops.map(function (o) {
+      if (o.op === 'ok') return '<span class="d-ok">' + e(o.t) + '</span>';
+      if (o.op === 'miss') return '<span class="d-miss" title="missing">[' + e(o.t) + ']</span>';
+      if (o.op === 'extra') return '<span class="d-extra" title="extra">' + e(o.y) + '</span>';
+      return '<span class="d-sub">' + e(o.y) + '</span> <span class="d-fix">' + e(o.t) + '</span>';
+    }).join(' ');
+    return '<div class="dict ' + (al.allCorrect ? 'ok' : 'bad') + '"><div class="h" style="margin-left:0">' + (al.allCorrect ? '✓ ' : '✗ ') + 'Câu ' + (i + 1) + ' — ' + al.correct + '/' + al.total + ' từ</div>' +
+      (al.allCorrect ? '<div>' + e(t) + '</div>' : '<div>' + line + '</div><div class="muted">Target: ' + e(t) + '</div>') + '</div>';
+  }).join('');
+
+  show(html);
+}
+</script>
+</body>
+</html>

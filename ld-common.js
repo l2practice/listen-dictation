@@ -12,19 +12,73 @@
 
   var GAS = 'https://script.google.com/macros/s/AKfycbyadq7DEYYcTNKILHotdXw7cCElBwggj4JGHJ3JD6tM07agn1CQq6aSklIwii5G0iiQ/exec';
 
+  /*── FIREBASE ─────────────────────────────────────
+    Dán Web app config từ Firebase console → Project settings → Your apps.
+    enabled: false = app vẫn dùng Apps Script + Google Sheet như cũ.
+    Chỉ bật true SAU KHI đã chạy xong các bước chuyển dữ liệu trong gas/FirebaseLD.gs. */
+  var LD_FIREBASE = global.LD_FIREBASE || {
+    enabled: false,
+    config: {
+      apiKey: 'AIzaSyABj5BoT_Bz8aGJ6bys8LWCLAFhut5VJL8',
+      authDomain: 'listendictation-4c26e.firebaseapp.com',
+      projectId: 'listendictation-4c26e',
+      storageBucket: 'listendictation-4c26e.firebasestorage.app',
+      messagingSenderId: '76602878721',
+      appId: '1:76602878721:web:67c0b5c192c6ed88828900'
+    },
+    studentDomain: 'students.lisdictation.app'   // phải khớp LDFB.STUDENT_DOMAIN trong FirebaseLD.gs
+  };
+  global.LD_FIREBASE = LD_FIREBASE;
+
   var LD = {
     GAS: GAS,
+    firebaseOn: !!(LD_FIREBASE.enabled && LD_FIREBASE.config && LD_FIREBASE.config.apiKey),
     LOGIN_PAGE: 'login.html',
     STUDENT_HOME: 'student.html',
     TEACHER_HOME: 'teacher.html'
   };
 
-  /*── API: POST (fetch) trước, JSONP làm fallback ─────*/
+  /*── API ─────────────────────────────────────────
+    Firebase bật: ld-fbdata.js trả lời thẳng từ Firestore (nhanh).
+    Firebase tắt: POST (fetch) tới Apps Script, JSONP làm fallback.   */
+  LD._legacyApi = function (action, payload) {
+    return postJSON(action, payload).catch(function () { return jsonp(action, payload); });
+  };
   LD.api = function (action, payload) {
     payload = payload || {};
     // Mỗi lần gọi API = có hoạt động → reset idle timer
     _idleReset();
-    return postJSON(action, payload).catch(function () { return jsonp(action, payload); });
+    if (!LD.firebaseOn) return LD._legacyApi(action, payload);
+    return LD.firebaseReady().then(function (FB) { return FB.call(action, payload); })
+      .then(function (res) {
+        if (res && res.success === false && res.error === 'SESSION_EXPIRED') {
+          LD.session.clear();
+          if (!/(login|signup)\.html/.test(location.pathname)) location.href = LD.LOGIN_PAGE;
+        }
+        return res;
+      });
+  };
+
+  /*── Firebase SDK + ld-fbdata.js: chỉ tải khi Firebase bật, 1 lần ──*/
+  var FB_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  var _fbLoad = null;
+  function loadScript(src) {
+    return new Promise(function (res, rej) {
+      var sc = document.createElement('script');
+      sc.src = src; sc.onload = res;
+      sc.onerror = function () { rej(new Error('Không tải được ' + src)); };
+      document.head.appendChild(sc);
+    });
+  }
+  LD.firebaseReady = function () {
+    if (!_fbLoad) {
+      _fbLoad = loadScript(FB_SDK + 'firebase-app-compat.js')
+        .then(function () { return Promise.all([loadScript(FB_SDK + 'firebase-auth-compat.js'), loadScript(FB_SDK + 'firebase-firestore-compat.js')]); })
+        .then(function () { return loadScript('ld-fbdata.js?v=1'); })
+        .then(function () { return global.FB; });
+      _fbLoad.catch(function () { _fbLoad = null; });   // cho phép thử lại sau lỗi mạng
+    }
+    return _fbLoad;
   };
   function postJSON(action, payload) {
     var s = LD.session.get();
@@ -128,6 +182,7 @@
     },
     clear: function () {
       try { sessionStorage.removeItem(SKEY); } catch (e) {}
+      if (LD.firebaseOn) LD.firebaseReady().then(function (FB) { return FB.signOut(); }).catch(function () {});
       _idleClear();
       // Gỡ event listeners
       _IDLE_EVENTS.forEach(function (e) { document.removeEventListener(e, _onActivity); });
@@ -143,7 +198,15 @@
       }
       return s;
     },
-    logout: function () { LD.session.clear(); location.href = LD.LOGIN_PAGE; }
+    logout: function () {
+      var go = function () { location.href = LD.LOGIN_PAGE; };
+      if (!LD.firebaseOn) { LD.session.clear(); go(); return; }
+      // Đợi Firebase đăng xuất xong (tối đa 3 giây) rồi mới chuyển trang
+      try { sessionStorage.removeItem(SKEY); } catch (e) {}
+      _idleClear();
+      Promise.race([LD.firebaseReady().then(function (FB) { return FB.signOut(); }), new Promise(function (r) { setTimeout(r, 3000); })])
+        .then(go, go);
+    }
   };
 
   /*── DOM + UX helpers ─────────────────────────────*/
