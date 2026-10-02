@@ -456,3 +456,130 @@ function rp_migrateSessions() {
              (left ? ' Còn ' + left + ' bài — chạy lại rp_migrateSessions() để chuyển tiếp.' : ' Xong toàn bộ.'));
   return resRows.length;
 }
+
+// ─── KIỂM TRA + BÙ dữ liệu bài làm (Sessions cũ / bản sao lịch sử phiên bản) ─────
+// rp_auditSessions()     → CHỈ ĐỌC: đếm bài thiếu trong Results/SessionDetails, cái nào lấy lại được từ đâu.
+// rp_repairSessions()    → bù từ tab Sessions cũ: thêm bài còn thiếu, điền ô trống, thêm chi tiết còn thiếu.
+// rp_importFromBackup()  → bù CHI TIẾT đã bị xoá (nút Clear Data cũ) từ 1 bản sao tạo bằng
+//                          File ▸ Version history ▸ ⋮ ▸ Make a copy. Dán link bản sao vào RP_BACKUP.URL.
+// Không bao giờ ghi đè ô đã có dữ liệu → chạy lại, hay nhập nhiều bản sao khác ngày, đều an toàn.
+var RP_BACKUP = { URL: '' };
+
+var RP_RES_FILL = ['StudentID', 'StudentName', 'ClassID', 'ClassName', 'BookTestPart', 'StartTime', 'EndTime', 'DurationMin',
+                   'QuizScore', 'GapFillScore', 'DictationAccuracy', 'TotalScore', 'CreatedAt', 'DocURL'];
+var RP_DET_COLS = ['ScriptText', 'CorrectedScriptJSON', 'CEFRJSON', 'CollocationJSON', 'QuizJSON', 'GapFillJSON', 'DictationJSON'];
+
+function rp_auditSessions()  { return rpSyncSessions_(rpLegacyRows_(getSS(), false), { apply: false, addMissing: true, label: 'tab Sessions cũ' }); }
+function rp_repairSessions() { return rpSyncSessions_(rpLegacyRows_(getSS(), false), { apply: true, addMissing: true, label: 'tab Sessions cũ' }); }
+function rp_importFromBackup() {
+  var url = String(RP_BACKUP.URL || '').trim();
+  if (!url) return ldfbLogSafe_('Dán link bản sao (tạo từ File ▸ Version history ▸ Make a copy) vào RP_BACKUP.URL rồi chạy lại.');
+  var ss = /^https?:/.test(url) ? SpreadsheetApp.openByUrl(url) : SpreadsheetApp.openById(url);
+  // Bản sao chỉ dùng để BÙ chi tiết/ô trống cho bài đang có — không hồi sinh bài SV đã tự xoá
+  return rpSyncSessions_(rpLegacyRows_(ss, true), { apply: true, addMissing: false, label: 'bản sao "' + ss.getName() + '"' });
+}
+function ldfbLogSafe_(s) { Logger.log(s); return s; }
+
+// Bài trong 1 file: tab Sessions (dạng cũ); withSplit = thêm cả Results ⨝ SessionDetails (bản sao đã tách)
+function rpLegacyRows_(ss, withSplit) {
+  var read = function (name) { var sh = ss.getSheetByName(name); return sh && sh.getLastRow() > 1 ? sheetToObjects(sh) : []; };
+  var out = read(CONFIG.TABS.LEGACY);
+  if (!withSplit) return out;
+  var det = {};
+  read(CONFIG.TABS.DETAILS).forEach(function (d) { if (d.SessionID) det[String(d.SessionID)] = d; });
+  read(CONFIG.TABS.RESULTS).forEach(function (r) { if (r.SessionID) out.push(Object.assign({}, det[String(r.SessionID)] || {}, r)); });
+  return out;
+}
+
+function rpSyncSessions_(src, opt) {
+  var rs = getSheet(CONFIG.TABS.RESULTS), ds = getSheet(CONFIG.TABS.DETAILS);
+  var rH = _headers(CONFIG.TABS.RESULTS), dH = _headers(CONFIG.TABS.DETAILS);
+  var rData = rs.getLastRow() > 1 ? rs.getRange(2, 1, rs.getLastRow() - 1, rH.length).getValues() : [];
+  var rIdx = {}, rc = function (k) { return rH.indexOf(k); };
+  rData.forEach(function (row, i) { var id = String(row[rc('SessionID')] || '').trim(); if (id) rIdx[id] = { row: row, r: i + 2 }; });
+  var dIdCol = dH.indexOf('SessionID');
+  var dIdx = {};
+  if (ds.getLastRow() > 1) ds.getRange(2, dIdCol + 1, ds.getLastRow() - 1, 1).getValues()
+    .forEach(function (x, i) { if (x[0]) dIdx[String(x[0]).trim()] = i + 2; });
+
+  var st = { source: 0, addedResults: 0, filledCells: 0, addedDetails: 0, filledDetails: 0, numericIds: 0 };
+  var newRes = [], newDet = [], fills = [], seen = {};
+  var hasDet = function (o) { return RP_DET_COLS.some(function (k) { return o[k]; }); };
+  var detValue = function (o, k) {
+    if (k !== 'DictationJSON' || !o[k]) return o[k];
+    var dj = rpJson_(o[k], null);
+    return dj && dj.answers ? JSON.stringify(Object.assign({}, dj, { answers: _compactDictAnswers(dj.answers) })) : o[k];
+  };
+
+  src.forEach(function (o) {
+    var id = String(o.SessionID == null ? '' : o.SessionID).trim();
+    if (!id || seen[id + '|' + hasDet(o)]) return;
+    seen[id + '|' + hasDet(o)] = true;
+    st.source++;
+    if (typeof o.SessionID === 'number') st.numericIds++;
+    var dj = rpJson_(o.DictationJSON, null);
+    var res = rIdx[id];
+    if (!res) {
+      if (!opt.addMissing) return;
+      st.addedResults++;
+      var x = Object.assign({}, o);
+      if (dj && dj.completed === false && !rpHas_(o.DictationAccuracy)) { x.DictInProgress = true; x.DictSavedAt = dj.savedAt || ''; x.DictSentenceIdx = dj.currentSentenceIdx || 0; }
+      x.DetailPurgedAt = hasDet(o) || rpPartsOf_(o.QuizScore, o.GapFillScore, o.DictationAccuracy).partsDone < 3 ? '' : 'no-detail';
+      var row = rH.map(function (h) { return rpHas_(x[h]) ? x[h] : ''; });
+      newRes.push(row);
+      rIdx[id] = res = { row: row, r: 0 };
+    } else {
+      RP_RES_FILL.forEach(function (k) {
+        var c = rc(k);
+        if (c < 0 || rpHas_(res.row[c]) || !rpHas_(o[k])) return;
+        st.filledCells++; res.row[c] = o[k];
+        if (res.r) fills.push([rs, res.r, c + 1, o[k]]);
+      });
+    }
+    if (!hasDet(o)) return;
+    var dr = dIdx[id];
+    if (!dr) {
+      st.addedDetails++;
+      newDet.push(dH.map(function (h) { var v = detValue(o, h); return rpHas_(v) ? v : ''; }));
+      dIdx[id] = -1;
+    } else if (dr > 0) {
+      var cur = ds.getRange(dr, 1, 1, dH.length).getValues()[0], filled = false;
+      RP_DET_COLS.forEach(function (k) {
+        var c = dH.indexOf(k), v = detValue(o, k);
+        if (c < 0 || rpHas_(cur[c]) || !rpHas_(v)) return;
+        cur[c] = v; filled = true; fills.push([ds, dr, c + 1, v]);
+      });
+      if (filled) st.filledDetails++;
+    }
+    // Đã có lại chi tiết → bỏ dấu "no-detail" của bài
+    var pc = rc('DetailPurgedAt');
+    if (pc >= 0 && res.row[pc] === 'no-detail') { res.row[pc] = ''; if (res.r) fills.push([rs, res.r, pc + 1, '']); }
+  });
+
+  // Bài có làm bài mà KHÔNG còn chi tiết ở đâu cả
+  var lost = [], withDoc = 0;
+  Object.keys(rIdx).forEach(function (id) {
+    var row = rIdx[id].row;
+    var active = rpHas_(row[rc('QuizScore')]) || rpHas_(row[rc('GapFillScore')]) || rpHas_(row[rc('DictationAccuracy')]);
+    if (!active || dIdx[id]) return;
+    if (row[rc('DocURL')]) { withDoc++; return; }
+    lost.push(id + ' · ' + row[rc('StudentName')] + ' · ' + row[rc('BookTestPart')] + ' · ' + _iso(row[rc('StartTime')]));
+  });
+
+  if (opt.apply) {
+    if (newRes.length) rs.getRange(rs.getLastRow() + 1, 1, newRes.length, rH.length).setValues(newRes);
+    if (newDet.length) ds.getRange(ds.getLastRow() + 1, 1, newDet.length, dH.length).setValues(newDet);
+    fills.forEach(function (f) { f[0].getRange(f[1], f[2]).setValue(f[3]); });
+  }
+  var verb = opt.apply ? 'Đã' : 'Sẽ';
+  var msg = [
+    'Nguồn: ' + opt.label + ' — ' + st.source + ' bài.',
+    verb + ' thêm vào Results: ' + st.addedResults + ' bài; điền ô trống: ' + st.filledCells + '.',
+    verb + ' thêm chi tiết (SessionDetails): ' + st.addedDetails + ' bài; bổ sung chi tiết còn thiếu: ' + st.filledDetails + ' bài.',
+    st.numericIds ? 'Cảnh báo: ' + st.numericIds + ' mã bài bị Sheets đổi thành số — kiểm tra cột SessionID.' : '',
+    'Bài đã làm nhưng KHÔNG còn chi tiết ở đâu: ' + lost.length + (withDoc ? ' (ngoài ra ' + withDoc + ' bài còn link Google Doc)' : '') + '.',
+    lost.length ? 'Lấy lại được bằng bản sao từ lịch sử phiên bản (rp_importFromBackup). Danh sách:\n  ' + lost.slice(0, 60).join('\n  ') + (lost.length > 60 ? '\n  …' : '') : ''
+  ].filter(Boolean).join('\n');
+  Logger.log(msg);
+  return msg;
+}

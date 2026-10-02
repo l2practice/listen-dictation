@@ -352,22 +352,21 @@ function ldfb_4_Students() {
   return ldfbLog('Tài khoản SV mới tạo: ' + made + ', đã có/bỏ qua: ' + skipped + ', hồ sơ đã ghi: ' + rows.length);
 }
 
-// Gom mọi bài làm trong Sheet: Results (+ SessionDetails) và tab Sessions cũ (bài chưa có trong Results)
+// Gom mọi bài làm trong Sheet từ CẢ 3 nguồn: tab Sessions cũ, SessionDetails, Results.
+// Cùng 1 bài có ở nhiều nơi → ghép lại, ô nào có dữ liệu thì dùng (Results ưu tiên cho điểm,
+// chi tiết lấy từ SessionDetails, thiếu thì lấy từ Sessions cũ) → không bỏ sót phần nào.
 function ldfbAllSessions_() {
-  var det = {};
-  ldfbRows(CONFIG.TABS.DETAILS).forEach(function (d) { if (d.SessionID) det[String(d.SessionID)] = d; });
-  var out = [], seen = {};
-  ldfbRows(CONFIG.TABS.RESULTS).forEach(function (r) {
-    var id = String(r.SessionID || ''); if (!id) return;
-    seen[id] = true;
-    out.push(Object.assign({}, det[id] || {}, r));
-  });
-  ldfbRows(CONFIG.TABS.LEGACY).forEach(function (r) {
-    var id = String(r.SessionID || ''); if (!id || seen[id]) return;
-    seen[id] = true;
-    out.push(r);
-  });
-  return out;
+  var by = {}, order = [];
+  var add = function (o) {
+    var id = String(o.SessionID == null ? '' : o.SessionID).trim(); if (!id) return;
+    if (!by[id]) { by[id] = {}; order.push(id); }
+    var cur = by[id];
+    Object.keys(o).forEach(function (k) { if (ldfbHas(o[k])) cur[k] = o[k]; });
+  };
+  ldfbRows(CONFIG.TABS.LEGACY).forEach(add);
+  ldfbRows(CONFIG.TABS.DETAILS).forEach(add);
+  ldfbRows(CONFIG.TABS.RESULTS).forEach(add);
+  return order.map(function (id) { var o = by[id]; o.SessionID = id; return o; });
 }
 function ldfbCompactCefr_(cefrJSON) {
   var c = {};
