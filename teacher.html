@@ -243,7 +243,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         </div>
       </div>
       <div style="font-size:11.5px;color:var(--grey-600);margin-top:8px">
-        🗄 Completed work is saved to a Google Doc. 10 days after completion the detail is removed from the sheet — scores stay here and <b>📄 Open Docs</b> opens the Doc.
+        🗄 <b>🔍 Details</b> shows a student's answers; <b>📄</b> opens the full report (script, vocabulary, quiz / gap-fill / dictation review) that the student also sees.
       </div>
       <div style="margin-top:10px">
         <input class="form-input" id="sess-search" placeholder="🔍 Filter by Student's name/ book…" style="width:100%;max-width:300px" oninput="renderSessionsTable()">
@@ -502,7 +502,11 @@ async function openDetail(sessionId) {
   var d = r.data;
   renderDetailHeader();
   var docLink = document.getElementById('dt-doc-link');
-  if (d.DocURL) { docLink.href = d.DocURL; docLink.classList.remove('hidden'); }
+  if (d.DocURL) {
+    docLink.href = d.DocURL;
+    docLink.textContent = /^https?:/.test(d.DocURL) ? '📄 Google Doc' : '📄 Report';
+    docLink.classList.remove('hidden');
+  }
   // Chi tiết còn trong sheet → trang HTML như cũ. Đã bị dọn (sau 10 ngày) → mở bản lưu trên Google Docs.
   var hasDetail = Array.isArray(d.CorrectedScriptJSON) && d.CorrectedScriptJSON.length > 0;
   if (!hasDetail) {
@@ -626,7 +630,7 @@ async function exportCsv() {
 
 // Details (trang HTML) khi chi tiết còn trong sheet; quá 10 ngày đã dọn → Open Docs mở thẳng Google Doc
 function detailsButton(sessionId, purged, docUrl) {
-  if (purged && docUrl) return '<a class="btn btn-secondary btn-sm" href="' + LD.esc(docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">📄 Open Docs</a>';
+  if (purged && docUrl) return '<a class="btn btn-secondary btn-sm" href="' + LD.esc(docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">' + (/^https?:/.test(docUrl) ? '📄 Open Docs' : '📄 Report') + '</a>';
   return '<button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + LD.esc(sessionId) + '\')">🔍 Details</button>';
 }
 

@@ -1630,13 +1630,15 @@ async function requestReport(sessionId) {
   try {
     var r = await LD.api('session.exportReport', { sessionId: sessionId });
     if (!r.success) throw new Error(r.error || 'failed');
-    el.innerHTML = '<a href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="color:var(--red);font-weight:700">📄 Open Docs</a>' +
+    el.innerHTML = '<a href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="color:var(--red);font-weight:700">' + reportLabel(r.docUrl) + '</a>' +
       '<br>You can open it again anytime from History → Details.';
   } catch (e) {
     el.textContent = '📄 Your Google Doc is being prepared — open it later from History → Details.';
   }
 }
-// Nút Open Docs trong History. Nếu Doc chưa kịp tạo thì tạo ngay rồi mở.
+// Bản Google Sheet: link Google Doc → "Open Docs". Bản Firebase: trang tổng kết trong app → "Report".
+function reportLabel(url) { return /^https?:/.test(url || '') ? '📄 Open Docs' : '📄 Report'; }
+// Nút Open Docs / Report trong History. Nếu bản tổng kết chưa kịp tạo thì tạo ngay rồi mở.
 // Mở tab trống TRƯỚC khi gọi API để trình duyệt không chặn popup.
 async function openReport(sessionId, btn) {
   var win = window.open('', '_blank');
@@ -1786,8 +1788,8 @@ function renderHistoryTable() {
       '<td>' + statusBadge + '</td>' +
       '<td>' + (r.isComplete
         ? (r.docUrl
-            ? '<a class="btn btn-secondary btn-sm" href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">📄 Open Docs</a>'
-            : '<button class="btn btn-secondary btn-sm" onclick="openReport(\'' + r.sessionId + '\',this)">📄 Open Docs</button>')
+            ? '<a class="btn btn-secondary btn-sm" href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">' + reportLabel(r.docUrl) + '</a>'
+            : '<button class="btn btn-secondary btn-sm" onclick="openReport(\'' + r.sessionId + '\',this)">' + reportLabel('') + '</button>')
         : '<button class="btn btn-sm" style="color:var(--red);background:none;border:1.5px solid var(--red);padding:4px 8px" onclick="deleteSession(\'' + r.sessionId + '\',this)" title="Xoá bài này">🗑</button>') + '</td>' +
       '</tr>';
   }).join('');

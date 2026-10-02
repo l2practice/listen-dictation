@@ -123,6 +123,8 @@ document.getElementById('forgot').onclick = function (e) {
   LD.toast('Sending code…');
   LD.api('auth.forgotPassword', { email: email.trim() }).then(function (res) {
     if (!res || !res.success) { LD.toast((res && res.error) || 'Could not send the code.', 'err', 4000); return; }
+    // Bản Firebase: mật khẩu mới được gửi thẳng qua email (không cần mã)
+    if (res.newPasswordSent) { LD.toast('📧 A new password has been sent to ' + email.trim() + '. Log in with it.', 'ok', 6000); return; }
     var code = prompt('Enter the 6-digit code you received (email or from your teacher):');
     if (!code) return;
     var newPass = prompt('Enter your new password:');
