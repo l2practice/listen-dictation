@@ -279,3 +279,40 @@ table.ld-table tbody tr:hover td{background:#FAFAFB}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--ld-line);border-top-color:var(--ld-accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+
+/* Login uses one shared gradient surface for the introduction and form. */
+.ld-login{background:#15171C;color:#fff}
+.ld-login .ld-split{grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:clamp(28px,5vw,76px);padding:clamp(28px,5vw,72px);background:
+  radial-gradient(55% 55% at 24% 42%, rgba(212,102,79,.52) 0%, rgba(212,102,79,.14) 48%, transparent 76%),
+  radial-gradient(42% 38% at 100% 100%, rgba(201,206,218,.15) 0%, transparent 72%),
+  linear-gradient(160deg,#23252C 0%,#15171C 55%,#101115 100%)}
+.ld-login .ld-hero{background:transparent;border-radius:0;padding:24px 0;overflow:visible}
+.ld-login .ld-hero::before{display:none}
+.ld-login .ld-form-side{padding:24px 0}
+.ld-login .ld-split .ld-auth-card{max-width:460px;background:transparent;box-shadow:none;color:#fff;padding:32px 0}
+.ld-login .ld-auth-title{color:#fff}
+.ld-login .ld-auth-sub,.ld-login .ld-label{color:rgba(255,255,255,.68)}
+.ld-login .ld-seg{background:rgba(255,255,255,.09)}
+.ld-login .ld-seg a{color:rgba(255,255,255,.7)}
+.ld-login .ld-seg a:hover{color:#fff}
+.ld-login .ld-seg a.on{background:rgba(255,255,255,.16);color:#fff}
+.ld-login .ld-hr{border-color:rgba(255,255,255,.16)}
+.ld-login .ld-btn-ghost{background:rgba(255,255,255,.1);color:#fff}
+.ld-login .ld-btn-ghost:hover{background:rgba(255,255,255,.17)}
+.ld-login .ld-alt{color:rgba(255,255,255,.68)}
+@media(min-width:701px) and (max-width:900px){
+  .ld-login .ld-split{grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:24px;padding:24px}
+  .ld-login .ld-hero{padding:20px 0;border-radius:0}
+  .ld-login .ld-hero-body{margin-top:auto}
+  .ld-login .ld-hero h1{font-size:clamp(2.3rem,5vw,3.4rem);margin:16px 0 12px}
+  .ld-login .ld-hero h1 span{display:block}
+  .ld-login .ld-hero p{font-size:.9rem}
+  .ld-login .ld-wave,.ld-login .ld-stats{display:flex}
+  .ld-login .ld-form-side{padding:0}
+}
+@media(max-width:700px){
+  .ld-login .ld-split{min-height:100svh;grid-template-columns:1fr;place-items:center;padding:24px 20px}
+  .ld-login .ld-hero{display:none}
+  .ld-login .ld-form-side{width:100%;min-height:calc(100svh - 48px);display:grid;place-items:center;padding:0}
+  .ld-login .ld-split .ld-auth-card{width:100%;max-width:460px;padding:24px 0}
+}
