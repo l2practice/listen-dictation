@@ -353,3 +353,8 @@ table.ld-table tbody tr:hover td{background:#FAFAFB}
   .ld-signup .ld-form-side{width:100%;min-height:calc(100svh - 48px);display:grid;place-items:center;padding:0}
   .ld-signup .ld-split .ld-auth-card{width:100%;max-width:460px;padding:24px 0}
 }
+
+/* Keep white auth-page text out of the white teacher dialogs. */
+.ld-login .ld-modal-bg .ld-auth-title,.ld-signup .ld-modal-bg .ld-auth-title{color:var(--ld-ink)}
+.ld-login .ld-modal-bg .ld-auth-sub,.ld-signup .ld-modal-bg .ld-auth-sub{color:var(--ld-ink-2)}
+.ld-login .ld-modal-bg .ld-label,.ld-signup .ld-modal-bg .ld-label{color:var(--ld-ink-2)}
