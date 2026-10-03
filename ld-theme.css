@@ -76,6 +76,58 @@ h1,h2,h3,h4{font-family:var(--font-display);font-weight:500;letter-spacing:-.02e
 .ld-auth-title{font-family:var(--font-display);font-size:1.7rem;font-weight:600;color:var(--ld-ink);text-align:center;margin-bottom:4px;letter-spacing:-.02em}
 .ld-auth-sub{font-size:.92rem;color:var(--ld-ink-2);text-align:center;margin-bottom:24px}
 
+/* split auth screen: dark hero with terracotta glow (left) + form (right) */
+.ld-split{min-height:100vh;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:16px;padding:16px;background:var(--ld-canvas)}
+.ld-hero{position:relative;overflow:hidden;border-radius:30px;padding:40px 44px;color:#fff;display:flex;flex-direction:column;isolation:isolate;
+  background:
+    radial-gradient(55% 45% at 28% 42%, rgba(212,102,79,.62) 0%, rgba(212,102,79,.18) 45%, transparent 72%),
+    radial-gradient(45% 35% at 92% 100%, rgba(201,206,218,.20) 0%, transparent 70%),
+    radial-gradient(35% 30% at 100% 0%, rgba(181,82,61,.28) 0%, transparent 70%),
+    linear-gradient(160deg, #23252C 0%, #15171C 55%, #101115 100%)}
+.ld-hero::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+  background-size:56px 56px;-webkit-mask-image:radial-gradient(80% 70% at 35% 45%,#000 30%,transparent 100%);mask-image:radial-gradient(80% 70% at 35% 45%,#000 30%,transparent 100%)}
+.ld-hero .ld-logo{color:#fff}
+.ld-hero .ld-mark{background:var(--ld-accent);box-shadow:0 10px 30px rgba(212,102,79,.45)}
+.ld-hero .ld-logo-name{font-size:1.2rem}
+.ld-hero .ld-logo-name em{font-style:normal;color:#F08A73}
+.ld-hero .ld-logo-name small{color:rgba(255,255,255,.5)}
+.ld-hero-body{margin-top:auto}
+.ld-pill{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:var(--radius-pill);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);font-size:.82rem;font-weight:600;color:rgba(255,255,255,.85);backdrop-filter:blur(6px)}
+.ld-pill i,.ld-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--ld-accent);box-shadow:0 0 0 4px rgba(212,102,79,.22)}
+.ld-hero h1{font-size:clamp(3rem,6.4vw,5.6rem);font-weight:700;line-height:.98;letter-spacing:-.045em;margin:22px 0 22px}
+.ld-hero h1 span{display:block}
+.ld-hero h1 .hl{color:var(--ld-accent);background:linear-gradient(90deg,#F08A73,#D4664F 60%,#C9573F);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.ld-hero p{max-width:470px;color:rgba(255,255,255,.66);font-size:.98rem;line-height:1.7}
+.ld-wave{display:flex;align-items:center;gap:5px;height:46px;margin:26px 0 0}
+.ld-wave b{display:block;width:5px;border-radius:9px;background:rgba(255,255,255,.22);height:var(--h);animation:ld-wave 1.6s ease-in-out infinite;animation-delay:var(--d)}
+.ld-wave b.on{background:var(--ld-accent)}
+@keyframes ld-wave{0%,100%{transform:scaleY(.55)}50%{transform:scaleY(1)}}
+.ld-stats{display:flex;gap:36px;margin-top:26px;padding-top:22px;border-top:1px solid rgba(255,255,255,.1)}
+.ld-stats div{display:flex;flex-direction:column;gap:2px}
+.ld-stats b{font-size:1.9rem;font-weight:700;color:var(--ld-accent);line-height:1.1;letter-spacing:-.02em}
+.ld-stats span{font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.ld-form-side{display:grid;place-items:center;padding:24px 8px}
+.ld-split .ld-auth-card{box-shadow:var(--shadow-md);max-width:460px}
+.ld-split .ld-auth-title{text-align:left;font-size:2rem}
+.ld-split .ld-auth-sub{text-align:left}
+.ld-seg{display:flex;gap:4px;padding:4px;border-radius:var(--radius-pill);background:var(--ld-surface-2);margin-bottom:22px}
+.ld-seg a{flex:1;text-align:center;padding:10px;border-radius:var(--radius-pill);font-size:.9rem;font-weight:600;color:var(--ld-ink-2);text-decoration:none;transition:var(--transition)}
+.ld-seg a:hover{color:var(--ld-ink)}
+.ld-seg a.on{background:var(--ld-ink);color:#fff}
+@media(max-width:900px){
+  .ld-split{grid-template-columns:1fr;padding:10px;gap:10px}
+  .ld-hero{padding:22px 22px 24px;border-radius:24px}
+  .ld-hero-body{margin-top:26px}
+  .ld-hero h1{font-size:clamp(2.3rem,11vw,3.4rem);margin:16px 0 10px}
+  .ld-hero h1 span{display:inline}
+  .ld-hero p{font-size:.9rem}
+  .ld-wave,.ld-stats{display:none}
+  .ld-form-side{padding:0 0 16px}
+  .ld-split .ld-auth-card{max-width:none}
+}
+@media(max-width:480px){.ld-split .ld-auth-title{font-size:1.6rem}}
+
 .ld-field{margin-bottom:14px}
 .ld-label{display:block;font-size:.84rem;font-weight:600;color:var(--ld-ink-2);margin-bottom:6px}
 .ld-input{width:100%;min-height:46px;padding:11px 16px;border:1.5px solid transparent;border-radius:var(--radius);font-family:var(--font-body);font-size:.95rem;color:var(--ld-ink);background:var(--ld-surface-2);outline:none;transition:var(--transition)}
