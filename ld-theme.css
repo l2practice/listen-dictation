@@ -358,3 +358,9 @@ table.ld-table tbody tr:hover td{background:#FAFAFB}
 .ld-login .ld-modal-bg .ld-auth-title,.ld-signup .ld-modal-bg .ld-auth-title{color:var(--ld-ink)}
 .ld-login .ld-modal-bg .ld-auth-sub,.ld-signup .ld-modal-bg .ld-auth-sub{color:var(--ld-ink-2)}
 .ld-login .ld-modal-bg .ld-label,.ld-signup .ld-modal-bg .ld-label{color:var(--ld-ink-2)}
+
+/* Keep the introduction anchored independently of the form height. */
+.ld-login .ld-hero,.ld-signup .ld-hero{height:calc(100svh - 2 * clamp(28px,5vw,72px));align-self:start}
+@media(min-width:701px) and (max-width:900px){
+  .ld-login .ld-hero,.ld-signup .ld-hero{height:calc(100svh - 48px)}
+}
