@@ -364,3 +364,55 @@ table.ld-table tbody tr:hover td{background:#FAFAFB}
 @media(min-width:701px) and (max-width:900px){
   .ld-login .ld-hero,.ld-signup .ld-hero{height:calc(100svh - 48px)}
 }
+
+/* Shared full-bleed auth layout, sized to match the Speaking reference. */
+.ld-login,.ld-signup{background:#111214;color:#fff}
+.ld-login .ld-split,.ld-signup .ld-split{
+  min-height:100svh;grid-template-columns:minmax(0,44fr) minmax(0,56fr);gap:0;padding:0;background:#111214
+}
+.ld-login .ld-hero,.ld-signup .ld-hero{
+  height:100svh;min-height:0;align-self:start;padding:42px clamp(24px,2.35vw,46px) 46px;
+  border-radius:0;overflow:hidden;
+  background:
+    radial-gradient(55% 55% at 28% 42%,rgba(212,102,79,.48) 0%,rgba(212,102,79,.12) 48%,transparent 76%),
+    radial-gradient(42% 38% at 100% 100%,rgba(201,206,218,.12) 0%,transparent 72%),
+    linear-gradient(160deg,#1B1B1D 0%,#111214 62%,#0D0E10 100%)
+}
+.ld-login .ld-hero::before,.ld-signup .ld-hero::before{display:block}
+.ld-login .ld-form-side,.ld-signup .ld-form-side{
+  width:100%;min-width:0;padding:44px clamp(28px,5.8vw,114px);background:#111214
+}
+.ld-login .ld-split .ld-auth-card,.ld-signup .ld-split .ld-auth-card{
+  width:100%;max-width:460px;padding:32px 0;background:transparent;box-shadow:none;color:#fff
+}
+.ld-login .ld-split .ld-auth-title,.ld-signup .ld-split .ld-auth-title{color:#fff}
+.ld-login .ld-split .ld-auth-sub,.ld-login .ld-split .ld-label,
+.ld-signup .ld-split .ld-auth-sub,.ld-signup .ld-split .ld-label,.ld-signup .ld-split .ld-hint{color:rgba(255,255,255,.68)}
+.ld-login .ld-seg,.ld-signup .ld-seg{background:rgba(255,255,255,.09)}
+.ld-login .ld-seg a,.ld-signup .ld-seg a{color:rgba(255,255,255,.7)}
+.ld-login .ld-seg a:hover,.ld-signup .ld-seg a:hover{color:#fff}
+.ld-login .ld-seg a.on,.ld-signup .ld-seg a.on{background:var(--ld-accent);color:#fff}
+.ld-login .ld-hr,.ld-signup .ld-hr{border-color:rgba(255,255,255,.16)}
+.ld-login .ld-btn-ghost,.ld-signup .ld-btn-ghost{background:rgba(255,255,255,.1);color:#fff}
+.ld-login .ld-btn-ghost:hover,.ld-signup .ld-btn-ghost:hover{background:rgba(255,255,255,.17)}
+.ld-login .ld-alt,.ld-signup .ld-alt{color:rgba(255,255,255,.68)}
+@media(min-width:701px) and (max-width:900px){
+  .ld-login .ld-hero,.ld-signup .ld-hero{height:100svh;padding:24px}
+  .ld-login .ld-hero h1,.ld-signup .ld-hero h1{font-size:clamp(2.1rem,5.2vw,3.6rem);margin:16px 0 12px}
+  .ld-login .ld-hero h1 span,.ld-signup .ld-hero h1 span{display:block}
+  .ld-login .ld-hero p,.ld-signup .ld-hero p{font-size:.86rem}
+  .ld-login .ld-wave,.ld-login .ld-stats,.ld-signup .ld-wave,.ld-signup .ld-stats{display:flex}
+  .ld-login .ld-stats,.ld-signup .ld-stats{gap:18px}
+  .ld-login .ld-form-side,.ld-signup .ld-form-side{padding:28px}
+}
+@media(max-width:700px){
+  .ld-login .ld-split,.ld-signup .ld-split{
+    min-height:100svh;grid-template-columns:1fr;place-items:center;padding:24px 20px;
+    background:radial-gradient(55% 45% at 28% 42%,rgba(212,102,79,.22),transparent 76%),linear-gradient(160deg,#17181B 0%,#111214 62%,#0D0E10 100%)
+  }
+  .ld-login .ld-hero,.ld-signup .ld-hero{display:none;height:auto}
+  .ld-login .ld-form-side,.ld-signup .ld-form-side{
+    width:100%;min-height:calc(100svh - 48px);display:grid;place-items:center;padding:0;background:transparent
+  }
+  .ld-login .ld-split .ld-auth-card,.ld-signup .ld-split .ld-auth-card{width:100%;max-width:460px;padding:24px 0}
+}
