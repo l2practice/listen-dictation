@@ -4,51 +4,50 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Report · LisDictation</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="ld-theme.css">
+<link rel="stylesheet" href="ld-theme.css?v=2">
 <style>
-.topbar{background:linear-gradient(90deg,var(--black) 0%,var(--navy2) 45%,var(--red-dark) 100%);min-height:56px;display:flex;align-items:center;padding:8px 20px;gap:12px;position:sticky;top:0;z-index:10;border-bottom:2px solid var(--gold);flex-wrap:wrap}
-.topbar-brand{font-family:var(--font-display);color:#fff;font-size:1rem}
-.topbar-brand em{color:var(--red-mid);font-style:normal}
-.topbar-right{margin-left:auto;display:flex;gap:8px}
-.topbar-btn{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,.9);font-size:12.5px;cursor:pointer;font-family:var(--font-body);font-weight:600;text-decoration:none}
-.page{max-width:900px;margin:22px auto 60px;background:#fff;border:1px solid var(--grey-200);border-radius:var(--radius-lg);padding:34px 40px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-@media(max-width:640px){.page{padding:22px 16px;margin:12px 8px 40px}}
-h1{font-family:var(--font-display);font-size:1.7rem;color:var(--black);line-height:1.25}
-.meta{color:var(--grey-600);font-size:13px;margin:6px 0 18px}
-.scores{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px}
+/* topbar, buttons → ld-theme.css */
+.page{max-width:900px;margin:16px auto 60px;background:var(--ld-surface);border-radius:28px;padding:34px 40px}
+@media(max-width:640px){.page{padding:22px 16px;margin:10px 10px 40px;border-radius:22px}}
+h1{font-family:var(--font-display);font-size:clamp(1.6rem,3.6vw,2.2rem);font-weight:400;letter-spacing:-.03em;color:var(--ld-ink);line-height:1.15}
+.kicker{font-size:12.5px;font-weight:600;color:var(--ld-ink-3);margin-bottom:4px}
+.meta{color:var(--ld-ink-2);font-size:13px;margin:8px 0 20px}
+.scores{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 @media(max-width:520px){.scores{grid-template-columns:repeat(2,1fr)}}
-.score{border:1px solid var(--grey-200);border-radius:12px;padding:12px;text-align:center}
-.score .n{font-family:var(--font-display);font-size:1.6rem;font-weight:700;color:var(--navy2)}
-.score .l{font-size:11px;color:var(--grey-600);text-transform:uppercase;letter-spacing:.05em}
-.score.total .n{color:var(--red)}
-h2{font-family:var(--font-display);font-size:1.25rem;color:var(--navy2);margin:30px 0 10px;padding-bottom:6px;border-bottom:1.5px solid var(--grey-200)}
-.muted{color:var(--grey-600);font-size:13px}
+.score{border-radius:20px;padding:16px 16px 14px;background:var(--ld-surface-2)}
+.score:nth-child(2){background:var(--ld-slate)}
+.score:nth-child(3){background:var(--ld-charcoal);color:#fff}
+.score.total{background:var(--ld-accent);color:#fff}
+.score .n{font-family:var(--font-display);font-size:2rem;font-weight:400;letter-spacing:-.03em;line-height:1.1}
+.score .l{font-size:12px;font-weight:600;opacity:.75;margin-top:4px}
+h2{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-size:1.2rem;font-weight:600;color:var(--ld-ink);margin:32px 0 12px;letter-spacing:-.01em}
+h2 .num{width:30px;height:30px;border-radius:50%;background:var(--ld-ink);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700;flex:0 0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.muted{color:var(--ld-ink-2);font-size:13px}
 .script p,.gap p{margin:0 0 6px;line-height:1.85;font-size:15px}
-.no{color:var(--grey-400);font-size:12px;margin-right:4px}
-table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
-th{background:var(--grey-100);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--grey-600)}
-th,td{padding:7px 10px;border-bottom:1px solid var(--grey-200)}
-.lv{display:inline-block;min-width:30px;text-align:center;font-weight:800;font-size:11px;border-radius:6px;padding:1px 6px;color:#fff}
+.no{color:var(--ld-ink-3);font-size:12px;margin-right:4px}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px;margin-top:8px}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--ld-ink-3);border-bottom:1px solid var(--ld-line)}
+th,td{padding:8px 10px}
+td{border-bottom:1px solid var(--ld-surface-2)}
+.lv{display:inline-block;min-width:30px;text-align:center;font-weight:700;font-size:11px;border-radius:8px;padding:1px 6px;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .lv-B2{background:#8B5CF6}.lv-C1{background:#EC4899}.lv-C2{background:#DC2626}
-.ipa{font-family:var(--font-mono);font-size:12.5px;color:var(--grey-600)}
+.ipa{font-family:var(--font-mono);font-size:12.5px;color:var(--ld-ink-3)}
 .dist{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
-.dist span{font-size:12px;background:var(--grey-100);border-radius:100px;padding:2px 10px;color:var(--grey-800)}
+.dist span{font-size:12px;font-weight:600;background:var(--ld-surface-2);border-radius:100px;padding:4px 12px;color:var(--ld-ink-2)}
 .q{margin:0 0 14px}
-.q-title{font-weight:700}
-.q.ok .q-title{color:var(--green)}.q.bad .q-title{color:var(--red)}
+.q-title{font-weight:600}
+.q.ok .q-title{color:var(--ld-ok)}.q.bad .q-title{color:var(--ld-danger)}
 .q div{font-size:13.5px;margin-left:22px}
-.ans-ok{color:var(--green)}.ans-bad{color:var(--red)}.expl{color:var(--grey-600)}
-.g-ok{color:var(--green);font-weight:800;text-decoration:underline;text-underline-offset:3px}
-.g-bad{color:var(--red);font-weight:800;text-decoration:line-through}
+.ans-ok{color:var(--ld-ok)}.ans-bad{color:var(--ld-danger)}.expl{color:var(--ld-ink-2)}
+.g-ok{color:var(--ld-ok);font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.g-bad{color:var(--ld-danger);font-weight:800;text-decoration:line-through}
 .dict{margin:0 0 14px}
-.dict .h{font-weight:700}
-.dict.ok .h{color:var(--green)}.dict.bad .h{color:var(--red)}
+.dict .h{font-weight:600}
+.dict.ok .h{color:var(--ld-ok)}.dict.bad .h{color:var(--ld-danger)}
 .dict div{font-size:13.5px;margin-left:22px;line-height:1.7}
-.d-ok{color:var(--green)}.d-sub{color:var(--red);text-decoration:line-through}.d-fix{color:var(--green);font-weight:800;text-decoration:underline}
-.d-miss{color:#d97706;font-weight:800}.d-extra{color:var(--red);text-decoration:line-through;opacity:.8}
-.center{text-align:center;padding:60px 20px;color:var(--grey-600)}
+.d-ok{color:var(--ld-ok)}.d-sub{color:var(--ld-danger);text-decoration:line-through}.d-fix{color:var(--ld-ok);font-weight:800;text-decoration:underline}
+.d-miss{color:var(--ld-warn);font-weight:800}.d-extra{color:var(--ld-danger);text-decoration:line-through;opacity:.8}
+.center{text-align:center;padding:60px 20px;color:var(--ld-ink-2)}
 @media print{
   .topbar{display:none}
   body{background:#fff}
@@ -59,16 +58,16 @@ th,td{padding:7px 10px;border-bottom:1px solid var(--grey-200)}
 </style>
 </head>
 <body>
-<div class="topbar">
-  <div class="topbar-brand">Language <em>Hub</em> · 📄 Report</div>
+<div class="topbar" style="max-width:900px">
+  <span class="ld-logo"><span class="ld-mark"><i data-ic="report"></i></span><span class="ld-logo-name">Report<small>LisDictation</small></span></span>
   <div class="topbar-right">
-    <button class="topbar-btn" onclick="window.print()">🖨 Print / PDF</button>
-    <a class="topbar-btn" id="back" href="student.html">← Back</a>
+    <button class="topbar-btn" onclick="window.print()"><i data-ic="print"></i><span class="tb-hide-sm">Print / PDF</span></button>
+    <a class="topbar-btn" id="back" href="student.html" style="text-decoration:none"><i data-ic="arrowLeft"></i>Back</a>
   </div>
 </div>
-<div class="page" id="page"><div class="center"><span class="ld-spin" style="border-color:var(--grey-200);border-top-color:var(--red)"></span> Loading…</div></div>
+<div class="page" id="page"><div class="center"><span class="spinner"></span> Loading…</div></div>
 
-<script src="ld-common.js"></script>
+<script src="ld-common.js?v=2"></script>
 <script>
 (function () {
   var s = LD.session.require();
@@ -78,9 +77,9 @@ th,td{padding:7px 10px;border-bottom:1px solid var(--grey-200)}
   var id = new URLSearchParams(location.search).get('session');
   if (!id) { show('<div class="center">Missing session.</div>'); return; }
   LD.api(isTeacher ? 'teacher.getSessionDetail' : 'student.resumeSession', { sessionId: id }).then(function (r) {
-    if (!r || !r.success) { show('<div class="center">⚠️ ' + LD.esc((r && r.error) || 'Could not load this report.') + '</div>'); return; }
+    if (!r || !r.success) { show('<div class="center">' + LD.esc((r && r.error) || 'Could not load this report.') + '</div>'); return; }
     render(r.data);
-  }).catch(function () { show('<div class="center">⚠️ Could not connect to the server.</div>'); });
+  }).catch(function () { show('<div class="center">Could not connect to the server.</div>'); });
 })();
 
 function show(html) { document.getElementById('page').innerHTML = html; }
@@ -89,7 +88,7 @@ function pct(v) { return v === '' || v == null ? '—' : v + '%'; }
 function render(d) {
   var e = LD.esc, sentences = d.CorrectedScriptJSON || [];
   document.title = (d.BookTestPart || 'Report') + ' · ' + (d.StudentName || '') + ' · LisDictation';
-  var html = '<h1>LisDictation — ' + e(d.BookTestPart || '') + '</h1>' +
+  var html = '<div class="kicker">LisDictation · Session report</div><h1>' + e(d.BookTestPart || 'Session') + '</h1>' +
     '<div class="meta">' + e(d.StudentName || '') + (d.StudentID ? ' (' + e(d.StudentID) + ')' : '') + ' · ' + e(d.ClassName || '') +
     (d.EndTime ? ' · Completed ' + e(LD.fmtDate(d.EndTime)) : '') + (d.DurationMin !== '' && d.DurationMin != null ? ' · ' + e(LD.fmtDuration(d.DurationMin)) : '') + '</div>' +
     '<div class="scores">' + [['Quiz', d.QuizScore], ['Gap-fill', d.GapFillScore], ['Dictation', d.DictationAccuracy], ['Total', d.TotalScore]].map(function (x, i) {
@@ -100,18 +99,18 @@ function render(d) {
     // Bài cũ của bản Google Sheet đã bị dọn chi tiết: còn link Google Doc thì mở Doc
     var doc = /^https?:/.test(d.DocURL || '') ? d.DocURL : '';
     show(html + '<div class="center">' + (doc
-      ? '🗄 This older session was archived to Google Docs.<br><br><a class="topbar-btn" style="background:var(--navy2);color:#fff" href="' + e(doc) + '" target="_blank" rel="noopener">📄 Open Google Doc</a>'
+      ? 'This older session was archived to Google Docs.<br><br><a class="btn btn-primary" style="text-decoration:none" href="' + e(doc) + '" target="_blank" rel="noopener">' + LD.icon('external') + 'Open Google Doc</a>'
       : 'The detailed answers of this session are not available.') + '</div>');
     return;
   }
 
   // 1. Script
-  html += '<h2>1. Listening Script</h2><div class="script">' +
+  html += '<h2><span class="num">1</span>Listening Script</h2><div class="script">' +
     sentences.map(function (t, i) { return '<p><span class="no">' + (i + 1) + '.</span>' + e(t) + '</p>'; }).join('') + '</div>';
 
   // 2. Word levels
   var cefr = d.CEFRJSON || {}, counts = cefr.counts || {}, tot = cefr.total || 0, byLevel = cefr.byLevel || {}, gloss = cefr.gloss || {};
-  html += '<h2>2. Word Levels (CEFR)</h2>';
+  html += '<h2><span class="num">2</span>Word Levels (CEFR)</h2>';
   if (tot) html += '<div class="dist">' + ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(function (lv) {
     return '<span><b>' + lv + '</b> ' + (counts[lv] || 0) + ' · ' + Math.round((counts[lv] || 0) / tot * 100) + '%</span>';
   }).join('') + '<span>' + tot + ' words</span></div>';
@@ -125,7 +124,7 @@ function render(d) {
 
   // 3. Collocations
   var col = d.CollocationJSON || [];
-  html += '<h2>3. Phrases &amp; Collocations</h2>' + (col.length
+  html += '<h2><span class="num">3</span>Phrases &amp; Collocations</h2>' + (col.length
     ? '<table><thead><tr><th>Phrase</th><th>Nghĩa (VI)</th></tr></thead><tbody>' + col.map(function (c) {
         return '<tr><td><b>' + e(c.en || c[0] || '') + '</b></td><td>' + e(c.vi || c[1] || '') + '</td></tr>';
       }).join('') + '</tbody></table>'
@@ -133,7 +132,7 @@ function render(d) {
 
   // 4. Quiz
   var qz = d.QuizJSON || {}, qs = qz.questions || [], qa = qz.answers || [];
-  html += '<h2>4. Quiz Review</h2>' + (qs.length ? qs.map(function (q, i) {
+  html += '<h2><span class="num">4</span>Quiz Review</h2>' + (qs.length ? qs.map(function (q, i) {
     var chosen = qa[i], ok = chosen === q.a, o = q.o || [];
     return '<div class="q ' + (ok ? 'ok' : 'bad') + '"><div class="q-title" style="margin-left:0">' + (ok ? '✓ ' : '✗ ') + (i + 1) + '. [' + (q.type === 'content' ? 'Content' : 'Vocab') + '] ' + e(q.q) + '</div>' +
       (ok ? '' : '<div class="ans-bad">Bạn chọn: ' + e(o[chosen] != null ? o[chosen] : '—') + '</div>') +
@@ -145,7 +144,7 @@ function render(d) {
   var ga = ((d.GapFillJSON || {}).answers) || [], blanks = {};
   ga.forEach(function (a) { (blanks[a.sentenceIdx] = blanks[a.sentenceIdx] || {})[a.wordIdx] = a; });
   var wrong = ga.filter(function (a) { return !a.firstTryCorrect; }).length;
-  html += '<h2>5. Gap-fill Review</h2><div class="muted">Correct on the first try: <b>' + (ga.length - wrong) + '/' + ga.length + '</b></div><div class="gap">' +
+  html += '<h2><span class="num">5</span>Gap-fill Review</h2><div class="muted">Correct on the first try: <b>' + (ga.length - wrong) + '/' + ga.length + '</b></div><div class="gap">' +
     sentences.map(function (sent, si) {
       var bs = blanks[si] || {};
       return '<p><span class="no">' + (si + 1) + '.</span>' + String(sent).split(/(\s+)/).map(function (tok, wi) {
@@ -159,7 +158,7 @@ function render(d) {
 
   // 6. Dictation (so khớp theo dãy từ — LD.alignWords)
   var da = ((d.DictationJSON || {}).answers) || [];
-  html += '<h2>6. Dictation Review</h2>' + sentences.map(function (t, i) {
+  html += '<h2><span class="num">6</span>Dictation Review</h2>' + sentences.map(function (t, i) {
     var typed = (da[i] && da[i].typed) || '', al = LD.alignWords(t, typed);
     var line = al.ops.map(function (o) {
       if (o.op === 'ok') return '<span class="d-ok">' + e(o.t) + '</span>';

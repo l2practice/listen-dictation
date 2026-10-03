@@ -4,163 +4,157 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LisDictation — Language Hub</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="ld-theme.css">
+<link rel="stylesheet" href="ld-theme.css?v=2">
 <!-- cefr-dict.js: copy this file as-is from the omni-practice repo (ReadWise), same filename.
      It provides the global function cefrOf(word) → {level, pos, lemma}. Without it, the
      CEFR% on the Study screen will show every word as "Unknown" (app still runs fine). -->
 <script src="cefr-dict.js" onerror="console.warn('cefr-dict.js missing — CEFR% will be inaccurate')"></script>
 <style>
+/* shared chrome, cards, buttons, forms, tables → ld-theme.css */
 .screen{display:none;flex-direction:column;min-height:100vh}
 .screen.active{display:flex}
-.topbar{background:linear-gradient(90deg,var(--black) 0%,var(--navy2) 45%,var(--red-dark) 100%);min-height:56px;display:flex;align-items:center;padding:8px 20px;gap:12px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--gold);flex-wrap:wrap}
-.topbar-brand{font-family:var(--font-display);color:var(--white);font-size:1rem;white-space:nowrap}
-.topbar-brand em{color:var(--red-mid);font-style:normal}
-.topbar-app{font-size:13px;color:rgba(255,255,255,.55)}
-.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.topbar-user{font-size:12.5px;color:var(--gold-light);font-weight:600}
-.topbar-class{font-size:11.5px;color:rgba(255,255,255,.55)}
-.topbar-btn{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,.85);font-size:12.5px;cursor:pointer;font-family:var(--font-body);font-weight:600}
-.topbar-btn:hover{background:rgba(255,255,255,.2);color:#fff}
-.wrap{width:100%;max-width:1180px;margin:0 auto;padding:22px 20px 60px}
-.card{background:var(--white);border-radius:var(--radius-lg);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--grey-200);margin-bottom:16px}
-.card-title{font-family:var(--font-display);font-size:1.05rem;color:var(--black);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer;transition:var(--transition);white-space:nowrap}
-.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.18)}
-.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
-.btn-primary{background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff}
-.btn-secondary{background:var(--grey-100);color:var(--grey-800);border:1.5px solid var(--grey-200)}
-.btn-teal{background:linear-gradient(135deg,var(--teal),#0a6357);color:#fff}
-.btn-gold{background:linear-gradient(135deg,var(--gold),#8a6d10);color:#fff}
-.btn-green{background:linear-gradient(135deg,var(--green),#0a6357);color:#fff}
-.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
-.btn-full{width:100%}
-.form-label{display:block;font-size:11px;font-weight:700;color:var(--grey-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-.form-input,.form-select,.form-textarea{width:100%;padding:10px 13px;border:1.5px solid var(--grey-200);border-radius:var(--radius);font-family:var(--font-body);font-size:14px;color:var(--black);background:var(--white);outline:none}
-.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,16,46,.08)}
-.form-row-3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
-.form-group{margin-bottom:16px}
-@media(max-width:640px){.form-row-3{grid-template-columns:1fr}}
-.setup-grid{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+.key-widget{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;background:var(--ld-surface-2);border-radius:18px;padding:12px 14px}
+.key-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.key-name{font-size:.78rem;font-weight:600;color:var(--ld-ink-2);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;min-width:96px}
+.key-row input{flex:1;min-width:140px;padding:8px 14px;border:1.5px solid transparent;border-radius:var(--radius-pill);font-size:.82rem;font-family:var(--font-mono);outline:none;background:#fff}
+.key-row input:focus{border-color:var(--ld-accent)}
+.key-status{font-size:.72rem;font-weight:600;white-space:nowrap;color:var(--ld-ink-3)}
+.key-row a{font-size:.74rem;color:var(--ld-accent);font-weight:600;white-space:nowrap;text-decoration:none}
+.key-note{font-size:.74rem;color:var(--ld-ink-3)}
+
+/* ── setup ── */
+.setup-grid{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
 @media(max-width:960px){.setup-grid{grid-template-columns:1fr}}
-.split-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;margin-top:10px}
-.split-item{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:8px;background:var(--grey-100);font-size:13px;line-height:1.5}
-.split-item .sno{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.split-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;margin-top:12px}
+.split-item{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-radius:14px;background:var(--ld-surface-2);font-size:13px;line-height:1.5}
+.split-item .sno{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--ld-ink);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:0}
 .pct-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.pct-bar-outer{flex:1;height:10px;background:var(--grey-100);border-radius:999px;overflow:hidden}
+.pct-bar-outer{flex:1;height:10px;background:var(--ld-surface-2);border-radius:999px;overflow:hidden}
 .pct-bar-fill{height:100%;border-radius:999px}
 .lv-A1{background:#0EA5E9}.lv-A2{background:#10B981}.lv-B1{background:#3B82F6}.lv-B2{background:#8B5CF6}.lv-C1{background:#EC4899}.lv-C2{background:#DC2626}
-.colloc-card{border-left:3px solid var(--gold);background:var(--grey-100);border-radius:8px;padding:9px 13px;margin-bottom:8px}
-.colloc-en{font-weight:700;color:var(--navy2);font-size:13.5px}
-.colloc-vi{font-size:12.5px;color:var(--grey-600);margin-top:2px}
-.q-card{background:var(--white);border:1.5px solid var(--grey-200);border-radius:12px;padding:16px;margin-bottom:12px}
-.q-card.answered{border-color:var(--green)}
-.q-tag{display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 9px;border-radius:100px;margin-bottom:8px}
-.q-tag.content{background:var(--red-light);color:var(--red)}
-.q-tag.vocab{background:#E0F2EF;color:var(--teal)}
-.opt-label{display:block;padding:9px 12px;border:1.5px solid var(--grey-200);border-radius:9px;margin-bottom:6px;cursor:pointer;font-size:13.5px}
-.opt-label:hover{border-color:var(--red)}
-.opt-label.sel{border-color:var(--red);background:var(--red-light);font-weight:700}
-.opt-label input{margin-right:8px}
-.gap-sentence{background:var(--white);border-radius:12px;padding:14px 18px;margin-bottom:10px;border-left:4px solid var(--blue);font-size:14.5px;line-height:2;transition:opacity .3s}
-.gap-sentence.gs-future{opacity:.45}
-.gap-sentence.gs-done{border-left-color:var(--green)}
-.gap-blank{display:inline-block;min-width:90px;padding:2px 8px;border:none;border-bottom:2px solid var(--red);background:var(--red-light);border-radius:4px;font-family:var(--font-mono);font-size:13.5px;text-align:center;margin:0 2px}
-.gap-blank.gb-correct{border-bottom-color:var(--green);background:#e9f7ef;color:var(--green);font-weight:700}
-.gap-blank.gb-wrong{border-bottom-color:var(--red);background:#fdecec}
-.gap-blank.gb-future{border-bottom-color:#ccc;background:#f3f3f1;color:#aaa;pointer-events:none}
-.gap-seg-hint{margin-top:10px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;text-align:center}
-.gap-seg-hint.ok{background:#e9f7ef;color:var(--green);border:1.5px solid var(--green)}
-.gap-seg-hint.bad{background:#fdecec;color:var(--red);border:1.5px solid var(--red)}
-.sentence-block{background:#fff;border-radius:13px;padding:16px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(26,35,126,.07);border-left:4px solid #c8d4ee}
-.sentence-block.active-block{border-left-color:var(--gold);box-shadow:0 4px 18px rgba(197,160,40,.2)}
-.sentence-block.completed{border-left-color:var(--green)}
-.sb-label{font-size:11px;font-weight:700;color:#9aaac8;letter-spacing:.5px;margin-bottom:7px;text-transform:uppercase}
+.colloc-card{background:var(--ld-surface-2);border-radius:14px;padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--ld-accent)}
+.colloc-en{font-weight:600;color:var(--ld-ink);font-size:13.5px}
+.colloc-vi{font-size:12.5px;color:var(--ld-ink-2);margin-top:2px}
+
+/* ── quiz ── */
+.q-card{background:var(--ld-surface);border:1.5px solid transparent;border-radius:20px;padding:18px;margin-bottom:12px}
+.q-card.answered{border-color:var(--ld-ok)}
+.q-tag{display:inline-block;font-size:11px;font-weight:600;padding:3px 11px;border-radius:100px;margin-bottom:9px}
+.q-tag.content{background:var(--ld-accent-lt);color:var(--ld-accent-dk)}
+.q-tag.vocab{background:var(--ld-slate-lt);color:var(--ld-ink-2)}
+.opt-label{display:block;padding:10px 14px;border:1.5px solid transparent;border-radius:14px;margin-bottom:6px;cursor:pointer;font-size:13.5px;background:var(--ld-surface-2);transition:var(--transition)}
+.opt-label:hover{border-color:var(--ld-ink-3)}
+.opt-label.sel{border-color:var(--ld-ink);background:var(--ld-ink);color:#fff;font-weight:600}
+.opt-label input{margin-right:8px;accent-color:var(--ld-accent)}
+
+/* ── gap-fill ── */
+.gap-sentence{background:var(--ld-surface);border-radius:18px;padding:14px 18px;margin-bottom:10px;border-left:4px solid var(--ld-accent);font-size:14.5px;line-height:2.1;transition:opacity .3s}
+.gap-sentence.gs-future{opacity:.45;border-left-color:var(--ld-slate)}
+.gap-sentence.gs-done{border-left-color:var(--ld-ok)}
+.gap-blank{display:inline-block;min-width:90px;padding:2px 10px;border:none;border-bottom:2px solid var(--ld-ink);background:var(--ld-surface-2);border-radius:8px 8px 4px 4px;font-family:var(--font-mono);font-size:13.5px;text-align:center;margin:0 2px;outline:none}
+.gap-blank:focus{border-bottom-color:var(--ld-accent);background:var(--ld-accent-lt)}
+.gap-blank.gb-correct{border-bottom-color:var(--ld-ok);background:var(--ld-ok-lt);color:var(--ld-ok);font-weight:700}
+.gap-blank.gb-wrong{border-bottom-color:var(--ld-danger);background:var(--ld-danger-lt)}
+.gap-blank.gb-future{border-bottom-color:var(--ld-slate);background:var(--ld-surface-2);color:var(--ld-ink-3);pointer-events:none}
+.gap-seg-hint{margin-top:10px;padding:11px 16px;border-radius:var(--radius-pill);font-size:13px;font-weight:600;text-align:center}
+.gap-seg-hint.ok{background:var(--ld-ok-lt);color:var(--ld-ok)}
+.gap-seg-hint.bad{background:var(--ld-danger-lt);color:var(--ld-danger)}
+
+/* ── dictation ── */
+.sentence-block{background:var(--ld-surface);border-radius:20px;padding:16px 20px;margin-bottom:12px;border-left:4px solid var(--ld-slate);transition:var(--transition)}
+.sentence-block.active-block{border-left-color:var(--ld-accent);box-shadow:var(--shadow-md)}
+.sentence-block.completed{border-left-color:var(--ld-ok)}
+.sb-label{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:11.5px;font-weight:600;color:var(--ld-ink-3);margin-bottom:7px}
 .sb-result{min-height:22px;line-height:2.1;word-spacing:3px;margin-bottom:7px}
-.sb-result .w-correct{color:var(--green);font-weight:700}
-.sb-result .w-wrong{color:var(--red);font-weight:700;font-family:var(--font-mono)}
-.sb-result .w-missing{color:#e67e22;font-weight:800}
-.sb-result .w-extra{color:var(--red);text-decoration:line-through;font-family:var(--font-mono);opacity:.8}
-.sb-hint{background:#f0fdf4;border:1.5px solid var(--green);border-radius:8px;padding:8px 12px;margin-top:6px;font-size:13px}
-.sb-input{width:100%;padding:10px 14px;border:2px solid #d0d8f0;border-radius:10px;outline:none;margin-bottom:8px;background:#f8faff;font-family:var(--font-mono);font-size:14px;resize:none;overflow:hidden;line-height:1.6;min-height:42px;box-sizing:border-box;display:block}
-.sb-input:focus{border-color:var(--blue)}
+.sb-result .w-correct{color:var(--ld-ok);font-weight:700}
+.sb-result .w-wrong{color:var(--ld-danger);font-weight:700;font-family:var(--font-mono)}
+.sb-result .w-missing{color:var(--ld-warn);font-weight:800}
+.sb-result .w-extra{color:var(--ld-danger);text-decoration:line-through;font-family:var(--font-mono);opacity:.8}
+.sb-hint{background:var(--ld-ok-lt);border-radius:14px;padding:9px 14px;margin-top:6px;font-size:13px}
+.sb-input{width:100%;padding:11px 15px;border:1.5px solid transparent;border-radius:14px;outline:none;margin-bottom:8px;background:var(--ld-surface-2);font-family:var(--font-mono);font-size:14px;resize:none;overflow:hidden;line-height:1.6;min-height:44px;box-sizing:border-box;display:block;color:var(--ld-ink)}
+.sb-input:focus{border-color:var(--ld-accent);background:#fff;box-shadow:var(--ring)}
 .sb-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
-.sb-wordcount{font-size:11.5px;color:#8a97b8;margin:-3px 0 8px}
-.dict-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:12.5px;color:#5a4600}
+.sb-wordcount{font-size:11.5px;color:var(--ld-ink-3);margin:-3px 0 8px}
+.dict-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--ld-surface);border-radius:18px;padding:10px 16px;margin-bottom:14px;font-size:12.5px;color:var(--ld-ink-2)}
+.dict-banner b{color:var(--ld-ink)}
 .dict-banner.hidden{display:none}
-.dict-banner-close{background:none;border:none;color:#5a4600;font-size:14px;cursor:pointer;font-weight:700;line-height:1;flex-shrink:0}
-.progress-outer{flex:1;max-width:340px;background:var(--grey-200);border-radius:999px;height:8px}
-.progress-fill{height:8px;background:linear-gradient(90deg,var(--teal),var(--green));border-radius:999px;transition:width .4s}
-.result-card{background:#fff;border-radius:var(--radius-lg);padding:36px;max-width:520px;width:100%;box-shadow:var(--shadow-md);text-align:center;border-top:5px solid var(--gold);margin:0 auto}
-.big-score{font-size:3.4rem;font-weight:900;background:linear-gradient(135deg,var(--red),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:10px 0;font-family:var(--font-display)}
-.result-stats div{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--grey-200);font-size:14px}
-table.ld-table{width:100%;border-collapse:collapse;font-size:13px}
-table.ld-table th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--grey-600);letter-spacing:.05em;text-transform:uppercase;border-bottom:1.5px solid var(--grey-200);cursor:pointer;white-space:nowrap}
-table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font-size:13px}
-.hist-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
-.badge-gold{background:#fff3cc;color:#7a5800}
-.hidden{display:none!important}
-.spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
-@keyframes spin{to{transform:rotate(360deg)}}
-/* Study screen: ReadWise-style leveled reading */
-.study-word{border-radius:3px;padding:0 1px;cursor:pointer;transition:background .1s}
-.study-word:hover{background:rgba(200,16,46,.08)}
-.study-word.hi{background:#FEE2E2}
-.gl{font-family:var(--font-body);font-size:.72em;font-style:italic;color:var(--red);white-space:nowrap;margin-left:2px;font-weight:600}
+.dict-banner-close{background:var(--ld-surface-2);border:none;color:var(--ld-ink);width:28px;height:28px;border-radius:50%;cursor:pointer;display:grid;place-items:center;flex-shrink:0}
+.progress-outer{flex:1;min-width:90px;max-width:260px;background:var(--ld-surface-2);border-radius:999px;height:8px}
+.progress-fill{height:8px;background:var(--ld-accent);border-radius:999px;transition:width .4s}
+.foot-bar.sticky{position:sticky;bottom:12px;z-index:50}
+.note{font-size:12.5px;color:var(--ld-ink-2);display:flex;gap:8px;align-items:center;justify-content:center}
+.note .ic{width:16px;height:16px;color:var(--ld-warn)}
+.foot-bar{background:var(--ld-surface);border-radius:22px;padding:12px 16px;text-align:center;box-shadow:var(--shadow-md);margin-top:8px}
+
+/* ── result ── */
+.result-card{background:var(--ld-surface);border-radius:28px;padding:36px;max-width:520px;width:calc(100% - 32px);text-align:center;margin:0 auto}
+.result-badge{width:64px;height:64px;border-radius:50%;background:var(--ld-accent);color:#fff;display:grid;place-items:center;margin:0 auto 10px}
+.result-badge .ic{width:30px;height:30px}
+.big-score{font-size:4rem;font-weight:400;letter-spacing:-.04em;color:var(--ld-ink);margin:4px 0 10px;font-family:var(--font-display);line-height:1.1}
+.result-stats{background:var(--ld-surface-2);border-radius:18px;padding:4px 16px}
+.result-stats div{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--ld-line);font-size:14px}
+.result-stats div:last-child{border-bottom:none}
+.result-stats span:last-child{font-weight:700}
+
+.ip-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:var(--ld-surface-2);margin-bottom:8px}
+.ip-title{font-weight:600;font-size:13.5px}
+.ip-sub{font-size:12px;color:var(--ld-ink-3)}
+
+/* ── study: ReadWise-style leveled reading ── */
+.study-word{border-radius:4px;padding:0 1px;cursor:pointer;transition:background .1s}
+.study-word:hover{background:var(--ld-accent-lt)}
+.study-word.hi{background:#FBD9D0}
+.gl{font-family:var(--font-body);font-size:.72em;font-style:italic;color:var(--ld-accent-dk);white-space:nowrap;margin-left:2px;font-weight:600}
 .pos-n{color:#2563EB}.pos-v{color:#DC2626}.pos-j{color:#059669}.pos-r{color:#D97706}
-.lv-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;cursor:pointer;user-select:none}
+.lv-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:11.5px;font-weight:700;cursor:pointer;user-select:none;margin:2px 0}
 .lv-chip input{cursor:pointer;margin:0}
-.lv-chip.lv-A1{background:rgba(14,165,233,.14);color:#0EA5E9}
-.lv-chip.lv-A2{background:rgba(16,185,129,.14);color:#10B981}
-.lv-chip.lv-B1{background:rgba(59,130,246,.14);color:#3B82F6}
-.lv-chip.lv-B2{background:rgba(139,92,246,.14);color:#8B5CF6}
-.lv-chip.lv-C1{background:rgba(236,72,153,.14);color:#EC4899}
+.lv-chip.lv-A1{background:rgba(14,165,233,.14);color:#0284C7}
+.lv-chip.lv-A2{background:rgba(16,185,129,.14);color:#059669}
+.lv-chip.lv-B1{background:rgba(59,130,246,.14);color:#2563EB}
+.lv-chip.lv-B2{background:rgba(139,92,246,.14);color:#7C3AED}
+.lv-chip.lv-C1{background:rgba(236,72,153,.14);color:#DB2777}
 .lv-chip.lv-C2{background:rgba(220,38,38,.14);color:#DC2626}
-.btn-secondary.active{background:var(--red);color:#fff;border-color:var(--red)}
-.hist-range.active{background:var(--navy2)!important;color:#fff!important;border-color:var(--navy2)!important}
-/* ── Resume loading overlay ──────────────────────────────── */
-.resume-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.tb-sep{width:1px;height:22px;background:var(--ld-line)}
+
+/* ── overlays ── */
+.resume-overlay{position:fixed;inset:0;background:rgba(21,23,28,.5);backdrop-filter:blur(3px);z-index:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
 .resume-overlay.hidden{display:none}
-.resume-overlay .ro-card{background:#fff;border-radius:16px;padding:28px 32px;text-align:center;min-width:220px}
-.resume-overlay .ro-card h4{font-family:var(--font-display);margin:10px 0 4px;color:var(--navy2)}
-.resume-overlay .ro-card p{font-size:13px;color:var(--grey-600);margin:0}
-.dup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center}
+.resume-overlay .ro-card{background:#fff;border-radius:24px;padding:28px 32px;text-align:center;min-width:220px}
+.resume-overlay .ro-card h4{font-family:var(--font-display);font-weight:600;margin:10px 0 4px;color:var(--ld-ink)}
+.resume-overlay .ro-card p{font-size:13px;color:var(--ld-ink-3);margin:0}
+.dup-overlay{position:fixed;inset:0;background:rgba(21,23,28,.5);backdrop-filter:blur(3px);z-index:400;display:flex;align-items:center;justify-content:center}
 .dup-overlay.hidden{display:none}
-.dup-modal{background:#fff;border-radius:16px;width:min(400px,92vw);padding:28px 24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.dup-modal h3{font-family:var(--font-display);color:var(--red);margin:0 0 10px;font-size:1.1rem}
-.dup-modal p{font-size:13.5px;color:var(--grey-600);margin:0 0 18px;line-height:1.6}
-.dup-modal .btp-chip{display:inline-block;background:var(--red-light);color:var(--red);font-weight:700;padding:2px 10px;border-radius:100px;font-size:13px;margin:4px 0}
+.dup-modal{background:#fff;border-radius:24px;width:min(420px,92vw);padding:26px 24px;box-shadow:var(--shadow-lg)}
+.dup-modal h3{font-family:var(--font-display);font-weight:600;color:var(--ld-ink);margin:0 0 10px;font-size:1.15rem}
+.dup-modal p{font-size:13.5px;color:var(--ld-ink-2);margin:0 0 18px;line-height:1.6}
+.dup-modal .btp-chip{display:inline-block;background:var(--ld-accent-lt);color:var(--ld-accent-dk);font-weight:700;padding:3px 12px;border-radius:100px;font-size:13px;margin:4px 0}
 .dup-modal .btn-row{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
-/* ── Floating shortcut button ────────────────────────────── */
-.sc-fab{position:fixed;bottom:20px;right:16px;z-index:200;background:rgba(26,35,126,.85);color:#fff;border:none;border-radius:50%;width:42px;height:42px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.25);backdrop-filter:blur(4px);transition:transform .15s}
-.sc-fab:hover{transform:scale(1.12)}
+.sc-fab{position:fixed;bottom:20px;right:16px;z-index:200;background:var(--ld-ink);color:#fff;border:none;border-radius:50%;width:48px;height:48px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-md);transition:transform .15s}
+.sc-fab:hover{transform:scale(1.08)}
 .sc-fab.hidden{display:none}
-/* ── iOS-style toggle ────────────────────────────────────── */
-.ios-toggle{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:12.5px;font-weight:600;color:var(--grey-700)}
+.ios-toggle{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:12.5px;font-weight:600;color:var(--ld-ink-2)}
 .ios-toggle input{position:absolute;opacity:0;width:0;height:0}
-.ios-track{width:40px;height:22px;background:#ccc;border-radius:100px;transition:background .2s;flex-shrink:0}
-.ios-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .2s}
-.ios-toggle input:checked ~ .ios-track{background:var(--green)}
+.ios-track{position:relative;width:40px;height:22px;background:var(--ld-slate);border-radius:100px;transition:background .2s;flex-shrink:0}
+.ios-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:transform .2s}
+.ios-toggle input:checked ~ .ios-track{background:var(--ld-accent)}
 .ios-toggle input:checked ~ .ios-track .ios-thumb{transform:translateX(18px)}
-.sc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:center;justify-content:center}
+.sc-overlay{position:fixed;inset:0;background:rgba(21,23,28,.5);backdrop-filter:blur(3px);z-index:500;display:flex;align-items:center;justify-content:center}
 .sc-overlay.hidden{display:none}
-.sc-modal{background:#fff;border-radius:20px;width:min(420px,94vw);overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35)}
-.sc-header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:22px 24px 18px;display:flex;gap:14px;align-items:flex-start}
-.sc-header-icon{font-size:2rem;line-height:1}
-.sc-header-text h3{color:#fff;font-family:var(--font-display);font-size:1.15rem;margin:0 0 4px}
-.sc-header-text p{color:rgba(255,255,255,.55);font-size:12px;margin:0}
+.sc-modal{background:#fff;border-radius:26px;width:min(420px,94vw);overflow:hidden;box-shadow:var(--shadow-lg)}
+.sc-header{background:var(--ld-charcoal);padding:22px 24px 18px;display:flex;gap:14px;align-items:center}
+.sc-header-icon{width:44px;height:44px;border-radius:14px;background:var(--ld-accent);color:#fff;display:grid;place-items:center;flex:0 0 auto}
+.sc-header-text h3{color:#fff;font-family:var(--font-display);font-weight:600;font-size:1.15rem;margin:0 0 2px}
+.sc-header-text p{color:rgba(255,255,255,.6);font-size:12px;margin:0}
 .sc-body{padding:16px 20px 8px}
-.sc-tip{background:#f0fdf4;border-left:3px solid #22c55e;border-radius:6px;padding:9px 12px;font-size:12.5px;color:#166534;margin-bottom:14px}
-.sc-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--grey-100)}
+.sc-tip{background:var(--ld-ok-lt);border-radius:12px;padding:9px 12px;font-size:12.5px;color:#1F6B43;margin-bottom:14px}
+.sc-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--ld-surface-2)}
 .sc-row:last-child{border-bottom:none}
-.sc-label{font-size:13.5px;color:var(--black);display:flex;align-items:center;gap:7px}
+.sc-label{font-size:13.5px;color:var(--ld-ink);display:flex;align-items:center;gap:7px}
 .sc-keys{display:flex;gap:4px;align-items:center}
-.sc-key{background:#f1f5f9;border:1.5px solid #cbd5e1;border-bottom:3px solid #94a3b8;border-radius:6px;padding:3px 9px;font-family:var(--font-mono);font-size:12px;font-weight:700;color:#334155;white-space:nowrap}
-.sc-dim{font-size:12px;color:var(--grey-400);font-style:italic}
-.sc-footer{padding:14px 20px 18px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--grey-100)}
-.sc-footer label{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--grey-600);cursor:pointer}
+.sc-key{background:var(--ld-surface-2);border:1px solid var(--ld-line);border-bottom:3px solid var(--ld-slate);border-radius:8px;padding:3px 9px;font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--ld-ink);white-space:nowrap}
+.sc-dim{font-size:12px;color:var(--ld-ink-3);font-style:italic}
+.sc-footer{padding:14px 20px 18px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--ld-surface-2)}
+.sc-footer label{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ld-ink-2);cursor:pointer}
 .sc-footer .btn{flex:1}
 </style>
 </head>
@@ -169,71 +163,84 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 <!-- ═══════════ SETUP ═══════════ -->
 <div id="screen-setup" class="screen active">
   <div class="topbar">
-    <div class="topbar-brand">Language <em>Hub</em></div>
-    <div class="topbar-app">🎧 LisDictation</div>
+    <span class="ld-logo"><span class="ld-mark"><i data-ic="headphones"></i></span><span class="ld-logo-name">LisDictation<small>Language Hub</small></span></span>
     <div class="topbar-right">
       <span class="topbar-user" id="tb-user-setup"></span>
-      <span class="topbar-class" id="tb-class-setup"></span>
-      <button class="topbar-btn" onclick="goHistory()">📊 History</button>
-      <button class="topbar-btn" onclick="LD.session.logout()">Logout</button>
+      <span class="topbar-class tb-hide-sm" id="tb-class-setup"></span>
+      <button class="topbar-btn" onclick="goHistory()"><i data-ic="progress"></i><span class="tb-hide-sm">History</span></button>
+      <button class="topbar-btn round" onclick="LD.session.logout()" title="Log out"><i data-ic="logout"></i></button>
     </div>
   </div>
   <div class="wrap">
-    <div class="card" style="background:linear-gradient(90deg,var(--black) 0%,var(--navy2) 50%,var(--red-dark) 100%);border:none">
-      <h1 style="font-family:var(--font-display);color:#fff;font-size:1.4rem">🎧 Lis<em style="color:var(--red-mid);font-style:normal">Dictation</em></h1>
-      <p style="color:rgba(255,255,255,.55);font-size:12.5px;margin-top:4px">Listen · Analyze · Study · Quiz · Gap-fill · Dictation</p>
+    <div class="hero">
+      <div class="hero-main">
+        <div class="hero-kicker">Listening practice</div>
+        <h1 class="hero-title">Listen closely,<br><b>type every word.</b></h1>
+        <div class="chips">
+          <span class="chip dark"><i data-ic="script"></i>Script</span>
+          <span class="chip"><i data-ic="book"></i>Study</span>
+          <span class="chip"><i data-ic="quiz"></i>Quiz</span>
+          <span class="chip"><i data-ic="puzzle"></i>Gap-fill</span>
+          <span class="chip"><i data-ic="pen"></i>Dictation</span>
+        </div>
+      </div>
+      <div class="tile tile-accent" onclick="goHistory()">
+        <div class="tile-title"><i data-ic="progress" class="ic-lg"></i>My History</div>
+        <div class="tile-sub" id="setup-inprogress-hint"></div>
+        <button class="round-go" aria-label="Open history"><i data-ic="arrowUpRight"></i></button>
+      </div>
     </div>
 
     <div class="setup-grid">
       <div>
         <div class="card">
-          <div class="card-title">📂 Audio File</div>
+          <div class="card-title"><span><i data-ic="music"></i>Audio File</span></div>
           <input type="file" id="audio-file-input" accept="audio/*" class="form-input" onchange="handleAudioFile(event)">
           <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-            <input type="text" class="form-input" id="drive-file-id" placeholder="Or paste a Google Drive File ID" style="font-size:12px;font-family:var(--font-mono)">
-            <button class="btn btn-secondary btn-sm" onclick="loadDriveAudio()">Load</button>
+            <input type="text" class="form-input" id="drive-file-id" placeholder="Or paste a Google Drive File ID" style="font-size:12.5px;font-family:var(--font-mono)">
+            <button class="btn btn-secondary" onclick="loadDriveAudio()">Load</button>
           </div>
-          <div id="audio-status" style="font-size:12px;color:var(--grey-600);margin-top:6px"></div>
+          <div id="audio-status" class="muted" style="margin-top:8px"></div>
         </div>
 
         <div class="card">
-          <div class="card-title"><span>📝 Listening Script</span><span style="font-size:11px;color:var(--grey-400);font-weight:400">the app splits sentences automatically — no AI</span></div>
+          <div class="card-title"><span><i data-ic="script"></i>Listening Script</span><span class="muted">the app splits sentences automatically — no AI</span></div>
           <textarea id="raw-script-input" class="form-textarea" rows="10" style="min-height:280px;line-height:1.7" placeholder="Paste the full script here…" oninput="onScriptInput()"></textarea>
-          <div id="script-word-count" style="font-size:12px;color:var(--grey-600);margin-top:6px"></div>
-          <button class="btn btn-secondary" id="btn-split" onclick="doSplit()" style="margin-top:10px" disabled>✂️ Split Sentences</button>
+          <div id="script-word-count" class="muted" style="margin-top:6px"></div>
+          <button class="btn btn-secondary" id="btn-split" onclick="doSplit()" style="margin-top:10px" disabled><i data-ic="scissors"></i>Split Sentences</button>
           <div id="split-preview" class="hidden">
             <div class="split-list" id="split-list"></div>
           </div>
         </div>
 
         <div class="card" id="analyze-card" style="display:none">
-          <div class="card-title">🤖 Analyze Script <span class="badge badge-gold">Required</span></div>
-          <p style="font-size:12.5px;color:var(--grey-600);margin-bottom:10px">Fixes spelling + extracts useful collocations. This is 1 of only 2 places the app uses AI.</p>
-          <div id="ld-key-widget" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:10px 13px">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:.72rem;font-weight:700;color:#555;white-space:nowrap">🔑 Gemini Key</span>
-              <input type="password" id="ld-gemini-key" style="flex:1;padding:6px 10px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:.82rem;font-family:monospace;outline:none" placeholder="AIza… (free · aistudio.google.com)" oninput="onLdKeyInput(this.value)">
-              <span id="ld-key-status" style="font-size:.68rem;font-weight:700;white-space:nowrap;color:#888">no key</span>
-              <a href="https://aistudio.google.com/apikey" target="_blank" style="font-size:.68rem;color:#1a3a8c;font-weight:700;white-space:nowrap">Get →</a>
+          <div class="card-title"><span><i data-ic="sparkle"></i>Analyze Script</span><span class="badge badge-gold">Required</span></div>
+          <p style="font-size:13px;color:var(--ld-ink-2);margin-bottom:12px">Fixes spelling + extracts useful collocations. This is 1 of only 2 places the app uses AI.</p>
+          <div id="ld-key-widget" class="key-widget">
+            <div class="key-row">
+              <span class="key-name"><i data-ic="key"></i>Gemini Key</span>
+              <input type="password" id="ld-gemini-key" placeholder="AIza… (free · aistudio.google.com)" oninput="onLdKeyInput(this.value)">
+              <span id="ld-key-status" class="key-status">no key</span>
+              <a href="https://aistudio.google.com/apikey" target="_blank">Get →</a>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:.72rem;font-weight:700;color:#555;white-space:nowrap">🟠 Groq Key</span>
-              <input type="password" id="ld-groq-key" style="flex:1;padding:6px 10px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:.82rem;font-family:monospace;outline:none" placeholder="gsk_… (free backup · console.groq.com)" oninput="onGroqKeyInput(this.value)">
-              <span id="ld-groq-status" style="font-size:.68rem;font-weight:700;white-space:nowrap;color:#888">no key</span>
-              <a href="https://console.groq.com/keys" target="_blank" style="font-size:.68rem;color:#1a3a8c;font-weight:700;white-space:nowrap">Get →</a>
+            <div class="key-row">
+              <span class="key-name"><i data-ic="key"></i>Groq Key</span>
+              <input type="password" id="ld-groq-key" placeholder="gsk_… (free backup · console.groq.com)" oninput="onGroqKeyInput(this.value)">
+              <span id="ld-groq-status" class="key-status">no key</span>
+              <a href="https://console.groq.com/keys" target="_blank">Get →</a>
             </div>
-            <div style="font-size:.68rem;color:#888;margin-top:2px">Nếu Gemini lỗi, app tự dùng Groq làm backup. Chỉ cần 1 trong 2 key là đủ.</div>
+            <div class="key-note">Nếu Gemini lỗi, app tự dùng Groq làm backup. Chỉ cần 1 trong 2 key là đủ.</div>
           </div>
-          <button class="btn btn-primary btn-full" id="btn-analyze" onclick="runAnalyzeScript()">🤖 Analyze Script</button>
-          <div id="analyze-status" style="font-size:12.5px;color:var(--grey-600);margin-top:8px"></div>
+          <button class="btn btn-primary btn-full btn-lg" id="btn-analyze" onclick="runAnalyzeScript()"><i data-ic="sparkle"></i>Analyze Script</button>
+          <div id="analyze-status" class="muted" style="margin-top:8px;font-size:12.5px"></div>
         </div>
       </div>
 
       <div>
         <div class="card">
-          <div class="card-title">⚙️ Book Info</div>
+          <div class="card-title"><span><i data-ic="library"></i>Book Info</span></div>
           <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">📚 Book · 🔢 Test · 🎯 Part</label>
+            <label class="form-label">Book · Test · Part</label>
             <div class="form-row-3">
               <select class="form-select" id="book-input" onchange="onBookSelectChange()">
                 <option value="">— Select book —</option>
@@ -256,13 +263,9 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             </div>
           </div>
         </div>
-        <button class="btn btn-primary btn-full" id="btn-start-session" onclick="startSession()" style="padding:14px;font-size:15px;margin-bottom:16px" disabled>
-          🚀 Start (analyze script first)
+        <button class="btn btn-primary btn-full btn-lg" id="btn-start-session" onclick="startSession()" style="margin-bottom:16px" disabled>
+          Start (analyze script first)
         </button>
-        <div class="card" style="cursor:pointer" onclick="goHistory()">
-          <div class="card-title"><span>📊 My History</span><span style="font-size:11px;color:var(--red);font-weight:700">View all →</span></div>
-          <div id="setup-inprogress-hint" style="font-size:12.5px;color:var(--grey-600)"></div>
-        </div>
       </div>
     </div>
   </div>
@@ -271,29 +274,28 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 <!-- ═══════════ STUDY (ReadWise-style: CEFR levels + collocations) ═══════════ -->
 <div id="screen-study" class="screen">
   <div class="topbar">
-    <div class="topbar-brand">Language <em>Hub</em></div>
-    <div class="topbar-app">📖 Study Script</div>
-    <div class="topbar-right"><span class="topbar-user" id="tb-user-study"></span>
-      <button class="btn btn-primary btn-sm" onclick="goQuiz()">Continue → Quiz</button>
+    <span class="ld-logo"><span class="ld-mark"><i data-ic="book"></i></span><span class="ld-logo-name">Study Script<small>LisDictation</small></span></span>
+    <div class="topbar-right"><span class="topbar-user tb-hide-sm" id="tb-user-study"></span>
+      <button class="btn btn-primary" onclick="goQuiz()">Continue to Quiz <span class="ld-go"><i data-ic="arrowRight"></i></span></button>
     </div>
   </div>
   <div class="wrap">
-    <div class="card" id="study-toolbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <span style="font-size:11px;font-weight:700;color:var(--grey-600)">CEFR:</span>
+    <div class="card" id="study-toolbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:14px 18px">
+      <span class="muted" style="font-weight:600">CEFR</span>
       <span id="level-chips"></span>
-      <span style="width:1px;height:20px;background:var(--grey-200)"></span>
-      <button class="btn btn-secondary btn-sm" id="btn-pos-toggle" onclick="togglePosColor()">🎨 Color by part of speech</button>
-      <button class="btn btn-secondary btn-sm" id="btn-listen-toggle" onclick="toggleListenMode()">🔊 Listen</button>
+      <span class="tb-sep"></span>
+      <button class="btn btn-secondary btn-sm" id="btn-pos-toggle" onclick="togglePosColor()"><i data-ic="palette"></i>Color by part of speech</button>
+      <button class="btn btn-secondary btn-sm" id="btn-listen-toggle" onclick="toggleListenMode()"><i data-ic="volume"></i>Listen</button>
     </div>
     <div class="setup-grid">
       <div class="card"><div id="study-passage" style="font-size:16px;line-height:2.1"></div></div>
       <div>
         <div class="card">
-          <div class="card-title">🔗 Phrases &amp; Collocations</div>
+          <div class="card-title"><span><i data-ic="link"></i>Phrases &amp; Collocations</span></div>
           <div id="colloc-list"></div>
         </div>
         <div class="card">
-          <div class="card-title">📊 CEFR Distribution <span style="font-size:11px;color:var(--grey-400);font-weight:400">rule-based, 0 AI calls</span></div>
+          <div class="card-title"><span><i data-ic="chart"></i>CEFR Distribution</span><span class="muted">rule-based, 0 AI calls</span></div>
           <div id="cefr-dist"></div>
         </div>
       </div>
@@ -303,138 +305,142 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 
 <!-- ═══════════ QUIZ ═══════════ -->
 <div id="screen-quiz" class="screen">
-  <div class="topbar">
-    <div class="topbar-brand">Language <em>Hub</em></div>
-    <div class="topbar-app">📝 15-Question Quiz</div>
-    <div class="topbar-right"><span id="quiz-progress" style="color:#fff;font-size:12.5px"></span></div>
-  </div>
-  <!-- Sticky audio bar — listen while answering -->
-  <div style="position:sticky;top:56px;z-index:90;background:var(--white);border-bottom:1.5px solid var(--grey-200);padding:8px 20px;box-shadow:0 2px 6px rgba(0,0,0,.08)" id="quiz-audio-bar">
-    <audio id="quiz-audio" controls style="width:100%;height:36px"></audio>
-    <div id="quiz-audio-upload-row" style="display:none;margin-top:8px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:8px 12px;font-size:12.5px">
-      <span style="color:#7a5800;font-weight:700">📂 No audio — add file to listen while answering:</span>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
-        <input type="file" id="quiz-audio-file-input" accept="audio/*" style="font-size:12px" onchange="handleScreenAudioFile('quiz',event)">
-        <span style="color:#888">or</span>
-        <input type="text" id="quiz-drive-id" placeholder="Google Drive File ID" style="flex:1;padding:5px 9px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:12px;font-family:var(--font-mono)">
-        <button class="btn btn-secondary btn-sm" onclick="loadScreenDriveAudio('quiz')">Load</button>
+  <div class="stick-head">
+    <div class="topbar">
+      <span class="ld-logo"><span class="ld-mark"><i data-ic="quiz"></i></span><span class="ld-logo-name">15-Question Quiz<small>LisDictation</small></span></span>
+      <div class="topbar-right"><span id="quiz-progress" class="tb-meta"></span></div>
+    </div>
+    <!-- Sticky audio bar — listen while answering -->
+    <div class="audio-bar" id="quiz-audio-bar">
+      <audio id="quiz-audio" controls></audio>
+      <div id="quiz-audio-upload-row" class="audio-missing">
+        <span>No audio — add a file to listen while answering:</span>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+          <input type="file" id="quiz-audio-file-input" accept="audio/*" style="font-size:12px" onchange="handleScreenAudioFile('quiz',event)">
+          <span class="muted">or</span>
+          <input type="text" id="quiz-drive-id" placeholder="Google Drive File ID">
+          <button class="btn btn-primary btn-sm" onclick="loadScreenDriveAudio('quiz')">Load</button>
+        </div>
       </div>
     </div>
   </div>
   <div class="wrap" style="padding-top:14px">
     <div id="quiz-loading" class="card hidden" style="text-align:center;padding:40px"><span class="spinner"></span> Generating quiz with AI…</div>
     <div id="quiz-body"></div>
-    <div style="position:sticky;bottom:0;background:var(--off-white);padding:14px 0;text-align:center">
-      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-quiz loses all progress — you must answer all 15/15 questions before it can be saved.</div>
-      <button class="btn btn-primary" id="btn-submit-quiz" onclick="submitQuiz()" disabled style="padding:12px 30px">✅ Submit Quiz</button>
+    <div class="foot-bar sticky">
+      <div class="note" style="margin-bottom:10px"><i data-ic="alert"></i>Leaving mid-quiz loses all progress — answer all 15/15 questions before it can be saved.</div>
+      <button class="btn btn-primary btn-lg" id="btn-submit-quiz" onclick="submitQuiz()" disabled style="padding-left:34px;padding-right:34px"><i data-ic="check"></i>Submit Quiz</button>
     </div>
   </div>
 </div>
 
 <!-- ═══════════ GAP-FILL ═══════════ -->
 <div id="screen-gapfill" class="screen">
-  <div class="topbar">
-    <div class="topbar-brand">Language <em>Hub</em></div>
-    <div class="topbar-app">🧩 Gap-fill</div>
-    <div class="topbar-right"><span id="gapfill-seg-label" style="color:#fff;font-size:12px"></span></div>
-  </div>
-  <!-- Sticky audio bar — always visible while scrolling through sentences -->
-  <div id="gapfill-audio-bar" style="position:sticky;top:56px;z-index:90;background:var(--white);border-bottom:1.5px solid var(--grey-200);padding:8px 20px;box-shadow:0 2px 6px rgba(0,0,0,.08)">
-    <audio id="gapfill-audio" controls style="width:100%;height:36px"></audio>
-    <div style="display:flex;gap:12px;align-items:center;margin-top:6px;flex-wrap:wrap">
-      <label class="ios-toggle" title="Dừng tự động tại khoảng lặng trong audio">
-        <input type="checkbox" id="chk-gap-autopause" onchange="toggleGapAutoPause(this.checked)">
-        <span class="ios-track"><span class="ios-thumb"></span></span>
-        <span>Auto-pause</span>
-      </label>
+  <div class="stick-head">
+    <div class="topbar">
+      <span class="ld-logo"><span class="ld-mark"><i data-ic="puzzle"></i></span><span class="ld-logo-name">Gap-fill<small>LisDictation</small></span></span>
+      <div class="topbar-right"><span id="gapfill-seg-label" class="tb-meta"></span></div>
     </div>
-    <div id="gapfill-audio-upload-row" style="display:none;margin-top:8px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:8px 12px;font-size:12.5px">
-      <span style="color:#7a5800;font-weight:700">📂 No audio — add file to listen while filling:</span>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
-        <input type="file" id="gapfill-audio-file-input" accept="audio/*" style="font-size:12px" onchange="handleScreenAudioFile('gapfill',event)">
-        <span style="color:#888">or</span>
-        <input type="text" id="gapfill-drive-id" placeholder="Google Drive File ID" style="flex:1;padding:5px 9px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:12px;font-family:var(--font-mono)">
-        <button class="btn btn-secondary btn-sm" onclick="loadScreenDriveAudio('gapfill')">Load</button>
+    <!-- Sticky audio bar — always visible while scrolling through sentences -->
+    <div id="gapfill-audio-bar" class="audio-bar">
+      <audio id="gapfill-audio" controls></audio>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <label class="ios-toggle" title="Dừng tự động tại khoảng lặng trong audio">
+          <input type="checkbox" id="chk-gap-autopause" onchange="toggleGapAutoPause(this.checked)">
+          <span class="ios-track"><span class="ios-thumb"></span></span>
+          <span>Auto-pause</span>
+        </label>
+      </div>
+      <div id="gapfill-audio-upload-row" class="audio-missing">
+        <span>No audio — add a file to listen while filling:</span>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+          <input type="file" id="gapfill-audio-file-input" accept="audio/*" style="font-size:12px" onchange="handleScreenAudioFile('gapfill',event)">
+          <span class="muted">or</span>
+          <input type="text" id="gapfill-drive-id" placeholder="Google Drive File ID">
+          <button class="btn btn-primary btn-sm" onclick="loadScreenDriveAudio('gapfill')">Load</button>
+        </div>
       </div>
     </div>
   </div>
   <div class="wrap" style="padding-top:14px">
     <div id="gapfill-shortcuts-banner" class="dict-banner">
-      <span>⌨️ <b>Enter</b> = Check this pair &nbsp;·&nbsp; <b>Ctrl+Space</b> = Play/Pause &nbsp;·&nbsp; <b>Ctrl+,</b> = ◀ −5s &nbsp;·&nbsp; <b>Ctrl+.</b> = ▶ +5s</span>
-      <button class="dict-banner-close" onclick="document.getElementById('gapfill-shortcuts-banner').classList.add('hidden')">✕</button>
+      <span><b>Enter</b> = Check this pair &nbsp;·&nbsp; <b>Ctrl+Space</b> = Play/Pause &nbsp;·&nbsp; <b>Ctrl+,</b> = −5s &nbsp;·&nbsp; <b>Ctrl+.</b> = +5s</span>
+      <button class="dict-banner-close" onclick="document.getElementById('gapfill-shortcuts-banner').classList.add('hidden')" aria-label="Close"><i data-ic="x"></i></button>
     </div>
-    <div class="card" style="font-size:12.5px;color:var(--grey-600);margin-bottom:14px">
-      🎧 Listen and fill in the blanks <b>two sentences at a time</b>. Fill every blank in the current pair, then press <b>Enter</b> (or the Check button). Once the pair is fully correct, it automatically moves on.
+    <div class="card" style="font-size:13px;color:var(--ld-ink-2);margin-bottom:14px;padding:16px 20px">
+      Listen and fill in the blanks <b>two sentences at a time</b>. Fill every blank in the current pair, then press <b>Enter</b> (or the Check button). Once the pair is fully correct, it automatically moves on.
     </div>
     <div id="gapfill-body"></div>
     <div id="gapfill-seg-hint" class="gap-seg-hint" style="display:none"></div>
-    <div style="text-align:center;padding:14px 0">
-      <button class="btn btn-secondary btn-sm" id="btn-check-segment" onclick="checkSegment()" style="margin-bottom:10px">✓ Check This Pair</button>
-      <div style="font-size:12.5px;color:var(--grey-600);margin-bottom:8px">⚠️ Leaving mid-way loses all progress.</div>
-      <button class="btn btn-primary" id="btn-submit-gapfill" onclick="submitGapFill()" disabled style="padding:12px 30px">✅ Submit Gap-fill</button>
+    <div class="foot-bar">
+      <button class="btn btn-secondary" id="btn-check-segment" onclick="checkSegment()" style="margin-bottom:10px"><i data-ic="check"></i>Check This Pair</button>
+      <div class="note" style="margin-bottom:10px"><i data-ic="alert"></i>Leaving mid-way loses all progress.</div>
+      <button class="btn btn-primary btn-lg" id="btn-submit-gapfill" onclick="submitGapFill()" disabled style="padding-left:34px;padding-right:34px"><i data-ic="check"></i>Submit Gap-fill</button>
     </div>
   </div>
-  <button class="sc-fab" onclick="openShortcutModal()" title="Keyboard shortcuts">⌨️</button>
+  <button class="sc-fab" onclick="openShortcutModal()" title="Keyboard shortcuts"><i data-ic="keyboard"></i></button>
 </div>
 
 <!-- ═══════════ DICTATION ═══════════ -->
 <div id="screen-dictation" class="screen">
-  <div class="topbar">
-    <div class="topbar-brand">Language <em>Hub</em></div>
-    <div class="topbar-app">🎧 Dictation</div>
-    <div class="topbar-right">
-      <span id="dict-word-total" style="color:#fff;font-size:12px"></span>
-      <div class="progress-outer"><div class="progress-fill" id="dict-progress-fill" style="width:0%"></div></div>
-      <span id="dict-progress-label" style="color:#fff;font-size:12px"></span>
-      <button class="btn btn-secondary btn-sm" onclick="openShortcutModal()">⌨️ Shortcuts</button>
-      <button class="btn btn-secondary btn-sm" onclick="saveDictationAndExit()">💾 Save &amp; Exit</button>
+  <div class="stick-head">
+    <div class="topbar">
+      <span class="ld-logo"><span class="ld-mark"><i data-ic="pen"></i></span><span class="ld-logo-name">Dictation<small>LisDictation</small></span></span>
+      <div class="topbar-right">
+        <span id="dict-word-total" class="tb-meta tb-hide-sm"></span>
+        <div class="progress-outer"><div class="progress-fill" id="dict-progress-fill" style="width:0%"></div></div>
+        <span id="dict-progress-label" class="tb-meta"></span>
+        <button class="topbar-btn tb-hide-sm" onclick="openShortcutModal()"><i data-ic="keyboard"></i>Shortcuts</button>
+        <button class="btn btn-primary btn-sm" onclick="saveDictationAndExit()"><i data-ic="save"></i>Save &amp; Exit</button>
+      </div>
     </div>
-  </div>
-  <!-- Sticky audio bar — stays visible when scrolling -->
-  <div style="position:sticky;top:56px;z-index:90;background:var(--white);border-bottom:1.5px solid var(--grey-200);padding:10px 20px;box-shadow:0 2px 6px rgba(0,0,0,.08)" id="dict-audio-row">
-    <audio id="dict-audio" controls style="width:100%"></audio>
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px">
-      <label class="ios-toggle" title="Auto-pause dựa trên khoảng lặng của audio">
-        <input type="checkbox" id="chk-dict-autopause" onchange="toggleDictAutoPause(this.checked)">
-        <span class="ios-track"><span class="ios-thumb"></span></span>
-        <span id="lbl-dict-autopause">Auto-pause</span>
-      </label>
-      <button class="btn btn-secondary btn-sm" id="btn-mode-auto" onclick="setDictMode('auto')">🎯 Per sentence</button>
-      <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')">✋ Manual</button>
-    </div>
-    <!-- Audio upload for resumed sessions (no audio loaded yet) -->
-    <div id="dict-audio-upload-row" style="display:none;margin-top:8px;background:#fff8e6;border:1.5px solid #e6c85a;border-radius:8px;padding:8px 12px;font-size:12.5px">
-      <span style="color:#7a5800;font-weight:700">📂 No audio loaded — add audio file to continue:</span>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
-        <input type="file" id="dict-audio-file-input" accept="audio/*" style="font-size:12px" onchange="handleDictAudioFile(event)">
-        <span style="color:#888">or</span>
-        <input type="text" id="dict-drive-id" placeholder="Google Drive File ID" style="flex:1;padding:5px 9px;border:1.5px solid #d0d0c8;border-radius:6px;font-size:12px;font-family:var(--font-mono)">
-        <button class="btn btn-secondary btn-sm" onclick="loadDictDriveAudio()">Load</button>
+    <!-- Sticky audio bar — stays visible when scrolling -->
+    <div class="audio-bar" id="dict-audio-row">
+      <audio id="dict-audio" controls></audio>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <label class="ios-toggle" title="Auto-pause dựa trên khoảng lặng của audio">
+          <input type="checkbox" id="chk-dict-autopause" onchange="toggleDictAutoPause(this.checked)">
+          <span class="ios-track"><span class="ios-thumb"></span></span>
+          <span id="lbl-dict-autopause">Auto-pause</span>
+        </label>
+        <button class="btn btn-secondary btn-sm" id="btn-mode-auto" onclick="setDictMode('auto')"><i data-ic="target"></i>Per sentence</button>
+        <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')"><i data-ic="hand"></i>Manual</button>
+      </div>
+      <!-- Audio upload for resumed sessions (no audio loaded yet) -->
+      <div id="dict-audio-upload-row" class="audio-missing">
+        <span>No audio loaded — add the audio file to continue:</span>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+          <input type="file" id="dict-audio-file-input" accept="audio/*" style="font-size:12px" onchange="handleDictAudioFile(event)">
+          <span class="muted">or</span>
+          <input type="text" id="dict-drive-id" placeholder="Google Drive File ID">
+          <button class="btn btn-primary btn-sm" onclick="loadDictDriveAudio()">Load</button>
+        </div>
       </div>
     </div>
   </div>
   <div class="wrap" style="padding-top:14px">
     <div id="dictation-sentences"></div>
-    <button class="btn btn-primary btn-full" id="btn-finish-dictation" onclick="finishDictation()" style="padding:14px;font-size:15px;display:none">🏁 Submit</button>
+    <button class="btn btn-primary btn-full btn-lg" id="btn-finish-dictation" onclick="finishDictation()" style="display:none"><i data-ic="flag"></i>Submit</button>
   </div>
   <!-- Floating shortcut button -->
-  <button class="sc-fab" onclick="openShortcutModal()" title="Keyboard shortcuts">⌨️</button>
+  <button class="sc-fab" onclick="openShortcutModal()" title="Keyboard shortcuts"><i data-ic="keyboard"></i></button>
 </div>
 
 <!-- ═══════════ RESULT ═══════════ -->
-<div id="screen-result" class="screen" style="align-items:center;justify-content:flex-start;padding-top:40px">
+<div id="screen-result" class="screen" style="align-items:center;justify-content:flex-start;padding-top:48px">
   <div class="result-card">
-    <h2 style="font-family:var(--font-display);color:var(--navy2)">🎉 Complete!</h2>
+    <div class="result-badge"><i data-ic="checkCircle"></i></div>
+    <h2 style="font-weight:500;color:var(--ld-ink-2);font-size:1.1rem">Session complete</h2>
     <div class="big-score" id="result-total">—</div>
     <div class="result-stats">
       <div><span>Quiz</span><span id="result-quiz">—</span></div>
       <div><span>Gap-fill</span><span id="result-gapfill">—</span></div>
       <div><span>Dictation accuracy</span><span id="result-dictation">—</span></div>
     </div>
-    <div id="result-report" style="font-size:13px;color:var(--grey-600);margin-top:16px;line-height:1.6"></div>
-    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
-      <button class="btn btn-secondary" onclick="goHistory()">📊 History</button>
-      <button class="btn btn-primary" onclick="location.href='student.html'">🏠 New Session</button>
+    <div id="result-report" style="font-size:13px;color:var(--ld-ink-2);margin-top:16px;line-height:1.6"></div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+      <button class="btn btn-secondary" onclick="goHistory()"><i data-ic="progress"></i>History</button>
+      <button class="btn btn-primary" onclick="location.href='student.html'">New Session <span class="ld-go"><i data-ic="arrowUpRight"></i></span></button>
     </div>
   </div>
 </div>
@@ -442,18 +448,17 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
 <!-- ═══════════ HISTORY ═══════════ -->
 <div id="screen-history" class="screen">
   <div class="topbar">
-    <div class="topbar-brand">Language <em>Hub</em></div>
-    <div class="topbar-app">📊 My History</div>
-    <div class="topbar-right"><button class="topbar-btn" onclick="showScreen('screen-setup')">← New Session</button></div>
+    <span class="ld-logo"><span class="ld-mark"><i data-ic="progress"></i></span><span class="ld-logo-name">My History<small>LisDictation</small></span></span>
+    <div class="topbar-right"><button class="topbar-btn" onclick="showScreen('screen-setup')"><i data-ic="arrowLeft"></i>New Session</button></div>
   </div>
   <div class="wrap">
     <div class="card" id="inprogress-card" style="display:none">
-      <div class="card-title">📌 In Progress <span style="font-size:11px;color:var(--grey-400);font-weight:400">only Dictation can be saved mid-way</span></div>
+      <div class="card-title"><span><i data-ic="pin"></i>In Progress</span><span class="muted">only Dictation can be saved mid-way</span></div>
       <div id="inprogress-list"></div>
     </div>
     <div class="card">
       <div class="hist-toolbar">
-        <strong style="font-size:15px;color:var(--navy)">📋 All Sessions</strong>
+        <span class="hist-title card-title" style="margin:0"><i data-ic="results"></i>All Sessions</span>
         <div style="flex:1"></div>
         <!-- Time range filter — default 4 weeks, lazy-load longer ranges -->
         <div style="display:flex;gap:4px;flex-wrap:wrap">
@@ -462,8 +467,8 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
           <button class="btn btn-secondary btn-sm hist-range"        id="hr-3m"   onclick="loadHistory(90)"  >3 months</button>
           <button class="btn btn-secondary btn-sm hist-range"        id="hr-all"  onclick="loadHistory(0)"   >All time</button>
         </div>
-        <input id="hist-search" oninput="renderHistoryTable()" placeholder="🔍 Search…" class="form-input" style="width:140px;padding:6px 10px">
-        <button class="btn btn-secondary btn-sm" onclick="loadHistory(App._histDays||28)">🔄</button>
+        <span class="search-pill"><i data-ic="search"></i><input id="hist-search" oninput="renderHistoryTable()" placeholder="Search…" class="form-input"></span>
+        <button class="topbar-btn round" onclick="loadHistory(App._histDays||28)" title="Reload"><i data-ic="refresh"></i></button>
       </div>
       <div style="overflow:auto">
         <table class="ld-table">
@@ -481,12 +486,12 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
           <tbody id="history-tbody"></tbody>
         </table>
       </div>
-      <div id="hist-count" style="font-size:11.5px;color:var(--grey-400);margin-top:8px"></div>
+      <div id="hist-count" class="muted" style="margin-top:10px"></div>
     </div>
   </div>
 </div>
 
-<script src="ld-common.js"></script>
+<script src="ld-common.js?v=2"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -516,9 +521,9 @@ var App = {
   if (!s) return;
   App.session = s;
   ['tb-user-setup', 'tb-user-study'].forEach(function (id) {
-    var el = document.getElementById(id); if (el) el.textContent = '👤 ' + s.user.fullName;
+    var el = document.getElementById(id); if (el) el.innerHTML = '<span class="tb-av">' + LD.esc((s.user.fullName || '?').trim().split(/\s+/).pop().charAt(0).toUpperCase()) + '</span><span class="tb-name">' + LD.esc(s.user.fullName) + '</span>';
   });
-  var cls = document.getElementById('tb-class-setup'); if (cls) cls.textContent = '· ' + (s.user.className || '');
+  var cls = document.getElementById('tb-class-setup'); if (cls) cls.textContent = s.user.className || '';
   var k = localStorage.getItem(LD_GEMINI_KEY);
   if (k) document.getElementById('ld-gemini-key').value = k;
   var kg = localStorage.getItem(LD_GROQ_KEY);
@@ -553,16 +558,16 @@ function getLdKey() { return (document.getElementById('ld-gemini-key') && docume
 function updateLdKeyStatus() {
   var el = document.getElementById('ld-key-status'); if (!el) return;
   var k = getLdKey();
-  el.textContent = k ? '✅ saved' : 'no key';
-  el.style.color = k ? '#1a7a4a' : '#c00';
+  el.textContent = k ? '✓ saved' : 'no key';
+  el.style.color = k ? 'var(--ld-ok)' : 'var(--ld-danger)';
 }
 function onGroqKeyInput(v) { v = v.trim(); v ? localStorage.setItem(LD_GROQ_KEY, v) : localStorage.removeItem(LD_GROQ_KEY); updateGroqKeyStatus(); }
 function getGroqKey() { return (document.getElementById('ld-groq-key') && document.getElementById('ld-groq-key').value.trim()) || localStorage.getItem(LD_GROQ_KEY) || ''; }
 function updateGroqKeyStatus() {
   var el = document.getElementById('ld-groq-status'); if (!el) return;
   var k = getGroqKey();
-  el.textContent = k ? '✅ saved' : 'no key';
-  el.style.color = k ? '#1a7a4a' : '#888';
+  el.textContent = k ? '✓ saved' : 'no key';
+  el.style.color = k ? 'var(--ld-ok)' : 'var(--ld-ink-3)';
 }
 
 // ── Gemini (Google AI Studio) ──────────────────────────────
@@ -685,7 +690,7 @@ async function callAI(prompt, maxTokens) {
       if (!hasGroq) throw e; // không có Groq → throw luôn
       // Có Groq → log lỗi Gemini rồi fallback
       console.warn('[LisDictation] Gemini failed, switching to Groq:', e.message);
-      document.getElementById('analyze-status').textContent = '⚠️ Gemini lỗi, đang thử Groq…';
+      document.getElementById('analyze-status').textContent = 'Gemini lỗi, đang thử Groq…';
     }
   }
 
@@ -795,7 +800,7 @@ function doSplit() {
 function handleAudioFile(e) {
   var f = e.target.files[0]; if (!f) return;
   App.audioBlobUrl = URL.createObjectURL(f);
-  document.getElementById('audio-status').textContent = '✅ ' + f.name;
+  document.getElementById('audio-status').textContent = '✓ ' + f.name;
   // Start silence analysis in background immediately — will be ready by the time student reaches Dictation
   App_silenceAnalysisDone = false;
   App_silencePauses = [];
@@ -805,7 +810,7 @@ function loadDriveAudio() {
   var id = document.getElementById('drive-file-id').value.trim();
   if (!id) return;
   App.audioBlobUrl = 'https://drive.google.com/uc?export=download&id=' + id;
-  document.getElementById('audio-status').textContent = '✅ Google Drive: ' + id;
+  document.getElementById('audio-status').textContent = '✓ Google Drive: ' + id;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -836,16 +841,16 @@ async function runAnalyzeScript() {
     App.gloss = {};
     (res.gloss || []).forEach(function (g) { if (g && g[0]) App.gloss[String(g[0]).toLowerCase()] = { vi: g[1] || '', ipa: g[2] || '' }; });
     App.cefr = computeCEFR(App.correctedSentences.join(' ')); // final recompute on the corrected script
-    document.getElementById('analyze-status').innerHTML = '✅ Spelling fixed + found ' + App.collocations.length + ' collocations + translated ' + Object.keys(App.gloss).length + ' difficult words.';
+    document.getElementById('analyze-status').innerHTML = '✓ Spelling fixed + found ' + App.collocations.length + ' collocations + translated ' + Object.keys(App.gloss).length + ' difficult words.';
     document.getElementById('btn-start-session').disabled = false;
-    document.getElementById('btn-start-session').textContent = '🚀 Start Practice Session';
+    document.getElementById('btn-start-session').innerHTML = LD.label('play', 'Start Practice Session', true);
     // Kick off quiz generation in the background — student is still on screen-study
     // so by the time they reach screen-quiz it will likely already be ready.
     prefetchQuiz();
   } catch (err) {
-    document.getElementById('analyze-status').innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(err.message) + '</span>';
+    document.getElementById('analyze-status').innerHTML = '<span style="color:var(--ld-danger)">Error: ' + LD.esc(err.message) + '</span>';
   } finally {
-    btn.disabled = false; btn.innerHTML = '🤖 Re-analyze (if needed)';
+    btn.disabled = false; btn.innerHTML = LD.label('sparkle', 'Re-analyze (if needed)');
   }
 }
 
@@ -875,9 +880,9 @@ function renderCefrDist() {
   var tot = App.cefr.total || 1;
   var html = LEVELS.map(function (lv) {
     var c = App.cefr.counts[lv] || 0, pct = Math.round(c / tot * 100);
-    return '<div class="pct-bar-row"><span class="badge" style="min-width:34px;text-align:center;background:var(--grey-100)">' + lv + '</span>' +
+    return '<div class="pct-bar-row"><span class="badge" style="min-width:38px;justify-content:center;background:var(--ld-surface-2)">' + lv + '</span>' +
       '<div class="pct-bar-outer"><div class="pct-bar-fill lv-' + lv + '" style="width:' + pct + '%"></div></div>' +
-      '<span style="font-size:12px;font-weight:700;color:var(--grey-600);min-width:56px;text-align:right">' + c + ' · ' + pct + '%</span></div>';
+      '<span style="font-size:12px;font-weight:700;color:var(--ld-ink-2);min-width:56px;text-align:right">' + c + ' · ' + pct + '%</span></div>';
   }).join('');
   if (App.cefr.counts.Unknown) html += '<div style="font-size:11px;color:var(--grey-400);margin-top:6px">Unknown (outside the wordlist, or cefr-dict.js is missing): ' + App.cefr.counts.Unknown + '</div>';
   el.innerHTML = html;
@@ -940,7 +945,7 @@ async function _doStartSession(btn) {
     goStudy();
   } catch (err) {
     LD.toast('Error: ' + err.message, 'err');
-    btn.disabled = false; btn.textContent = '🚀 Start Practice Session';
+    btn.disabled = false; btn.innerHTML = LD.label('play', 'Start Practice Session', true);
   }
 }
 function closeDupOverlay() { document.getElementById('dup-session-overlay').classList.add('hidden'); }
@@ -1064,7 +1069,7 @@ async function goQuiz() {
     renderQuiz();
   } catch (err) {
     _quizPromise = null;
-    document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--red)">Quiz generation error: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button>';
+    document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--ld-danger)">Quiz generation error: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button>';
   }
 }
 function renderQuiz() {
@@ -1093,7 +1098,7 @@ async function submitQuiz() {
 
   // Threshold: 90% to pass
   if (score < 90) {
-    btn.disabled = false; btn.textContent = '✅ Submit Quiz';
+    btn.disabled = false; btn.innerHTML = LD.label('check', 'Submit Quiz');
     // Show fail modal
     var msg = 'Bạn đạt ' + correct + '/15 (' + score + '%). Cần ít nhất 90% (≥14/15) mới qua được.\n\nMột bộ câu hỏi mới sẽ được tạo để bạn thử lại.';
     if (confirm(msg)) {
@@ -1111,7 +1116,7 @@ async function submitQuiz() {
         renderQuiz();
         LD.toast('Quiz mới đã được tạo. Hãy cố gắng hơn!', 'ok', 3000);
       } catch (err) {
-        document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--red)">Lỗi tạo quiz: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button>';
+        document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--ld-danger)">Lỗi tạo quiz: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button>';
       }
     }
     return;
@@ -1119,12 +1124,12 @@ async function submitQuiz() {
 
   try {
     var r = await LD.api('session.saveQuiz', { sessionId: App.sessionId, questions: App.quiz, answers: App.quizAnswers, correct: correct, score: score });
-    if (!r.success) { LD.toast(r.error || 'Could not save the quiz', 'err'); btn.disabled = false; btn.textContent = '✅ Submit Quiz'; return; }
+    if (!r.success) { LD.toast(r.error || 'Could not save the quiz', 'err'); btn.disabled = false; btn.innerHTML = LD.label('check', 'Submit Quiz'); return; }
     LD.toast('🎉 Quiz: ' + correct + '/15 (' + score + '%) — Passed!', 'ok', 3000);
     goGapFill();
   } catch (e) {
     LD.toast('Network error: ' + e.message, 'err');
-    btn.disabled = false; btn.textContent = '✅ Submit Quiz';
+    btn.disabled = false; btn.innerHTML = LD.label('check', 'Submit Quiz');
   }
 }
 
@@ -1260,12 +1265,12 @@ async function submitGapFill() {
   var score = total ? Math.round(correct / total * 100) : 100;
   try {
     var r = await LD.api('session.saveGapFill', { sessionId: App.sessionId, answers: flatAnswers, total: total, correct: correct, score: score });
-    if (!r.success) { LD.toast(r.error || 'Could not save gap-fill', 'err'); btn.disabled = false; btn.textContent = '✅ Submit Gap-fill'; return; }
+    if (!r.success) { LD.toast(r.error || 'Could not save gap-fill', 'err'); btn.disabled = false; btn.innerHTML = LD.label('check', 'Submit Gap-fill'); return; }
     LD.toast('Gap-fill: ' + correct + '/' + total + ' correct on the first try (' + score + '%)', 'ok');
     goDictation();
   } catch (e) {
     LD.toast('Network error: ' + e.message, 'err');
-    btn.disabled = false; btn.textContent = '✅ Submit Gap-fill';
+    btn.disabled = false; btn.innerHTML = LD.label('check', 'Submit Gap-fill');
   }
 }
 
@@ -1309,7 +1314,7 @@ function handleDictAudioFile(e) {
   document.getElementById('dict-audio-upload-row').style.display = 'none';
   App_silenceAnalysisDone = false; App_silencePauses = [];
   analyseAudioSilence(App.audioBlobUrl);
-  LD.toast('✅ Audio loaded — you can now play and dictate.', 'ok');
+  LD.toast('Audio loaded — you can now play and dictate.', 'ok');
 }
 function loadDictDriveAudio() {
   var id = document.getElementById('dict-drive-id').value.trim();
@@ -1318,7 +1323,7 @@ function loadDictDriveAudio() {
   var audio = document.getElementById('dict-audio');
   audio.src = App.audioBlobUrl; audio.load();
   document.getElementById('dict-audio-upload-row').style.display = 'none';
-  LD.toast('✅ Drive audio loaded.', 'ok');
+  LD.toast('Drive audio loaded.', 'ok');
 }
 // ── Auto-pause per sentence: since there are no real per-sentence timestamps,
 // pause points are ESTIMATED by splitting the audio's total duration proportionally
@@ -1411,8 +1416,8 @@ function renderDictation() {
         ' onkeydown="onDictInputKeydown(event,' + i + ')"' +
         ' onpaste="event.preventDefault()">' + LD.esc(st.typed) + '</textarea>' +
       '<div class="sb-controls">' +
-      '<button class="btn btn-secondary btn-sm" onclick="checkSentence(' + i + ')" ' + (st.checked ? 'disabled' : '') + '>✓ Check</button>' +
-      '<button class="btn btn-secondary btn-sm" onclick="jumpTo(' + i + ')">▶ Jump</button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="checkSentence(' + i + ')" ' + (st.checked ? 'disabled' : '') + '>' + LD.label('check', 'Check') + '</button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="jumpTo(' + i + ')">' + LD.label('play', 'Jump') + '</button>' +
       '</div>' +
       '<div id="sb-hint-' + i + '" class="sb-hint hidden"></div>' +
       '</div>';
@@ -1435,9 +1440,9 @@ function renderDictation() {
   finishBtn.style.display = attempted === App.correctedSentences.length ? 'block' : 'none';
   // Label: if all correct → "🏁 Submit", else "🏁 Submit anyway (X sentences incomplete)"
   if (attempted === App.correctedSentences.length && done < App.correctedSentences.length) {
-    finishBtn.textContent = '🏁 Nộp bài (' + (App.correctedSentences.length - done) + ' câu chưa đúng)';
+    finishBtn.innerHTML = LD.label('flag', 'Nộp bài (' + (App.correctedSentences.length - done) + ' câu chưa đúng)');
   } else {
-    finishBtn.textContent = '🏁 Submit';
+    finishBtn.innerHTML = LD.label('flag', 'Submit');
   }
   updateWordTotal();
 }
@@ -1494,7 +1499,7 @@ function showDictHint(i, res) {
         : '<span style="color:var(--green);font-weight:800;text-decoration:underline">' + LD.esc(o.t) + '</span>';
     }).join(' ');
     var extras = res.ops.filter(function (o) { return o.op === 'extra'; }).length;
-    hintDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--grey-500);margin-bottom:4px">💡 Answer (words to fix highlighted' +
+    hintDiv.innerHTML = '<div style="font-size:11.5px;font-weight:600;color:var(--ld-ink-3);margin-bottom:4px">Answer (words to fix highlighted' +
       (extras ? ' · remove ' + extras + ' extra word' + (extras > 1 ? 's' : '') : '') + ')</div><div style="font-size:13.5px;line-height:2">' + hintHtml + '</div>';
     hintDiv.classList.remove('hidden');
   } else hintDiv.classList.add('hidden');
@@ -1540,7 +1545,7 @@ function updateWordTotal() {
   var targetTotal = App.correctedSentences.reduce(function (a, s) { return a + wc(s); }, 0);
   var typedTotal = App.dictationAnswers.reduce(function (a, d) { return a + wc(d.typed); }, 0);
   var el = document.getElementById('dict-word-total');
-  if (el) el.textContent = '📝 ' + typedTotal + '/' + targetTotal + ' words';
+  if (el) el.textContent = typedTotal + '/' + targetTotal + ' words';
 }
 function jumpToNextUnchecked() {
   for (var i = 0; i < App.dictationAnswers.length; i++) if (!App.dictationAnswers[i].checked) { jumpTo(i); return; }
@@ -1564,10 +1569,10 @@ async function saveDictationAndExit() {
       sessionId: App.sessionId, currentSentenceIdx: App.dictationIdx, answers: dictAnswersForSave()
     });
     if (r.success) { LD.toast('Saved — resume it from "History → In Progress".', 'ok', 3500); goHistory(); }
-    else { LD.toast(r.error || 'Could not save', 'err'); if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Exit'; } }
+    else { LD.toast(r.error || 'Could not save', 'err'); if (btn) { btn.disabled = false; btn.innerHTML = LD.label('save', 'Save & Exit'); } }
   } catch (e) {
     LD.toast('Network error: ' + e.message, 'err');
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Exit'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = LD.label('save', 'Save & Exit'); }
   }
 }
 // Điểm Dictation = số từ đúng / tổng số từ, chấm cùng cách với nút Check (LD.alignWords)
@@ -1603,7 +1608,7 @@ async function finishDictation() {
     var r = await LD.api('session.finishDictation', { sessionId: App.sessionId, answers: dictAnswersForSave(), accuracy: accuracy });
     if (!r.success) {
       LD.toast(r.error || 'Could not submit', 'err');
-      if (btn) { btn.disabled = false; btn.textContent = '🏁 Submit'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = LD.label('flag', 'Submit'); }
       return;
     }
     document.getElementById('result-total').textContent = r.totalScore + '%';
@@ -1612,7 +1617,7 @@ async function finishDictation() {
     requestReport(App.sessionId);
   } catch (e) {
     LD.toast('Network error: ' + e.message, 'err');
-    if (btn) { btn.disabled = false; btn.textContent = '🏁 Submit'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = LD.label('flag', 'Submit'); }
   }
 }
 function loadFinalScoresIntoResult() {
@@ -1630,19 +1635,19 @@ async function requestReport(sessionId) {
   try {
     var r = await LD.api('session.exportReport', { sessionId: sessionId });
     if (!r.success) throw new Error(r.error || 'failed');
-    el.innerHTML = '<a href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="color:var(--red);font-weight:700">' + reportLabel(r.docUrl) + '</a>' +
+    el.innerHTML = '<a href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="color:var(--ld-accent);font-weight:700">' + reportLabel(r.docUrl) + '</a>' +
       '<br>You can open it again anytime from History → Details.';
   } catch (e) {
-    el.textContent = '📄 Your Google Doc is being prepared — open it later from History → Details.';
+    el.textContent = 'Your Google Doc is being prepared — open it later from History → Details.';
   }
 }
 // Bản Google Sheet: link Google Doc → "Open Docs". Bản Firebase: trang tổng kết trong app → "Report".
-function reportLabel(url) { return /^https?:/.test(url || '') ? '📄 Open Docs' : '📄 Report'; }
+function reportLabel(url) { return /^https?:/.test(url || '') ? LD.label('external', 'Open Docs') : LD.label('report', 'Report'); }
 // Nút Open Docs / Report trong History. Nếu bản tổng kết chưa kịp tạo thì tạo ngay rồi mở.
 // Mở tab trống TRƯỚC khi gọi API để trình duyệt không chặn popup.
 async function openReport(sessionId, btn) {
   var win = window.open('', '_blank');
-  btn.disabled = true; var orig = btn.textContent; btn.textContent = '⏳';
+  btn.disabled = true; var orig = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span>';
   try {
     var r = await LD.api('session.exportReport', { sessionId: sessionId });
     if (!r.success) throw new Error(r.error || 'Could not open the document');
@@ -1653,7 +1658,7 @@ async function openReport(sessionId, btn) {
   } catch (e) {
     if (win) win.close();
     LD.toast(e.message, 'err', 4000);
-    btn.disabled = false; btn.textContent = orig;
+    btn.disabled = false; btn.innerHTML = orig;
   }
 }
 
@@ -1690,8 +1695,8 @@ async function resumeSession(sessionId) {
 async function checkInProgressHint() {
   try {
     var r = await LD.api('student.getInProgressTop5', {});
-    if (r.success && r.data.length) document.getElementById('setup-inprogress-hint').innerHTML = '📌 You have <b>' + r.data.length + '</b> session(s) in progress at Dictation.';
-    else document.getElementById('setup-inprogress-hint').textContent = 'No sessions in progress.';
+    if (r.success && r.data.length) document.getElementById('setup-inprogress-hint').innerHTML = 'You have <b>' + r.data.length + '</b> session(s) in progress at Dictation.';
+    else document.getElementById('setup-inprogress-hint').textContent = 'No sessions in progress — scores and reports of every session.';
   } catch (e) {}
 }
 
@@ -1706,10 +1711,10 @@ async function loadInProgressTop5() {
     if (!r.success || !r.data.length) { card.style.display = 'none'; return; }
     card.style.display = 'block';
     list.innerHTML = r.data.map(function (d) {
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--grey-100)">' +
-        '<div><div style="font-weight:700;font-size:13.5px">' + LD.esc(d.bookTestPart || 'Untitled session') + '</div>' +
-        '<div style="font-size:11.5px;color:var(--grey-600)">Sentence ' + ((d.currentSentenceIdx || 0) + 1) + ' · Saved at ' + LD.fmtDate(d.savedAt) + '</div></div>' +
-        '<button class="btn btn-primary btn-sm" onclick="expandSession(\'' + d.sessionId + '\',this)">▶ Continue</button></div>';
+      return '<div class="ip-row">' +
+        '<div><div class="ip-title">' + LD.esc(d.bookTestPart || 'Untitled session') + '</div>' +
+        '<div class="ip-sub">Sentence ' + ((d.currentSentenceIdx || 0) + 1) + ' · Saved at ' + LD.fmtDate(d.savedAt) + '</div></div>' +
+        '<button class="btn btn-primary btn-sm" onclick="expandSession(\'' + d.sessionId + '\',this)">' + LD.label('play', 'Continue') + '</button></div>';
     }).join('');
   } catch (e) {}
 }
@@ -1761,16 +1766,16 @@ function renderHistoryTable() {
     // Badge trạng thái
     var statusBadge;
     if (r.isComplete) {
-      statusBadge = '<span class="badge" style="background:var(--green-light);color:var(--green)">✅ Done</span>';
+      statusBadge = '<span class="badge" style="background:var(--ld-ok-lt);color:var(--ld-ok)">' + LD.icon('check') + 'Done</span>';
     } else if (r.dictInProgress) {
-      statusBadge = '<button class="btn btn-secondary btn-sm" onclick="expandSession(\'' + r.sessionId + '\',this)">▶ Resume</button>';
+      statusBadge = '<button class="btn btn-secondary btn-sm" onclick="expandSession(\'' + r.sessionId + '\',this)">' + LD.label('play', 'Resume') + '</button>';
     } else {
       // Bài chưa làm hết — hiện nút "Load detail" để fetch cụ thể
       var missing = [];
       if (!r.quizDone) missing.push('Quiz');
       if (!r.gapDone) missing.push('Gap-fill');
       if (!r.dictDone) missing.push('Dictation');
-      statusBadge = '<button class="btn btn-secondary btn-sm" style="color:var(--gold)" onclick="expandSession(\'' + r.sessionId + '\',this)" title="Còn thiếu: ' + missing.join(', ') + '">⚠ ' + missing.length + ' missing</button>';
+      statusBadge = '<button class="btn btn-secondary btn-sm" style="color:var(--ld-accent-dk)" onclick="expandSession(\'' + r.sessionId + '\',this)" title="Còn thiếu: ' + missing.join(', ') + '">' + LD.icon('alert') + missing.length + ' missing</button>';
     }
 
     // Điểm — bài chưa làm hiện "—" thay vì 0
@@ -1790,7 +1795,7 @@ function renderHistoryTable() {
         ? (r.docUrl
             ? '<a class="btn btn-secondary btn-sm" href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">' + reportLabel(r.docUrl) + '</a>'
             : '<button class="btn btn-secondary btn-sm" onclick="openReport(\'' + r.sessionId + '\',this)">' + reportLabel('') + '</button>')
-        : '<button class="btn btn-sm" style="color:var(--red);background:none;border:1.5px solid var(--red);padding:4px 8px" onclick="deleteSession(\'' + r.sessionId + '\',this)" title="Xoá bài này">🗑</button>') + '</td>' +
+        : '<button class="btn btn-sm btn-icon-del" onclick="deleteSession(\'' + r.sessionId + '\',this)" title="Xoá bài này">' + LD.icon('trash') + '</button>') + '</td>' +
       '</tr>';
   }).join('');
 }
@@ -1805,7 +1810,7 @@ function handleScreenAudioFile(screen, e) {
   if (row) row.style.display = 'none';
   App_silenceAnalysisDone = false; App_silencePauses = [];
   analyseAudioSilence(App.audioBlobUrl);
-  LD.toast('✅ Audio loaded.', 'ok');
+  LD.toast('Audio loaded.', 'ok');
 }
 function loadScreenDriveAudio(screen) {
   var id = document.getElementById(screen + '-drive-id').value.trim();
@@ -1815,7 +1820,7 @@ function loadScreenDriveAudio(screen) {
   audio.src = App.audioBlobUrl; audio.load();
   var row = document.getElementById(screen + '-audio-upload-row');
   if (row) row.style.display = 'none';
-  LD.toast('✅ Drive audio loaded.', 'ok');
+  LD.toast('Drive audio loaded.', 'ok');
 }
 function _showAudioUploadIfNeeded(screens) {
   screens.forEach(function(sc) {
@@ -1838,13 +1843,13 @@ function hideResumeOverlay() {
 
 // Click vào bài incomplete: fetch detail rồi resume đúng màn hình
 async function expandSession(sessionId, btn) {
-  btn.disabled = true; btn.textContent = '⏳';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   showResumeOverlay('Đang tải bài học…');
   try {
     var r = await LD.api('student.resumeSession', { sessionId: sessionId });
     if (!r.success) {
       hideResumeOverlay();
-      btn.disabled = false; btn.textContent = '⚠ Retry';
+      btn.disabled = false; btn.innerHTML = LD.label('alert', 'Retry');
       LD.toast(r.error || 'Could not load session', 'err');
       return;
     }
@@ -1906,21 +1911,21 @@ async function expandSession(sessionId, btn) {
       LD.toast('Gap-fill đã xong — tiếp tục Dictation!', 'ok', 3000);
     } else {
       LD.toast('Bài này đã hoàn thành tất cả các phần.', 'info', 3000);
-      btn.disabled = false; btn.textContent = '✅ Done';
+      btn.disabled = false; btn.innerHTML = LD.label('check', 'Done');
     }
   } catch(e) {
     hideResumeOverlay();
-    btn.disabled = false; btn.textContent = '⚠ Error';
+    btn.disabled = false; btn.innerHTML = LD.label('alert', 'Error');
     LD.toast('Network error: ' + e.message, 'err');
   }
 }
 
 async function deleteSession(sessionId, btn) {
   if (!confirm('Xoá bài này? Giáo viên sẽ không thấy kết quả nữa và bạn không thể hoàn tác.')) return;
-  btn.disabled = true; btn.textContent = '⏳';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try {
     var r = await LD.api('student.deleteSession', { sessionId: sessionId });
-    if (!r.success) { LD.toast(r.error || 'Could not delete', 'err'); btn.disabled = false; btn.textContent = '🗑'; return; }
+    if (!r.success) { LD.toast(r.error || 'Could not delete', 'err'); btn.disabled = false; btn.innerHTML = LD.icon('trash'); return; }
     // Remove from local cache and re-render
     App.histRows = App.histRows.filter(function(s) { return s.sessionId !== sessionId; });
     var row = document.getElementById('hist-row-' + sessionId);
@@ -1930,7 +1935,7 @@ async function deleteSession(sessionId, btn) {
       setTimeout(function() { renderHistoryTable(); }, 300);
     } else { renderHistoryTable(); }
     LD.toast('Đã xoá bài học.', 'ok');
-  } catch(e) { LD.toast('Network error: ' + e.message, 'err'); btn.disabled = false; btn.textContent = '🗑'; }
+  } catch(e) { LD.toast('Network error: ' + e.message, 'err'); btn.disabled = false; btn.innerHTML = LD.icon('trash'); }
 }
 function histSort(key) {
   App.histSortDir = App.histSortKey === key ? -App.histSortDir : -1;
@@ -1951,13 +1956,13 @@ function histSort(key) {
 <!-- ═══════════ DUPLICATE SESSION WARNING ═══════════ -->
 <div id="dup-session-overlay" class="dup-overlay hidden">
   <div class="dup-modal">
-    <h3>⚠️ Bài này đã có trong History</h3>
+    <h3>Bài này đã có trong History</h3>
     <p>Bạn đã từng làm bài <span class="btp-chip" id="dup-session-btp"></span> vào ngày <b id="dup-session-date"></b>.<br>
     Nếu tạo mới, giáo viên sẽ nhận được <b>2 kết quả</b> cho cùng 1 bài. Bạn có thể vào History để làm tiếp hoặc xem lại.</p>
     <div class="btn-row">
-      <button class="btn btn-secondary" onclick="dupGoHistory()">📊 Vào History</button>
-      <button class="btn btn-secondary" onclick="closeDupOverlay()">✕ Huỷ</button>
-      <button class="btn btn-primary" onclick="dupForceCreate()" style="background:linear-gradient(135deg,#e67e22,#d35400)">⚠ Tạo mới dù sao</button>
+      <button class="btn btn-secondary" onclick="dupGoHistory()"><i data-ic="progress"></i>Vào History</button>
+      <button class="btn btn-secondary" onclick="closeDupOverlay()">Huỷ</button>
+      <button class="btn btn-accent" onclick="dupForceCreate()"><i data-ic="alert"></i>Tạo mới dù sao</button>
     </div>
   </div>
 </div>
@@ -1966,26 +1971,26 @@ function histSort(key) {
 <div id="sc-overlay" class="sc-overlay hidden" onclick="if(event.target===this)closeShortcutModal()">
   <div class="sc-modal">
     <div class="sc-header">
-      <div class="sc-header-icon">⌨️</div>
+      <div class="sc-header-icon"><i data-ic="keyboard" class="ic-lg"></i></div>
       <div class="sc-header-text">
         <h3>Keyboard Shortcuts</h3>
         <p>Keyboard shortcuts for faster dictation practice</p>
       </div>
     </div>
     <div class="sc-body">
-      <div class="sc-tip">💡 Use <b>Shift+Space</b> to Play/Pause — keeps both hands on keyboard, no mouse needed.</div>
-      <div class="sc-row"><span class="sc-label">▶ Play / ⏸ Pause</span><span class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key">Space</span></span></div>
-      <div class="sc-row"><span class="sc-label">✅ Check answer</span><span class="sc-keys"><span class="sc-key">Enter</span></span></div>
-      <div class="sc-row"><span class="sc-label">⏭ Next sentence</span><span class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key">Enter</span></span></div>
-      <div class="sc-row"><span class="sc-label">⏪ Seek −3s</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">,</span></span></div>
-      <div class="sc-row"><span class="sc-label">⏩ Seek +3s</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">.</span></span></div>
-      <div class="sc-row"><span class="sc-label">✏️ Edit last sentence</span><span class="sc-keys"><span class="sc-key">↑</span> <span class="sc-dim">(when not typing)</span></span></div>
-      <div class="sc-row"><span class="sc-label">🔄 Reset sentence</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">Alt</span><span class="sc-key">R</span></span></div>
-      <div class="sc-row"><span class="sc-label">⏸ Auto-pause <span style="font-size:11px;color:var(--grey-400)">(dừng cuối mỗi câu)</span></span><span class="sc-dim">toggle ở thanh audio</span></div>
+      <div class="sc-tip">Tip: use <b>Shift+Space</b> to Play/Pause — keeps both hands on keyboard, no mouse needed.</div>
+      <div class="sc-row"><span class="sc-label"><i data-ic="play"></i>Play / Pause</span><span class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key">Space</span></span></div>
+      <div class="sc-row"><span class="sc-label"><i data-ic="check"></i>Check answer</span><span class="sc-keys"><span class="sc-key">Enter</span></span></div>
+      <div class="sc-row"><span class="sc-label"><i data-ic="arrowRight"></i>Next sentence</span><span class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key">Enter</span></span></div>
+      <div class="sc-row"><span class="sc-label"><i data-ic="arrowLeft"></i>Seek −3s</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">,</span></span></div>
+      <div class="sc-row"><span class="sc-label"><i data-ic="arrowRight"></i>Seek +3s</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">.</span></span></div>
+      <div class="sc-row"><span class="sc-label"><i data-ic="pen"></i>Edit last sentence</span><span class="sc-keys"><span class="sc-key">↑</span> <span class="sc-dim">(when not typing)</span></span></div>
+      <div class="sc-row"><span class="sc-label"><i data-ic="refresh"></i>Reset sentence</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">Alt</span><span class="sc-key">R</span></span></div>
+      <div class="sc-row"><span class="sc-label"><i data-ic="clock"></i>Auto-pause <span style="font-size:11px;color:var(--ld-ink-3)">(dừng cuối mỗi câu)</span></span><span class="sc-dim">toggle ở thanh audio</span></div>
     </div>
     <div class="sc-footer">
       <label><input type="checkbox" id="sc-dont-show" onchange="localStorage.setItem('ld_sc_hidden',this.checked?'1':'0')"> Không hiển thị lại</label>
-      <button class="btn btn-primary" onclick="closeShortcutModal()">Đã hiểu, bắt đầu →</button>
+      <button class="btn btn-primary" onclick="closeShortcutModal()">Đã hiểu, bắt đầu <span class="ld-go"><i data-ic="arrowRight"></i></span></button>
     </div>
   </div>
 </div>

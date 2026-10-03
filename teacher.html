@@ -4,164 +4,151 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Teacher Dashboard · LisDictation</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="ld-theme.css">
+<link rel="stylesheet" href="ld-theme.css?v=2">
 <style>
-.topbar{background:linear-gradient(90deg,var(--black) 0%,var(--navy2) 45%,var(--red-dark) 100%);min-height:56px;display:flex;align-items:center;padding:8px 20px;gap:12px;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--gold);flex-wrap:wrap}
-.topbar-brand{font-family:var(--font-display);color:var(--white);font-size:1rem;white-space:nowrap}
-.topbar-brand em{color:var(--red-mid);font-style:normal}
-.topbar-app{font-size:13px;color:rgba(255,255,255,.55)}
-.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.topbar-user{font-size:12.5px;color:var(--gold-light);font-weight:600}
-.topbar-btn{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;color:rgba(255,255,255,.85);font-size:12.5px;cursor:pointer;font-family:var(--font-body);font-weight:600}
-.topbar-btn:hover{background:rgba(255,255,255,.2);color:#fff}
-.wrap{width:100%;max-width:1280px;margin:0 auto;padding:22px 20px 60px}
-.tab-strip{display:flex;gap:4px;background:var(--grey-100);border-radius:12px;padding:4px;margin-bottom:18px;max-width:620px}
-.tab-strip-btn{flex:1;padding:9px;border:none;background:transparent;border-radius:9px;font-family:var(--font-body);font-size:13px;font-weight:700;color:var(--grey-600);cursor:pointer}
-.tab-strip-btn.active{background:#fff;color:var(--red);box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.card{background:var(--white);border-radius:var(--radius-lg);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--grey-200);margin-bottom:16px}
-.card-title{font-family:var(--font-display);font-size:1.05rem;color:var(--black);margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer}
-.btn-primary{background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff}
-.btn-secondary{background:var(--grey-100);color:var(--grey-800);border:1.5px solid var(--grey-200)}
-.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.form-input,.form-select{padding:9px 12px;border:1.5px solid var(--grey-200);border-radius:var(--radius);font-family:var(--font-body);font-size:13.5px;outline:none}
-.form-input:focus,.form-select:focus{border-color:var(--red)}
+/* shared chrome, cards, buttons, forms, tables → ld-theme.css */
+.tab-pills{display:flex;gap:4px;background:var(--ld-surface-2);border-radius:var(--radius-pill);padding:4px;margin:0 auto}
+.tab-strip-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border:none;background:transparent;border-radius:var(--radius-pill);font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--ld-ink-2);cursor:pointer;white-space:nowrap;transition:var(--transition)}
+.tab-strip-btn:hover{color:var(--ld-ink)}
+.tab-strip-btn.active{background:var(--ld-ink);color:#fff}
+.tab-count{display:inline-block;min-width:20px;padding:0 6px;border-radius:100px;background:var(--ld-accent);color:#fff;font-size:11px;line-height:20px;text-align:center}
+@media(max-width:860px){.topbar{flex-wrap:wrap}.tab-pills{order:3;width:100%;justify-content:space-between}.tab-strip-btn{flex:1;justify-content:center;padding:8px 6px}}
+@media(max-width:640px){.topbar{flex-wrap:wrap}.tab-strip-btn{font-size:12.5px;gap:5px}.tab-strip-btn .ic{display:none}}
 .form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
-.form-label{display:block;font-size:11px;font-weight:700;color:var(--grey-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-table.ld-table{width:100%;border-collapse:collapse;font-size:13px}
-table.ld-table th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--grey-600);letter-spacing:.05em;text-transform:uppercase;border-bottom:1.5px solid var(--grey-200);cursor:pointer;white-space:nowrap;user-select:none}
-table.ld-table th:hover{color:var(--red)}
-table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font-size:13px;white-space:nowrap}
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700}
-.badge-green{background:var(--green-light);color:var(--green)}
-.badge-grey{background:var(--grey-100);color:var(--grey-600)}
-.badge-gold{background:#fff3cc;color:#7a5800;font-family:var(--font-mono)}
-.class-card{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--grey-100)}
-.class-card:last-child{border-bottom:none}
-.hidden{display:none!important}
+.form-row > div{flex:1 1 140px}
+.toolbar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+.toolbar .form-select,.toolbar .form-input{width:auto}
+table.ld-table th{user-select:none}
+table.ld-table td{white-space:nowrap}
+.badge-green{background:var(--ld-ok-lt);color:var(--ld-ok)}
+.badge-grey{background:var(--ld-surface-2);color:var(--ld-ink-3)}
+.badge-code{background:var(--ld-slate-lt);color:var(--ld-ink);font-family:var(--font-mono)}
+.class-card{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-radius:18px;background:var(--ld-surface-2);margin-bottom:8px}
+.class-sub{font-size:12px;color:var(--ld-ink-3);margin-top:3px}
+.class-card .btn-secondary{background:#fff}
+.class-card .btn-secondary:hover:not(:disabled){background:var(--ld-slate-lt)}
 .np-row td{vertical-align:middle}
 .np-row.done td{opacity:.45}
-.np-class{font-weight:800;color:var(--navy2)}
-.np-btp{font-weight:700}
-.np-period{font-family:var(--font-mono);font-size:12px;color:var(--grey-600)}
-.np-done{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--grey-600);cursor:pointer;user-select:none}
-.np-done input{width:17px;height:17px;accent-color:var(--green);cursor:pointer}
-.np-undo{background:none;border:none;color:var(--red);font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline}
-.tab-count{display:inline-block;min-width:18px;padding:0 6px;margin-left:4px;border-radius:100px;background:var(--red);color:#fff;font-size:11px;line-height:18px}
-.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-.spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--grey-200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
-@keyframes spin{to{transform:rotate(360deg)}}
+.np-class{font-weight:700;color:var(--ld-ink)}
+.np-btp{font-weight:600}
+.np-period{font-family:var(--font-mono);font-size:12px;color:var(--ld-ink-3)}
+.np-done{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ld-ink-2);cursor:pointer;user-select:none}
+.np-done input{width:18px;height:18px;accent-color:var(--ld-accent);cursor:pointer}
+.np-undo{background:none;border:none;color:var(--ld-accent);font-weight:600;font-size:12px;cursor:pointer;text-decoration:underline;font-family:var(--font-body)}
+.placeholder{text-align:center;padding:40px 20px;color:var(--ld-ink-3);font-size:13.5px}
+.info-line{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ld-ink-2);margin-top:10px;background:var(--ld-surface-2);border-radius:14px;padding:10px 14px}
+.info-line .ic{width:16px;height:16px;flex:0 0 auto;margin-top:2px}
 
-/* ── Session Detail overlay (dark theme) ── */
-#detail-overlay{position:fixed;inset:0;background:#0d1117;color:#e6edf3;z-index:500;overflow-y:auto;display:none}
+/* ── Session Detail overlay ── */
+#detail-overlay{position:fixed;inset:0;background:var(--ld-canvas);color:var(--ld-ink);z-index:500;overflow-y:auto;display:none}
 #detail-overlay.show{display:block}
-.dt-topbar{position:sticky;top:0;background:#161b22;border-bottom:1px solid #30363d;padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;z-index:2}
-.dt-topbar h2{font-family:var(--font-display);font-size:1.05rem;color:#fff;margin:0}
-.dt-topbar .dt-sub{font-size:12px;color:#8b949e}
-.dt-close{margin-left:auto;background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer}
-.dt-close:hover{background:#30363d}
-.dt-wrap{max-width:1000px;margin:0 auto;padding:20px 24px 60px}
-.dt-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
-.dt-meta-item{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:10px 14px}
-.dt-meta-item .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#8b949e;margin-bottom:3px}
-.dt-meta-item .v{font-size:13.5px;font-weight:700;color:#e6edf3}
+.dt-topbar{position:sticky;top:12px;background:var(--ld-surface);border-radius:22px;box-shadow:var(--shadow-sm);padding:12px 14px 12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;z-index:2;width:calc(100% - 32px);max-width:1000px;margin:12px auto 0}
+.dt-topbar h2{font-family:var(--font-display);font-weight:600;font-size:1.05rem;color:var(--ld-ink);margin:0}
+.dt-topbar .dt-sub{font-size:12px;color:var(--ld-ink-3);font-family:var(--font-mono)}
+.dt-close{display:inline-flex;align-items:center;gap:6px;background:var(--ld-surface-2);border:none;color:var(--ld-ink);border-radius:var(--radius-pill);padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body)}
+.dt-close:hover{background:var(--ld-slate-lt)}
+@media(max-width:640px){.dt-topbar{position:static;width:calc(100% - 20px);margin-top:10px}.dt-topbar .ld-mark{display:none}}
+.dt-wrap{max-width:1000px;margin:0 auto;padding:18px 16px 60px}
+.dt-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.dt-meta-item{background:var(--ld-surface);border-radius:18px;padding:12px 16px}
+.dt-meta-item .k{font-size:11.5px;color:var(--ld-ink-3);margin-bottom:2px}
+.dt-meta-item .v{font-size:13.5px;font-weight:600;color:var(--ld-ink)}
 .dt-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px}
-.dt-stat-card{background:linear-gradient(135deg,#1c2128,#161b22);border:1px solid #30363d;border-radius:12px;padding:14px;text-align:center}
-.dt-stat-card .n{font-size:1.7rem;font-weight:800;color:#fff;font-family:var(--font-display)}
-.dt-stat-card .l{font-size:11px;color:#8b949e;margin-top:2px}
-.dt-tabs{display:flex;gap:4px;background:#161b22;border:1px solid #30363d;border-radius:11px;padding:4px;margin-bottom:16px;max-width:440px}
-.dt-tab-btn{flex:1;padding:9px;border:none;background:transparent;border-radius:8px;font-family:var(--font-body);font-size:12.5px;font-weight:700;color:#8b949e;cursor:pointer}
-.dt-tab-btn.active{background:#c8102e;color:#fff}
+.dt-stat-card{border-radius:22px;padding:18px 18px 16px;background:var(--ld-surface)}
+.dt-stat-card:nth-child(2){background:var(--ld-slate)}
+.dt-stat-card:nth-child(3){background:var(--ld-charcoal);color:#fff}
+.dt-stat-card:nth-child(4){background:var(--ld-accent);color:#fff}
+.dt-stat-card .n{font-size:2.1rem;font-weight:400;letter-spacing:-.03em;font-family:var(--font-display);line-height:1.1}
+.dt-stat-card .l{font-size:12.5px;opacity:.75;margin-top:4px;font-weight:600}
+.dt-tabs{display:flex;gap:4px;background:var(--ld-surface);border-radius:var(--radius-pill);padding:4px;margin-bottom:16px;max-width:460px}
+.dt-tab-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px;border:none;background:transparent;border-radius:var(--radius-pill);font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--ld-ink-2);cursor:pointer}
+.dt-tab-btn.active{background:var(--ld-ink);color:#fff}
 .dt-pane{display:none}
 .dt-pane.active{display:block}
-.dt-sentence{background:#161b22;border:1px solid #30363d;border-left:3px solid #3b4453;border-radius:10px;padding:13px 16px;margin-bottom:10px}
-.dt-sentence.ok{border-left-color:#2ea043}
-.dt-sentence.bad{border-left-color:#c8102e}
-.dt-sentence .sn{font-size:10.5px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-.dt-sentence .target{font-size:12px;color:#8b949e;margin-bottom:6px;line-height:1.6}
+.dt-sentence{background:var(--ld-surface);border-left:4px solid var(--ld-slate);border-radius:18px;padding:14px 18px;margin-bottom:10px}
+.dt-sentence.ok{border-left-color:var(--ld-ok)}
+.dt-sentence.bad{border-left-color:var(--ld-danger)}
+.dt-sentence .sn{font-size:11.5px;font-weight:600;color:var(--ld-ink-3);margin-bottom:6px}
+.dt-sentence .target{font-size:12.5px;color:var(--ld-ink-2);margin-bottom:6px;line-height:1.6}
 .dt-sentence .typed{font-size:14px;line-height:1.9}
-.dt-w-ok{color:#3fb950;font-weight:700}
-.dt-w-bad{color:#f85149;font-weight:700;text-decoration:line-through}
-.dt-w-miss{color:#d29922;font-weight:800}
-.dt-gf-sum{font-size:12.5px;color:#8b949e;margin-bottom:10px}
-.dt-gf-script{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:16px 20px;font-size:14.5px;line-height:2}
+.dt-w-ok{color:var(--ld-ok);font-weight:700}
+.dt-w-bad{color:var(--ld-danger);font-weight:700;text-decoration:line-through}
+.dt-w-miss{color:var(--ld-warn);font-weight:800}
+.dt-gf-sum{font-size:13px;color:var(--ld-ink-2);margin-bottom:10px}
+.dt-gf-script{background:var(--ld-surface);border-radius:22px;padding:18px 22px;font-size:14.5px;line-height:2}
 .dt-gf-script p{margin:0 0 6px}
-.dt-gf-no{color:#8b949e;font-size:12px}
-.dt-gf-ok{color:#3fb950;font-weight:800;text-decoration:underline;text-underline-offset:3px}
-.dt-gf-bad{color:#f85149;font-weight:800;text-decoration:line-through}
-.dt-q{background:#161b22;border:1px solid #30363d;border-radius:11px;padding:14px 16px;margin-bottom:12px}
-.dt-q-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 9px;border-radius:100px;margin-bottom:8px}
-.dt-q-tag.content{background:rgba(200,16,46,.18);color:#ff7b8a}
-.dt-q-tag.vocab{background:rgba(20,158,140,.18);color:#4dd0c4}
-.dt-q-text{font-size:13.5px;font-weight:700;color:#e6edf3;margin-bottom:9px}
-.dt-opt{padding:7px 11px;border-radius:8px;font-size:13px;margin-bottom:5px;border:1px solid #30363d;color:#8b949e}
-.dt-opt.correct{border-color:#2ea043;background:rgba(46,160,67,.1);color:#56d364;font-weight:700}
-.dt-opt.chosen-wrong{border-color:#c8102e;background:rgba(200,16,46,.1);color:#f85149;font-weight:700}
-.dt-empty{color:#8b949e;font-size:13px;padding:30px;text-align:center}
-.dt-doc-btn{background:#1f6feb;border:1px solid #1f6feb;color:#fff;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;text-decoration:none}
-.dt-doc-btn:hover{background:#388bfd}
-.dt-archived{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:36px 24px;text-align:center;color:#8b949e;font-size:13.5px;line-height:1.7}
-.dt-archived .dt-doc-btn{display:inline-block;margin-top:14px;font-size:14px;padding:11px 22px}
+.dt-gf-no{color:var(--ld-ink-3);font-size:12px}
+.dt-gf-ok{color:var(--ld-ok);font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.dt-gf-bad{color:var(--ld-danger);font-weight:800;text-decoration:line-through}
+.dt-q{background:var(--ld-surface);border-radius:20px;padding:16px 18px;margin-bottom:12px}
+.dt-q-tag{display:inline-block;font-size:11px;font-weight:600;padding:3px 11px;border-radius:100px;margin-bottom:8px}
+.dt-q-tag.content{background:var(--ld-accent-lt);color:var(--ld-accent-dk)}
+.dt-q-tag.vocab{background:var(--ld-slate-lt);color:var(--ld-ink-2)}
+.dt-q-text{font-size:14px;font-weight:600;color:var(--ld-ink);margin-bottom:9px}
+.dt-opt{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;font-size:13px;margin-bottom:5px;background:var(--ld-surface-2);color:var(--ld-ink-2);border:1.5px solid transparent}
+.dt-opt .ic{width:15px;height:15px}
+.dt-opt.correct{border-color:var(--ld-ok);background:var(--ld-ok-lt);color:var(--ld-ok);font-weight:700}
+.dt-opt.chosen-wrong{border-color:var(--ld-danger);background:var(--ld-danger-lt);color:var(--ld-danger);font-weight:700}
+.dt-empty{color:var(--ld-ink-3);font-size:13px;padding:30px;text-align:center;background:var(--ld-surface);border-radius:20px}
+.dt-doc-btn{display:inline-flex;align-items:center;gap:7px;background:var(--ld-ink);color:#fff;border-radius:var(--radius-pill);padding:9px 16px;font-size:13px;font-weight:600;text-decoration:none}
+.dt-doc-btn:hover{background:#2B2E35}
+.dt-archived{background:var(--ld-surface);border-radius:22px;padding:36px 24px;text-align:center;color:var(--ld-ink-2);font-size:13.5px;line-height:1.7}
+.dt-archived .dt-doc-btn{margin-top:14px;font-size:14px;padding:11px 22px}
 </style>
 </head>
-<body>
+<body class="wide">
 <div class="topbar">
-  <div class="topbar-brand">Language <em>Hub</em></div>
-  <div class="topbar-app">🎓 Teacher Dashboard · LisDictation</div>
+  <span class="ld-logo"><span class="ld-mark"><i data-ic="headphones"></i></span><span class="ld-logo-name">LisDictation<small>Teacher Dashboard</small></span></span>
+  <div class="tab-pills">
+    <button class="tab-strip-btn active" id="tab-btn-practice" onclick="switchTab('practice')"><i data-ic="bell"></i><span class="tab-label">New Practice</span><span class="tab-count hidden" id="np-count"></span></button>
+    <button class="tab-strip-btn" id="tab-btn-classes" onclick="switchTab('classes')"><i data-ic="users"></i><span class="tab-label">Classes</span></button>
+    <button class="tab-strip-btn" id="tab-btn-sessions" onclick="switchTab('sessions')"><i data-ic="progress"></i><span class="tab-label">Sessions</span></button>
+  </div>
   <div class="topbar-right">
     <span class="topbar-user" id="tb-user"></span>
-    <button class="topbar-btn" onclick="LD.session.logout()">Logout</button>
+    <button class="topbar-btn round" onclick="LD.session.logout()" title="Log out"><i data-ic="logout"></i></button>
   </div>
 </div>
 
 <div class="wrap">
-  <div class="tab-strip">
-    <button class="tab-strip-btn active" id="tab-btn-practice" onclick="switchTab('practice')">🆕 New Practice<span class="tab-count hidden" id="np-count"></span></button>
-    <button class="tab-strip-btn" id="tab-btn-classes" onclick="switchTab('classes')">🏫 Classes</button>
-    <button class="tab-strip-btn" id="tab-btn-sessions" onclick="switchTab('sessions')">📊 Sessions</button>
-  </div>
-
-  <!-- ═══ CLASSES ═══ -->
   <!-- ═══ NEW PRACTICE ═══ -->
   <div id="tab-practice">
     <div class="card">
-      <div class="card-title">🆕 New Practice
-        <span style="display:flex;gap:8px;align-items:center">
-          <span style="font-size:11px;color:var(--grey-400);font-weight:400">The 2 newest exercises per class with completed work (all 3 parts) since you last marked them Done</span>
-          <button class="btn btn-secondary btn-sm" onclick="loadNewPractice()">🔄 Refresh</button>
+      <div class="card-title"><span><i data-ic="bell"></i>New Practice</span>
+        <span style="display:flex;gap:10px;align-items:center">
+          <span class="muted tb-hide-sm">The 2 newest exercises per class with completed work (all 3 parts) since you last marked them Done</span>
+          <button class="topbar-btn round" onclick="loadNewPractice()" title="Refresh"><i data-ic="refresh"></i></button>
         </span>
       </div>
       <div style="overflow:auto">
         <table class="ld-table">
           <thead><tr><th>Class</th><th>New session</th><th>Period</th><th></th><th>Done</th></tr></thead>
-          <tbody id="np-tbody"><tr><td colspan="5" style="color:var(--grey-400)">Loading…</td></tr></tbody>
+          <tbody id="np-tbody"><tr><td colspan="5" style="color:var(--ld-ink-3)">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
   </div>
 
+  <!-- ═══ CLASSES ═══ -->
   <div id="tab-classes" class="hidden">
     <div class="card">
-      <div class="card-title">➕ Create New Class</div>
+      <div class="card-title"><span><i data-ic="plus"></i>Create New Class</span></div>
       <div class="form-row">
-        <div><label class="form-label">Class Name</label><input class="form-input" id="new-class-name" placeholder="e.g. DH21NA1"></div>
-        <div><label class="form-label">Academic Year</label><input class="form-input" id="new-class-year" placeholder="2025-2026" style="width:110px"></div>
-        <div><label class="form-label">Semester</label><input class="form-input" id="new-class-semester" placeholder="Sem 1" style="width:80px"></div>
-        <button class="btn btn-primary" onclick="createClass()">Create Class</button>
+        <div style="flex:2 1 200px"><label class="form-label">Class Name</label><input class="form-input" id="new-class-name" placeholder="e.g. DH21NA1"></div>
+        <div><label class="form-label">Academic Year</label><input class="form-input" id="new-class-year" placeholder="2025-2026"></div>
+        <div><label class="form-label">Semester</label><input class="form-input" id="new-class-semester" placeholder="Sem 1"></div>
+        <button class="btn btn-primary" onclick="createClass()" style="flex:0 0 auto">Create Class <span class="ld-go"><i data-ic="plus"></i></span></button>
       </div>
-      <div id="new-class-result" style="margin-top:10px"></div>
+      <div id="new-class-result" style="margin-top:12px;font-size:13.5px"></div>
     </div>
 
     <div class="card">
-      <div class="card-title">🏫 Class List <button class="btn btn-secondary btn-sm" onclick="loadClasses()">🔄 Refresh</button></div>
+      <div class="card-title"><span><i data-ic="users"></i>Class List</span><button class="topbar-btn round" onclick="loadClasses()" title="Refresh"><i data-ic="refresh"></i></button></div>
       <div id="classes-list">Loading…</div>
     </div>
 
     <div class="card hidden" id="roster-card">
-      <div class="card-title"><span id="roster-title">Students in Class</span><button class="btn btn-secondary btn-sm" onclick="document.getElementById('roster-card').classList.add('hidden')">✕ Close</button></div>
+      <div class="card-title"><span><i data-ic="user"></i><span id="roster-title">Students in Class</span></span><button class="btn btn-secondary btn-sm" onclick="document.getElementById('roster-card').classList.add('hidden')"><i data-ic="x"></i>Close</button></div>
       <div style="overflow:auto">
         <table class="ld-table"><thead><tr><th>Student ID</th><th>Full Name</th><th>Email</th><th>Status</th><th></th></tr></thead>
           <tbody id="roster-tbody"></tbody>
@@ -174,18 +161,18 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   <div id="tab-sessions" class="hidden">
     <!-- Filter card — GV phải chọn filter TRƯỚC, data không tự load -->
     <div class="card">
-      <div class="card-title">🔍 Load Results
-        <span style="font-size:11px;color:var(--grey-400);font-weight:400">Select and Load</span>
+      <div class="card-title"><span><i data-ic="filter"></i>Load Results</span>
+        <span class="muted">Select and Load</span>
       </div>
       <!-- Row 1: Lớp + Book + Test + Part -->
-      <div class="toolbar" style="margin-bottom:8px;gap:8px;flex-wrap:wrap">
+      <div class="toolbar" style="margin-bottom:10px">
         <div>
           <label class="form-label">Lớp</label>
-          <select class="form-select" id="sess-filter-class" style="min-width:140px"><option value="">— All classes —</option></select>
+          <select class="form-select" id="sess-filter-class" style="min-width:160px"><option value="">— All classes —</option></select>
         </div>
         <div>
           <label class="form-label">Book</label>
-          <select class="form-select" id="sess-filter-book" style="min-width:100px">
+          <select class="form-select" id="sess-filter-book" style="min-width:130px">
             <option value="">— All results —</option>
             <option>Cam11</option><option>Cam12</option><option>Cam13</option><option>Cam14</option>
             <option>Cam15</option><option>Cam16</option><option>Cam17</option><option>Cam18</option>
@@ -196,7 +183,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         </div>
         <div>
           <label class="form-label">Test</label>
-          <select class="form-select" id="sess-filter-test" style="min-width:80px">
+          <select class="form-select" id="sess-filter-test" style="min-width:120px">
             <option value="">— All results —</option>
             <option>1</option><option>2</option><option>3</option><option>4</option>
             <option>5</option><option>6</option><option>7</option><option>8</option>
@@ -205,7 +192,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         </div>
         <div>
           <label class="form-label">Part</label>
-          <select class="form-select" id="sess-filter-part" style="min-width:80px">
+          <select class="form-select" id="sess-filter-part" style="min-width:120px">
             <option value="">— All results —</option>
             <option>1</option><option>2</option><option>3</option><option>4</option>
             <option>5</option><option>6</option><option>7</option><option>8</option>
@@ -213,10 +200,10 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
         </div>
       </div>
       <!-- Row 2: Thời gian + nút Load + Export -->
-      <div class="toolbar" style="gap:8px;flex-wrap:wrap">
+      <div class="toolbar">
         <div>
           <label class="form-label">Time Range</label>
-          <select class="form-select" id="sess-time-preset" onchange="applyTimePreset()" style="min-width:140px">
+          <select class="form-select" id="sess-time-preset" onchange="applyTimePreset()" style="min-width:160px">
             <option value="all">All results</option>
             <option value="7">Last 7 days</option>
             <option value="14">Last 14 days</option>
@@ -224,35 +211,29 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
             <option value="custom">Custom range…</option>
           </select>
         </div>
-        <div id="sess-custom-range" style="display:none;gap:6px;align-items:flex-end">
+        <div id="sess-custom-range" style="display:none;gap:8px;align-items:flex-end">
           <div>
             <label class="form-label">From</label>
-            <input type="date" class="form-input" id="sess-filter-from" style="width:130px">
+            <input type="date" class="form-input" id="sess-filter-from" style="width:150px">
           </div>
           <div>
             <label class="form-label">To</label>
-            <input type="date" class="form-input" id="sess-filter-to" style="width:130px">
+            <input type="date" class="form-input" id="sess-filter-to" style="width:150px">
           </div>
         </div>
-        <div style="align-self:flex-end">
-          <button class="btn btn-primary btn-sm" id="btn-load-sessions" onclick="loadFilteredSessions()">📊 Load Results</button>
-        </div>
+        <button class="btn btn-primary" id="btn-load-sessions" onclick="loadFilteredSessions()"><i data-ic="progress"></i>Load Results</button>
         <div style="flex:1"></div>
-        <div style="align-self:flex-end;display:flex;gap:6px">
-          <button class="btn btn-secondary btn-sm" onclick="exportCsv()">⬇ Export CSV</button>
-        </div>
+        <button class="btn btn-secondary" onclick="exportCsv()"><i data-ic="download"></i>Export CSV</button>
       </div>
-      <div style="font-size:11.5px;color:var(--grey-600);margin-top:8px">
-        🗄 <b>🔍 Details</b> shows a student's answers; <b>📄</b> opens the full report (script, vocabulary, quiz / gap-fill / dictation review) that the student also sees.
-      </div>
-      <div style="margin-top:10px">
-        <input class="form-input" id="sess-search" placeholder="🔍 Filter by Student's name/ book…" style="width:100%;max-width:300px" oninput="renderSessionsTable()">
+      <div class="info-line"><i data-ic="report"></i><span><b>Details</b> shows a student's answers; <b>Report</b> opens the full review (script, vocabulary, quiz / gap-fill / dictation) that the student also sees.</span></div>
+      <div style="margin-top:12px">
+        <span class="search-pill" style="width:100%;max-width:320px"><i data-ic="search"></i><input class="form-input" id="sess-search" placeholder="Filter by student name / book…" style="width:100%" oninput="renderSessionsTable()"></span>
       </div>
       <!-- Trạng thái ban đầu -->
-      <div id="sess-placeholder" style="text-align:center;padding:40px 20px;color:var(--grey-400);font-size:13.5px">
-        👆 Select and click <b>Load Results</b> to see the results.
+      <div id="sess-placeholder" class="placeholder">
+        Select the filters and click <b>Load Results</b> to see the results.
       </div>
-      <div id="sess-table-wrap" style="display:none;overflow:auto">
+      <div id="sess-table-wrap" style="display:none;overflow:auto;margin-top:8px">
         <table class="ld-table">
           <thead><tr>
             <th onclick="sessSort('bookTestPart')">Book/Test/Part</th>
@@ -270,28 +251,28 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
           <tbody id="sessions-tbody"></tbody>
         </table>
       </div>
-      <div id="sess-count" style="font-size:12px;color:var(--grey-400);margin-top:8px"></div>
+      <div id="sess-count" class="muted" style="margin-top:10px"></div>
     </div>
   </div>
 </div>
 
-<!-- ═══ SESSION DETAIL (dark overlay) ═══ -->
+<!-- ═══ SESSION DETAIL (overlay) ═══ -->
 <div id="detail-overlay">
   <div class="dt-topbar">
-    <h2 id="dt-title">Session Detail</h2>
-    <span class="dt-sub" id="dt-subtitle"></span>
+    <span class="ld-mark" style="width:38px;height:38px;border-radius:12px"><i data-ic="report"></i></span>
+    <div><h2 id="dt-title">Session Detail</h2><span class="dt-sub" id="dt-subtitle"></span></div>
     <span style="flex:1"></span>
-    <a class="dt-doc-btn hidden" id="dt-doc-link" target="_blank" rel="noopener">📄 Google Doc</a>
-    <button class="dt-close" onclick="closeDetail()" style="margin-left:0">✕ Close</button>
+    <a class="dt-doc-btn hidden" id="dt-doc-link" target="_blank" rel="noopener">Report</a>
+    <button class="dt-close" onclick="closeDetail()"><i data-ic="x"></i>Close</button>
   </div>
   <div class="dt-wrap">
     <div class="dt-meta" id="dt-meta"></div>
     <div class="dt-stats" id="dt-stats"></div>
     <div class="dt-archived hidden" id="dt-archived"></div>
     <div class="dt-tabs" id="dt-tabs">
-      <button class="dt-tab-btn" id="dt-tab-btn-dictation" onclick="switchDetailTab('dictation')">🎧 Dictation</button>
-      <button class="dt-tab-btn" id="dt-tab-btn-gapfill" onclick="switchDetailTab('gapfill')">🧩 Gap-fill</button>
-      <button class="dt-tab-btn" id="dt-tab-btn-quiz" onclick="switchDetailTab('quiz')">📝 Quiz</button>
+      <button class="dt-tab-btn" id="dt-tab-btn-dictation" onclick="switchDetailTab('dictation')"><i data-ic="pen"></i>Dictation</button>
+      <button class="dt-tab-btn" id="dt-tab-btn-gapfill" onclick="switchDetailTab('gapfill')"><i data-ic="puzzle"></i>Gap-fill</button>
+      <button class="dt-tab-btn" id="dt-tab-btn-quiz" onclick="switchDetailTab('quiz')"><i data-ic="quiz"></i>Quiz</button>
     </div>
     <div class="dt-pane" id="dt-pane-dictation"></div>
     <div class="dt-pane" id="dt-pane-gapfill"></div>
@@ -299,7 +280,7 @@ table.ld-table td{padding:10px 12px;border-bottom:1px solid var(--grey-100);font
   </div>
 </div>
 
-<script src="ld-common.js"></script>
+<script src="ld-common.js?v=2"></script>
 <script>
 var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false,
   practice: [] };
@@ -307,7 +288,7 @@ var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1
 (function init() {
   var s = LD.session.require('Teacher');
   if (!s) return;
-  document.getElementById('tb-user').textContent = '👤 ' + s.user.fullName;
+  document.getElementById('tb-user').innerHTML = '<span class="tb-av">' + LD.esc((s.user.fullName || '?').trim().split(/\s+/).pop().charAt(0).toUpperCase()) + '</span><span class="tb-name">' + LD.esc(s.user.fullName) + '</span>';
   loadClasses();
   loadNewPractice(); // tab mặc định khi GV đăng nhập
 })();
@@ -330,7 +311,7 @@ async function createClass() {
     className: name, academicYear: document.getElementById('new-class-year').value.trim(), semester: document.getElementById('new-class-semester').value.trim()
   });
   if (!r.success) { LD.toast(r.error || 'Could not create the class', 'err'); return; }
-  document.getElementById('new-class-result').innerHTML = '✅ Created class <b>' + LD.esc(r.className) + '</b> — class code: <span class="badge badge-gold">' + r.classId + '</span> (share this code with students so they can register)';
+  document.getElementById('new-class-result').innerHTML = LD.icon('checkCircle') + ' Created class <b>' + LD.esc(r.className) + '</b> — class code: <span class="badge badge-code">' + r.classId + '</span> (share this code with students so they can register)';
   document.getElementById('new-class-name').value = ''; document.getElementById('new-class-year').value = ''; document.getElementById('new-class-semester').value = '';
   loadClasses();
 }
@@ -338,18 +319,18 @@ async function loadClasses() {
   var el = document.getElementById('classes-list');
   el.innerHTML = '<span class="spinner"></span> Loading…';
   var r = await LD.api('teacher.getClasses', {});
-  if (!r.success) { el.innerHTML = '<span style="color:var(--red)">Error: ' + LD.esc(r.error) + '</span>'; return; }
+  if (!r.success) { el.innerHTML = '<span style="color:var(--ld-danger)">Error: ' + LD.esc(r.error) + '</span>'; return; }
   App.classes = r.data;
   // filter options sẽ được merge vào khi GV mở tab Sessions (loadFilterOptions)
   el.innerHTML = r.data.length ? r.data.map(function (c) {
-    return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-gold">' + c.ClassID + '</span> ' +
+    return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-code">' + c.ClassID + '</span> ' +
       '<span class="badge ' + (c.Status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + c.Status + '</span>' +
-      '<div style="font-size:11.5px;color:var(--grey-600);margin-top:2px">' + (c.AcademicYear || '') + ' ' + (c.Semester || '') + ' · ' + c.StudentCount + ' students</div></div>' +
+      '<div class="class-sub">' + (c.AcademicYear || '') + ' ' + (c.Semester || '') + ' · ' + c.StudentCount + ' students</div></div>' +
       '<div style="display:flex;gap:6px">' +
-      '<button class="btn btn-secondary btn-sm" onclick="viewRoster(\'' + c.ClassID + '\',\'' + LD.esc(c.ClassName).replace(/'/g, "\\'") + '\')">👥 Roster</button>' +
-      '<button class="btn btn-secondary btn-sm" onclick="toggleClassStatus(\'' + c.ClassID + '\',\'' + c.Status + '\')">' + (c.Status === 'Active' ? '🔒 Lock' : '🔓 Reopen') + '</button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="viewRoster(\'' + c.ClassID + '\',\'' + LD.esc(c.ClassName).replace(/'/g, "\\'") + '\')">' + LD.label('users', 'Roster') + '</button>' +
+      '<button class="btn btn-secondary btn-sm" onclick="toggleClassStatus(\'' + c.ClassID + '\',\'' + c.Status + '\')">' + (c.Status === 'Active' ? LD.label('lock', 'Lock') : LD.label('refresh', 'Reopen')) + '</button>' +
       '</div></div>';
-  }).join('') : '<p style="color:var(--grey-600);font-size:13px">No classes yet.</p>';
+  }).join('') : '<p style="color:var(--ld-ink-3);font-size:13px">No classes yet.</p>';
 }
 async function toggleClassStatus(classId, curStatus) {
   var newStatus = curStatus === 'Active' ? 'Archived' : 'Active';
@@ -357,16 +338,16 @@ async function toggleClassStatus(classId, curStatus) {
   if (r.success) loadClasses(); else LD.toast(r.error || 'Error', 'err');
 }
 async function viewRoster(classId, className) {
-  document.getElementById('roster-title').textContent = '👥 Students in ' + className;
+  document.getElementById('roster-title').textContent = 'Students in ' + className;
   document.getElementById('roster-card').classList.remove('hidden');
   document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
   var r = await LD.api('teacher.getRoster', { classId: classId });
-  if (!r.success) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--red)">Error</td></tr>'; return; }
+  if (!r.success) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--ld-danger)">Error</td></tr>'; return; }
   document.getElementById('roster-tbody').innerHTML = r.data.length ? r.data.map(function (s) {
     return '<tr><td>' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td><td>' + LD.esc(s.email) + '</td>' +
       '<td><span class="badge ' + (s.status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + s.status + '</span></td>' +
       '<td><button class="btn btn-secondary btn-sm" onclick="toggleStudentStatus(\'' + s.studentId + '\',\'' + s.status + '\')">' + (s.status === 'Active' ? 'Lock' : 'Reopen') + '</button></td></tr>';
-  }).join('') : '<tr><td colspan="5" style="color:var(--grey-600)">No students in this class yet.</td></tr>';
+  }).join('') : '<tr><td colspan="5" style="color:var(--ld-ink-3)">No students in this class yet.</td></tr>';
 }
 async function toggleStudentStatus(studentId, curStatus) {
   var r = await LD.api('teacher.archiveStudent', { studentId: studentId, archived: curStatus === 'Active' });
@@ -442,7 +423,7 @@ async function loadFilteredSessions() {
   }
 
   var btn = document.getElementById('btn-load-sessions');
-  btn.disabled = true; var orig = btn.textContent; btn.innerHTML = '<span class="spinner"></span> Loading…';
+  btn.disabled = true; var orig = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span> Loading…';
   document.getElementById('sess-placeholder').style.display = 'block';
   document.getElementById('sess-placeholder').innerHTML = '<span class="spinner"></span> Đang tải dữ liệu…';
   document.getElementById('sess-table-wrap').style.display = 'none';
@@ -452,10 +433,10 @@ async function loadFilteredSessions() {
     fromDate: dates.fromDate, toDate: dates.toDate,
     bookFilter: btp.book, testFilter: btp.test, partFilter: btp.part
   });
-  btn.disabled = false; btn.textContent = orig;
+  btn.disabled = false; btn.innerHTML = orig;
 
   if (!r.success) {
-    document.getElementById('sess-placeholder').innerHTML = '<span style="color:var(--red)">⚠️ ' + LD.esc(r.error) + '</span>';
+    document.getElementById('sess-placeholder').innerHTML = '<span style="color:var(--ld-danger)">' + LD.esc(r.error) + '</span>';
     return;
   }
   App.sessions = r.data;
@@ -478,7 +459,7 @@ function renderSessionsTable() {
       '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
       '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td>' +
       '<td>' + detailsButton(r.sessionId, r.detailPurged, r.docUrl) + '</td></tr>';
-  }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--grey-400)">Không có kết quả.</td></tr>';
+  }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--ld-ink-3)">Không có kết quả.</td></tr>';
   document.getElementById('sess-count').textContent = rows.length + ' session(s)';
 }
 
@@ -504,7 +485,7 @@ async function openDetail(sessionId) {
   var docLink = document.getElementById('dt-doc-link');
   if (d.DocURL) {
     docLink.href = d.DocURL;
-    docLink.textContent = /^https?:/.test(d.DocURL) ? '📄 Google Doc' : '📄 Report';
+    docLink.innerHTML = /^https?:/.test(d.DocURL) ? LD.label('external', 'Google Doc') : LD.label('report', 'Report');
     docLink.classList.remove('hidden');
   }
   // Chi tiết còn trong sheet → trang HTML như cũ. Đã bị dọn (sau 10 ngày) → mở bản lưu trên Google Docs.
@@ -515,9 +496,9 @@ async function openDetail(sessionId) {
     var box = document.getElementById('dt-archived');
     box.classList.remove('hidden');
     box.innerHTML = d.DocURL
-      ? '🗄 The detailed answers were archived on ' + LD.esc(LD.fmtDate(d.DetailPurgedAt)) + ' to keep the sheet light.<br>The full review (script, vocabulary, quiz / gap-fill / dictation answers) is in the Google Doc.' +
-        '<br><a class="dt-doc-btn" href="' + LD.esc(d.DocURL) + '" target="_blank" rel="noopener">📄 Open Google Doc</a>'
-      : '⚠️ No detailed answers are stored for this session (it was cleared before Doc archiving existed, or the student has not analysed the script yet).';
+      ? 'The detailed answers were archived on ' + LD.esc(LD.fmtDate(d.DetailPurgedAt)) + ' to keep the sheet light.<br>The full review (script, vocabulary, quiz / gap-fill / dictation answers) is in the Google Doc.' +
+        '<br><a class="dt-doc-btn" href="' + LD.esc(d.DocURL) + '" target="_blank" rel="noopener">' + LD.label('external', 'Open Google Doc') + '</a>'
+      : 'No detailed answers are stored for this session (it was cleared before Doc archiving existed, or the student has not analysed the script yet).';
     return;
   }
   renderDictationDetail();
@@ -613,7 +594,7 @@ function renderQuizDetail() {
       '<div class="dt-q-text">' + (i + 1) + '. ' + LD.esc(q.q) + '</div>' +
       (q.o || []).map(function (o, j) {
         var cls = j === q.a ? 'correct' : (j === chosen ? 'chosen-wrong' : '');
-        return '<div class="dt-opt ' + cls + '">' + (j === chosen ? '☑ ' : '☐ ') + LD.esc(o) + (j === q.a ? '  ✓' : '') + '</div>';
+        return '<div class="dt-opt ' + cls + '">' + (j === q.a ? LD.icon('checkCircle') : j === chosen ? LD.icon('x') : LD.icon('circle')) + LD.esc(o) + (j === chosen ? ' <span style="font-weight:500;opacity:.8">(student)</span>' : '') + '</div>';
       }).join('') + '</div>';
   }).join('');
 }
@@ -630,8 +611,8 @@ async function exportCsv() {
 
 // Details (trang HTML) khi chi tiết còn trong sheet; quá 10 ngày đã dọn → Open Docs mở thẳng Google Doc
 function detailsButton(sessionId, purged, docUrl) {
-  if (purged && docUrl) return '<a class="btn btn-secondary btn-sm" href="' + LD.esc(docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">' + (/^https?:/.test(docUrl) ? '📄 Open Docs' : '📄 Report') + '</a>';
-  return '<button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + LD.esc(sessionId) + '\')">🔍 Details</button>';
+  if (purged && docUrl) return '<a class="btn btn-secondary btn-sm" href="' + LD.esc(docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">' + (/^https?:/.test(docUrl) ? LD.label('external', 'Open Docs') : LD.label('report', 'Report')) + '</a>';
+  return '<button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + LD.esc(sessionId) + '\')">' + LD.label('eye', 'Details') + '</button>';
 }
 
 // ── NEW PRACTICE ──
@@ -643,7 +624,7 @@ async function loadNewPractice() {
   var tb = document.getElementById('np-tbody');
   tb.innerHTML = '<tr><td colspan="5"><span class="spinner"></span> Loading…</td></tr>';
   var r = await LD.api('practice.new', {});
-  if (!r.success) { tb.innerHTML = '<tr><td colspan="5" style="color:var(--red)">' + LD.esc(r.error || 'Error') + '</td></tr>'; return; }
+  if (!r.success) { tb.innerHTML = '<tr><td colspan="5" style="color:var(--ld-danger)">' + LD.esc(r.error || 'Error') + '</td></tr>'; return; }
   App.practice = r.data.map(function (g) { g._done = false; return g; });
   renderNewPractice();
 }
@@ -655,15 +636,15 @@ function updatePracticeCount() {
 function renderNewPractice() {
   var tb = document.getElementById('np-tbody');
   updatePracticeCount();
-  if (!App.practice.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--grey-400);padding:28px">🎉 No new practice — you are up to date.</td></tr>'; return; }
+  if (!App.practice.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ld-ink-3);padding:28px">No new practice — you are up to date.</td></tr>'; return; }
   tb.innerHTML = App.practice.map(function (g, i) {
     return '<tr class="np-row' + (g._done ? ' done' : '') + '">' +
       '<td class="np-class">' + LD.esc(g.className) + '</td>' +
       '<td class="np-btp">' + LD.esc(g.bookTestPart) + '</td>' +
       '<td class="np-period">' + fmtDay(g.from) + ' – ' + fmtDay(g.to) + '</td>' +
-      '<td><button class="btn btn-secondary btn-sm" onclick="openPracticeInSessions(' + i + ')">📊 Open in Sessions</button></td>' +
+      '<td><button class="btn btn-secondary btn-sm" onclick="openPracticeInSessions(' + i + ')">' + LD.label('arrowUpRight', 'Open in Sessions') + '</button></td>' +
       '<td>' + (g._done
-        ? '✓ Done <button class="np-undo" onclick="undoPracticeDone(' + i + ')">Undo</button>'
+        ? '<span class="badge badge-green">' + LD.icon('check') + 'Done</span> <button class="np-undo" onclick="undoPracticeDone(' + i + ')">Undo</button>'
         : '<label class="np-done"><input type="checkbox" onchange="markPracticeDone(' + i + ',this)"></label>') + '</td></tr>';
   }).join('');
 }
