@@ -41,6 +41,10 @@ function fbRoute(action, p) {
     if (action === 'fb.register')        return ldfbRegister(p || {});
     if (action === 'fb.registerTeacher') return ldfbRegisterTeacher(p || {});
     if (action === 'fb.forgotPassword')  return ldfbForgotPassword(p || {});
+    // GV quản lý SV/lớp: cần quyền quản trị (đổi email đăng nhập, ghi hộ SV)
+    if (action === 'fb.updateStudent')   return ldfbUpdateStudent(p || {});
+    if (action === 'fb.archiveClass')    return ldfbSetClassArchived(p || {}, true);
+    if (action === 'fb.restoreClass')    return ldfbSetClassArchived(p || {}, false);
     return { success: false, error: 'Unknown action: ' + action };
   } catch (e) { return { success: false, error: e.message }; }
 }
@@ -181,14 +185,17 @@ function ldfbRegister(p) {
   if (cls.status === 'Archived') return { success: false, error: 'Lớp "' + (cls.className || classId) + '" hiện không mở đăng ký.' };
 
   var sid = ldfbStr(p.studentId), email = ldfbLow(p.email), uid = ldfbUidForStudent(sid);
-  if (fsGet('users/' + uid)) return { success: false, error: 'Mã SV đã tồn tại.' };
+  var taken = fsGet('users/' + uid);
+  if (taken && ldfbStr(taken.studentId) === sid) return { success: false, error: 'Mã SV đã tồn tại.' };
+  // uid này thuộc SV đã được GV sửa mã (uid giữ nguyên khi đổi mã) → cấp uid khác
+  if (taken) uid = ldfbUidForStudent(sid + '|' + Utilities.getUuid());
   if (email && fsGet('loginIndex/' + ldfbSha256(email))) return { success: false, error: 'Email này đã được đăng ký.' };
   try { ldfbAuthCreate(uid, ldfbLoginEmailFor(sid), p.password); }
   catch (e) { if (/EXISTS|DUPLICATE/.test(e.message)) return { success: false, error: 'Mã SV đã tồn tại.' }; throw e; }
   ldfbAuthUpdate(uid, { role: 'student' });
   var writes = [wSet('users/' + uid, { role: 'student', studentId: sid, fullName: ldfbStr(p.fullName), classId: classId,
     teacherUid: cls.teacherUid || '', email: email, phone: ldfbStr(p.phone), archived: false, createdAt: new Date().toISOString() })];
-  if (email) writes.push(wSet('loginIndex/' + ldfbSha256(email), { sid: sid }));
+  if (email) writes.push(wSet('loginIndex/' + ldfbSha256(email), { sid: sid, uid: uid }));
   fsCommit(writes);
   return { success: true, message: 'Chào mừng vào lớp ' + (cls.className || classId) + '! Đăng nhập ngay.' };
 }
@@ -214,7 +221,9 @@ function ldfbForgotPassword(p) {
   var idx = fsGet('loginIndex/' + ldfbSha256(email));
   if (idx && idx.multi) return { success: false, error: 'Email này gắn với nhiều tài khoản. Liên hệ giảng viên để đặt lại mật khẩu.' };
   if (idx) {
-    sid = idx.sid; uid = ldfbUidForStudent(sid);
+    sid = idx.sid;
+    var acc = ldfbAuthLookupEmail(ldfbLoginEmailFor(sid));
+    uid = acc ? acc.localId : (idx.uid || ldfbUidForStudent(sid));
     var u = fsGet('users/' + uid); name = u ? u.fullName : '';
   } else {
     var t = ldfbAuthLookupEmail(email);
@@ -231,6 +240,89 @@ function ldfbForgotPassword(p) {
     });
   } catch (err) { return { success: false, error: 'Không gửi được email: ' + err.message }; }
   return { success: true, newPasswordSent: true };
+}
+
+// ════════════════════════════════════════════════════════════
+// GV QUẢN LÝ SV / LỚP  (gọi từ teacher.html, kèm Firebase idToken của GV)
+// ════════════════════════════════════════════════════════════
+// Token còn hạn + đúng là GV đang hoạt động → uid của GV. Sai → SESSION_EXPIRED.
+function ldfbTeacherUid_(idToken) {
+  if (!idToken) throw new Error('SESSION_EXPIRED');
+  var r = UrlFetchApp.fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + LDFB.API_KEY, {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: JSON.stringify({ idToken: idToken }) });
+  if (r.getResponseCode() >= 300) throw new Error('SESSION_EXPIRED');
+  var acc = (JSON.parse(r.getContentText() || '{}').users || [])[0];
+  if (!acc) throw new Error('SESSION_EXPIRED');
+  var claims = {};
+  try { claims = JSON.parse(acc.customAttributes || '{}'); } catch (e) {}
+  var t = fsGet('users/' + acc.localId);
+  if (claims.role !== 'teacher' || !t || t.role !== 'teacher' || t.archived) throw new Error('Chỉ giáo viên mới dùng được chức năng này.');
+  return acc.localId;
+}
+function ldfbOwnClass_(tuid, classId) {
+  var cls = classId ? fsGet('classes/' + classId) : null;
+  return cls && cls.teacherUid === tuid ? cls : null;
+}
+
+// Sửa thông tin SV (mã SV, họ tên, email, SĐT) và/hoặc chuyển lớp.
+// uid giữ nguyên → bài làm cũ vẫn theo SV. Đổi mã SV = đổi email đăng nhập trong Firebase Auth.
+function ldfbUpdateStudent(p) {
+  var tuid = ldfbTeacherUid_(p.idToken);
+  var uid = ldfbStr(p.uid), s = uid ? fsGet('users/' + uid) : null;
+  if (!s || s.role !== 'student' || s.teacherUid !== tuid) return { success: false, error: 'Không tìm thấy SV.' };
+
+  var sid = ldfbStr(p.studentId), name = ldfbStr(p.fullName), email = ldfbLow(p.email), phone = ldfbStr(p.phone);
+  var classId = ldfbStr(p.classId).toUpperCase() || s.classId;
+  if (!sid || !name) return { success: false, error: 'Mã SV và họ tên không được để trống.' };
+  if (/\s/.test(sid)) return { success: false, error: 'Mã SV không được có khoảng trắng.' };
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { success: false, error: 'Email không hợp lệ.' };
+
+  var cls = ldfbOwnClass_(tuid, classId);
+  if (!cls) return { success: false, error: 'Không tìm thấy lớp ' + classId + '.' };
+  if (classId !== s.classId && cls.status === 'Archived') return { success: false, error: 'Không chuyển SV vào lớp đã lưu trữ.' };
+
+  var oldSid = ldfbStr(s.studentId), oldEmail = ldfbLow(s.email);
+  if (sid !== oldSid) {
+    var other = ldfbAuthLookupEmail(ldfbLoginEmailFor(sid));
+    if ((other && other.localId !== uid) || fsQuery('users', [['studentId', 'EQUAL', sid]], 2).some(function (x) { return x._id !== uid; }))
+      return { success: false, error: 'Mã SV ' + sid + ' đã có người dùng.' };
+  }
+  if (email && email !== oldEmail) {
+    var idx = fsGet('loginIndex/' + ldfbSha256(email));
+    if (idx && (idx.multi || ldfbStr(idx.sid) !== oldSid)) return { success: false, error: 'Email này đã được tài khoản khác dùng.' };
+  }
+
+  if (sid !== oldSid) ldfbAuthUpdate(uid, { email: ldfbLoginEmailFor(sid) });
+
+  var writes = [wMerge('users/' + uid, { studentId: sid, fullName: name, email: email, phone: phone, classId: classId })];
+  // Chỉ mục email → mã SV: bỏ cái cũ (nếu đúng của SV này), ghi cái mới
+  if (oldEmail && (oldEmail !== email || sid !== oldSid)) {
+    var oldIdx = fsGet('loginIndex/' + ldfbSha256(oldEmail));
+    if (oldIdx && !oldIdx.multi && ldfbStr(oldIdx.sid) === oldSid) writes.push({ delete: fsName('loginIndex/' + ldfbSha256(oldEmail)) });
+  }
+  if (email) writes.push(wSet('loginIndex/' + ldfbSha256(email), { sid: sid, uid: uid }));
+  // Dòng đầu của progress (tên/mã/lớp hiện tại); từng bài vẫn giữ lớp lúc làm bài
+  if (fsExistingIds('progress', [uid])[uid])
+    writes.push(wMerge('progress/' + uid, { studentId: sid, fullName: name, classId: classId, className: cls.className || classId }));
+  fsCommit(writes);
+  return { success: true, student: { uid: uid, studentId: sid, fullName: name, email: email, phone: phone, classId: classId, className: cls.className || classId } };
+}
+
+// Lưu trữ cả lớp: khoá lớp + lưu trữ mọi SV đang học trong lớp (đánh dấu archivedBy 'class').
+// Mở lại lớp: chỉ mở lại những SV bị lưu trữ CÙNG lớp; SV đã lưu trữ riêng trước đó vẫn ở Student Archive.
+function ldfbSetClassArchived(p, archived) {
+  var tuid = ldfbTeacherUid_(p.idToken);
+  var classId = ldfbStr(p.classId).toUpperCase(), cls = ldfbOwnClass_(tuid, classId);
+  if (!cls) return { success: false, error: 'Không tìm thấy lớp.' };
+  var now = new Date().toISOString(), n = 0;
+  var writes = [wMerge('classes/' + classId, archived ? { status: 'Archived', archivedAt: now } : { status: 'Active', archivedAt: '' })];
+  fsQuery('users', [['classId', 'EQUAL', classId]]).forEach(function (u) {
+    if (u.role !== 'student' || u.teacherUid !== tuid) return;
+    if (archived && !u.archived) { writes.push(wMerge('users/' + u._id, { archived: true, archivedBy: 'class', archivedAt: now })); n++; }
+    if (!archived && u.archived && u.archivedBy === 'class') { writes.push(wMerge('users/' + u._id, { archived: false, archivedBy: '', archivedAt: '' })); n++; }
+  });
+  fsCommit(writes);
+  return { success: true, students: n };
 }
 
 // ════════════════════════════════════════════════════════════

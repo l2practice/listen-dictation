@@ -156,7 +156,7 @@ async function finishLogin(requireTeacher) {
   const u = await me().catch(() => null);
   if (!u || u.archived || (requireTeacher && u.role !== 'teacher')) {
     await signOut();
-    return fail(u && u.archived ? 'Tài khoản đã bị khoá. Liên hệ giảng viên.' : 'Sai tài khoản hoặc mật khẩu.');
+    return fail(u && u.archived ? 'Tài khoản đã được lưu trữ (không còn trong lớp đang học). Liên hệ giảng viên.' : 'Sai tài khoản hoặc mật khẩu.');
   }
   return ok({ sessionToken: 'firebase', user: sessionUser(u, await className(u.classId)) });
 }
@@ -375,11 +375,7 @@ async function deleteSession(p) {
 // ════════════════════════════════════════════
 const myClasses  = t => memo('classes', 60000, async () => docs(await fs.collection('classes').where('teacherUid', '==', t.uid).get()));
 const myStudents = t => memo('students', 60000, async () => docs(await fs.collection('users').where('teacherUid', '==', t.uid).get()));
-const myProgressDocs = (t, classId) => memo('progress|' + (classId || '*'), 20000, async () => {
-  let q = fs.collection('progress').where('teacherUid', '==', t.uid);
-  if (classId) q = q.where('classId', '==', classId);
-  return docs(await q.get());
-});
+const myProgressDocs = t => memo('progress', 20000, async () => docs(await fs.collection('progress').where('teacherUid', '==', t.uid).get()));
 
 async function getClasses() {
   const t = await teacher();
@@ -387,7 +383,9 @@ async function getClasses() {
   const data = classes.map(c => ({
     ClassID: c.classId || c._id, ClassName: c.className || c._id, AcademicYear: c.academicYear || '', Semester: c.semester || '',
     TeacherName: c.teacherName || '', TeacherEmail: c.teacherEmail || '', Status: c.status || 'Active', CreatedAt: c.createdAt || '',
-    StudentCount: students.filter(s => s.role === 'student' && !s.archived && s.classId === (c.classId || c._id)).length
+    StudentCount: students.filter(s => s.role === 'student' && !s.archived && s.classId === (c.classId || c._id)).length,
+    TotalCount: students.filter(s => s.role === 'student' && s.classId === (c.classId || c._id)).length,
+    ArchivedAt: c.archivedAt || ''
   }));
   data.sort((a, b) => String(a.ClassName).localeCompare(String(b.ClassName)));
   return ok({ data });
@@ -421,12 +419,16 @@ async function setClassStatus(p) {
   forget('classes');
   return ok();
 }
+// Không có classId → mọi SV của GV (tab Student Archive lọc tiếp ở trang)
 async function getRoster(p) {
   const t = await teacher();
-  const cname = await className(p.classId);
-  const data = (await myStudents(t)).filter(s => s.role === 'student' && (!p.classId || s.classId === p.classId))
-    .map(s => ({ studentId: s.studentId, fullName: s.fullName, email: s.email || '', phone: s.phone || '',
-                 status: s.archived ? 'Archived' : 'Active', className: cname }));
+  const [students, classes] = await Promise.all([myStudents(t), myClasses(t)]);
+  const cname = {};
+  classes.forEach(c => { cname[c.classId || c._id] = c.className || c._id; });
+  const data = students.filter(s => s.role === 'student' && (!p.classId || s.classId === p.classId))
+    .map(s => ({ uid: s._id, studentId: s.studentId, fullName: s.fullName, email: s.email || '', phone: s.phone || '',
+                 classId: s.classId || '', className: cname[s.classId] || s.classId || '',
+                 status: s.archived ? 'Archived' : 'Active', archivedBy: s.archived ? (s.archivedBy || 'student') : '' }));
   return ok({ data });
 }
 async function archiveStudent(p) {
@@ -437,9 +439,18 @@ async function archiveStudent(p) {
   forget('students');
   return ok();
 }
+// Sửa SV / lưu trữ cả lớp: cần quyền quản trị → Apps Script, kèm idToken để chứng minh là GV
+async function asTeacher(action, p) {
+  await teacher();
+  const r = await gas(action, Object.assign({}, p, { idToken: await auth.currentUser.getIdToken() }));
+  forget('students'); forget('classes'); forget('progress'); forget('cls|');
+  return r;
+}
+// Lọc theo lớp của TỪNG BÀI (lớp lúc làm bài), không theo lớp hiện tại của SV:
+// SV chuyển lớp thì bài cũ vẫn nằm ở lớp cũ.
 async function allRows(t, classId) {
   const out = [];
-  (await myProgressDocs(t, classId)).forEach(pd => {
+  (await myProgressDocs(t)).forEach(pd => {
     const items = pd.items || {};
     Object.keys(items).forEach(id => {
       const s = summary(id, items[id], pd);
@@ -472,8 +483,8 @@ async function sessionDetail(p) {
   const t = await teacher();
   const det = await fs.doc('details/' + str(p.sessionId)).get().catch(() => null);
   let uid = det && det.exists ? det.data().uid : '';
-  let pd = uid ? (await myProgressDocs(t, '')).find(x => x._id === uid) : null;
-  if (!pd) pd = (await myProgressDocs(t, '')).find(x => x.items && x.items[p.sessionId]);
+  let pd = uid ? (await myProgressDocs(t)).find(x => x._id === uid) : null;
+  if (!pd) pd = (await myProgressDocs(t)).find(x => x.items && x.items[p.sessionId]);
   if (!pd || !pd.items || !pd.items[p.sessionId]) return fail('Không tìm thấy session.');
   return ok({ data: sessionObject(p.sessionId, pd.items[p.sessionId], pd, det && det.exists ? det.data() : null) });
 }
@@ -559,8 +570,9 @@ const ACTIONS = {
   'student.getHistorySummary': historySummary, 'student.getInProgressTop5': inProgressTop5,
   'student.getInProgress': inProgressTop5, 'student.resumeSession': resumeSession, 'student.deleteSession': deleteSession,
   'teacher.getClasses': getClasses, 'teacher.createClass': createClass, 'teacher.setClassStatus': setClassStatus,
-  'teacher.archiveClass': p => setClassStatus({ classId: p.classId, status: 'Archived' }),
+  'teacher.archiveClass': p => asTeacher('fb.archiveClass', p), 'teacher.restoreClass': p => asTeacher('fb.restoreClass', p),
   'teacher.getRoster': getRoster, 'teacher.archiveStudent': archiveStudent,
+  'teacher.updateStudent': p => asTeacher('fb.updateStudent', p),
   'teacher.getFilteredSessions': filteredSessions, 'teacher.getSessionDetail': sessionDetail,
   'teacher.exportSessions': exportSessions,
   'practice.new': newPractice, 'practice.markDone': p => markDone(p, true), 'practice.undoDone': p => markDone(p, false)

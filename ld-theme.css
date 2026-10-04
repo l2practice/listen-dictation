@@ -243,7 +243,8 @@ h1,h2,h3,h4{font-family:var(--font-display);font-weight:500;letter-spacing:-.02e
 .card{background:var(--ld-surface);border-radius:var(--radius-lg);padding:22px;border:none;margin-bottom:16px}
 .card-title{font-family:var(--font-display);font-size:1.05rem;font-weight:600;color:var(--ld-ink);margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;letter-spacing:-.01em}
 .card-title > span{display:inline-flex;align-items:center;gap:10px}
-.card-title .ic{width:36px;height:36px;padding:9px;border-radius:50%;background:var(--ld-surface-2);color:var(--ld-ink)}
+/* the round icon of a card title only (not icons inside its buttons or search box) */
+.card-title > .ic,.card-title > span:first-child > .ic{width:36px;height:36px;padding:9px;border-radius:50%;background:var(--ld-surface-2);color:var(--ld-ink)}
 .muted{font-size:12px;color:var(--ld-ink-3);font-weight:500}
 
 /* ── buttons ── */
