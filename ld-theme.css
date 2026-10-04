@@ -76,14 +76,16 @@ h1,h2,h3,h4{font-family:var(--font-display);font-weight:500;letter-spacing:-.02e
 .ld-auth-title{font-family:var(--font-display);font-size:1.7rem;font-weight:600;color:var(--ld-ink);text-align:center;margin-bottom:4px;letter-spacing:-.02em}
 .ld-auth-sub{font-size:.92rem;color:var(--ld-ink-2);text-align:center;margin-bottom:24px}
 
-/* split auth screen: dark hero with terracotta glow (left) + form (right) */
-.ld-split{min-height:100vh;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:16px;padding:16px;background:var(--ld-canvas)}
-.ld-hero{position:relative;overflow:hidden;border-radius:30px;padding:40px 44px;color:#fff;display:flex;flex-direction:column;isolation:isolate;
+/* ── split auth screen (login / signup) ──────────────────────────────
+   One dark surface: introduction on the left, form on the right.
+   Phones: short introduction (logo, tag, headline) above the form, same background. */
+.ld-login,.ld-signup{background:#111214;color:#fff}
+.ld-split{min-height:100svh;display:grid;grid-template-columns:minmax(0,44fr) minmax(0,56fr);background:#111214}
+.ld-hero{position:relative;overflow:hidden;isolation:isolate;height:100svh;align-self:start;padding:42px clamp(24px,2.35vw,46px) 46px;color:#fff;display:flex;flex-direction:column;
   background:
-    radial-gradient(55% 45% at 28% 42%, rgba(212,102,79,.62) 0%, rgba(212,102,79,.18) 45%, transparent 72%),
-    radial-gradient(45% 35% at 92% 100%, rgba(201,206,218,.20) 0%, transparent 70%),
-    radial-gradient(35% 30% at 100% 0%, rgba(181,82,61,.28) 0%, transparent 70%),
-    linear-gradient(160deg, #23252C 0%, #15171C 55%, #101115 100%)}
+    radial-gradient(55% 55% at 28% 42%,rgba(212,102,79,.48) 0%,rgba(212,102,79,.12) 48%,transparent 76%),
+    radial-gradient(42% 38% at 100% 100%,rgba(201,206,218,.12) 0%,transparent 72%),
+    linear-gradient(160deg,#1B1B1D 0%,#111214 62%,#0D0E10 100%)}
 .ld-hero::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
   background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
   background-size:56px 56px;-webkit-mask-image:radial-gradient(80% 70% at 35% 45%,#000 30%,transparent 100%);mask-image:radial-gradient(80% 70% at 35% 45%,#000 30%,transparent 100%)}
@@ -94,7 +96,7 @@ h1,h2,h3,h4{font-family:var(--font-display);font-weight:500;letter-spacing:-.02e
 .ld-hero .ld-logo-name small{color:rgba(255,255,255,.5)}
 .ld-hero-body{margin-top:auto}
 .ld-pill{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:var(--radius-pill);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);font-size:.82rem;font-weight:600;color:rgba(255,255,255,.85);backdrop-filter:blur(6px)}
-.ld-pill i,.ld-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--ld-accent);box-shadow:0 0 0 4px rgba(212,102,79,.22)}
+.ld-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--ld-accent);box-shadow:0 0 0 4px rgba(212,102,79,.22)}
 .ld-hero h1{font-size:clamp(3rem,6.4vw,5.6rem);font-weight:700;line-height:.98;letter-spacing:-.045em;margin:22px 0 22px}
 .ld-hero h1 span{display:block}
 .ld-hero h1 .hl{color:var(--ld-accent);background:linear-gradient(90deg,#F08A73,#D4664F 60%,#C9573F);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
@@ -107,26 +109,45 @@ h1,h2,h3,h4{font-family:var(--font-display);font-weight:500;letter-spacing:-.02e
 .ld-stats div{display:flex;flex-direction:column;gap:2px}
 .ld-stats b{font-size:1.9rem;font-weight:700;color:var(--ld-accent);line-height:1.1;letter-spacing:-.02em}
 .ld-stats span{font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)}
-.ld-form-side{display:grid;place-items:center;padding:24px 8px}
-.ld-split .ld-auth-card{box-shadow:var(--shadow-md);max-width:460px}
-.ld-split .ld-auth-title{text-align:left;font-size:2rem}
+.ld-form-side{display:grid;place-items:center;min-width:0;padding:44px clamp(28px,5.8vw,114px)}
+/* form on the dark surface (the teacher dialogs stay white: they sit outside .ld-split) */
+.ld-split .ld-auth-card{width:100%;max-width:460px;padding:32px 0;background:transparent;box-shadow:none;color:#fff}
+.ld-split .ld-auth-title{text-align:left;font-size:2rem;color:#fff}
 .ld-split .ld-auth-sub{text-align:left}
-.ld-seg{display:flex;gap:4px;padding:4px;border-radius:var(--radius-pill);background:var(--ld-surface-2);margin-bottom:22px}
-.ld-seg a{flex:1;text-align:center;padding:10px;border-radius:var(--radius-pill);font-size:.9rem;font-weight:600;color:var(--ld-ink-2);text-decoration:none;transition:var(--transition)}
-.ld-seg a:hover{color:var(--ld-ink)}
-.ld-seg a.on{background:var(--ld-ink);color:#fff}
-@media(max-width:900px){
-  .ld-split{grid-template-columns:1fr;padding:10px;gap:10px}
-  .ld-hero{padding:22px 22px 24px;border-radius:24px}
-  .ld-hero-body{margin-top:26px}
-  .ld-hero h1{font-size:clamp(2.3rem,11vw,3.4rem);margin:16px 0 10px}
-  .ld-hero h1 span{display:inline}
-  .ld-hero p{font-size:.9rem}
-  .ld-wave,.ld-stats{display:none}
-  .ld-form-side{padding:0 0 16px}
-  .ld-split .ld-auth-card{max-width:none}
+.ld-split .ld-auth-sub,.ld-split .ld-label,.ld-split .ld-hint,.ld-split .ld-alt{color:rgba(255,255,255,.68)}
+.ld-split .ld-hr{border-color:rgba(255,255,255,.16)}
+.ld-split .ld-btn-primary{background:var(--ld-accent);color:#fff}
+.ld-split .ld-btn-primary:hover:not(:disabled){background:var(--ld-accent-dk);box-shadow:0 12px 30px rgba(212,102,79,.35)}
+.ld-split .ld-btn-primary .ld-go{background:#15171C}
+.ld-split .ld-btn-ghost{background:rgba(255,255,255,.1);color:#fff}
+.ld-split .ld-btn-ghost:hover{background:rgba(255,255,255,.17)}
+.ld-seg{display:flex;gap:4px;padding:4px;border-radius:var(--radius-pill);background:rgba(255,255,255,.09);margin-bottom:22px}
+.ld-seg a{flex:1;text-align:center;padding:10px;border-radius:var(--radius-pill);font-size:.9rem;font-weight:600;color:rgba(255,255,255,.7);text-decoration:none;transition:var(--transition)}
+.ld-seg a:hover{color:#fff}
+.ld-seg a.on{background:var(--ld-accent);color:#fff}
+@media(min-width:701px) and (max-width:900px){
+  .ld-hero{padding:24px}
+  .ld-hero h1{font-size:clamp(2.1rem,5.2vw,3.6rem);margin:16px 0 12px}
+  .ld-hero p{font-size:.86rem}
+  .ld-stats{gap:18px}
+  .ld-form-side{padding:28px}
 }
-@media(max-width:480px){.ld-split .ld-auth-title{font-size:1.6rem}}
+@media(max-width:700px){
+  .ld-split{grid-template-columns:1fr;align-content:start;padding:22px 20px 32px;
+    background:
+      radial-gradient(80% 38% at 18% 6%,rgba(212,102,79,.42) 0%,rgba(212,102,79,.10) 50%,transparent 78%),
+      linear-gradient(170deg,#1B1B1D 0%,#111214 45%,#0D0E10 100%)}
+  .ld-hero{height:auto;padding:0;overflow:visible;background:transparent}
+  .ld-hero::before{inset:-22px -20px auto;height:260px}
+  .ld-hero-body{margin-top:22px}
+  .ld-pill{font-size:.76rem;padding:6px 12px}
+  .ld-hero h1{font-size:clamp(2.3rem,11vw,2.9rem);margin:14px 0 0}
+  .ld-hero h1 span{display:inline}
+  .ld-hero p,.ld-wave,.ld-stats{display:none}
+  .ld-form-side{display:block;padding:0}
+  .ld-split .ld-auth-card{max-width:none;padding:26px 0 0}
+  .ld-split .ld-auth-title{font-size:1.75rem}
+}
 
 .ld-field{margin-bottom:14px}
 .ld-label{display:block;font-size:.84rem;font-weight:600;color:var(--ld-ink-2);margin-bottom:6px}
@@ -278,141 +299,3 @@ table.ld-table tbody tr:hover td{background:#FAFAFB}
 .hidden{display:none!important}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--ld-line);border-top-color:var(--ld-accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-
-/* Login uses one shared gradient surface for the introduction and form. */
-.ld-login{background:#15171C;color:#fff}
-.ld-login .ld-split{grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:clamp(28px,5vw,76px);padding:clamp(28px,5vw,72px);background:
-  radial-gradient(55% 55% at 24% 42%, rgba(212,102,79,.52) 0%, rgba(212,102,79,.14) 48%, transparent 76%),
-  radial-gradient(42% 38% at 100% 100%, rgba(201,206,218,.15) 0%, transparent 72%),
-  linear-gradient(160deg,#23252C 0%,#15171C 55%,#101115 100%)}
-.ld-login .ld-hero{background:transparent;border-radius:0;padding:24px 0;overflow:visible}
-.ld-login .ld-hero::before{display:none}
-.ld-login .ld-form-side{padding:24px 0}
-.ld-login .ld-split .ld-auth-card{max-width:460px;background:transparent;box-shadow:none;color:#fff;padding:32px 0}
-.ld-login .ld-auth-title{color:#fff}
-.ld-login .ld-auth-sub,.ld-login .ld-label{color:rgba(255,255,255,.68)}
-.ld-login .ld-seg{background:rgba(255,255,255,.09)}
-.ld-login .ld-seg a{color:rgba(255,255,255,.7)}
-.ld-login .ld-seg a:hover{color:#fff}
-.ld-login .ld-seg a.on{background:rgba(255,255,255,.16);color:#fff}
-.ld-login .ld-hr{border-color:rgba(255,255,255,.16)}
-.ld-login .ld-btn-ghost{background:rgba(255,255,255,.1);color:#fff}
-.ld-login .ld-btn-ghost:hover{background:rgba(255,255,255,.17)}
-.ld-login .ld-alt{color:rgba(255,255,255,.68)}
-@media(min-width:701px) and (max-width:900px){
-  .ld-login .ld-split{grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:24px;padding:24px}
-  .ld-login .ld-hero{padding:20px 0;border-radius:0}
-  .ld-login .ld-hero-body{margin-top:auto}
-  .ld-login .ld-hero h1{font-size:clamp(2.3rem,5vw,3.4rem);margin:16px 0 12px}
-  .ld-login .ld-hero h1 span{display:block}
-  .ld-login .ld-hero p{font-size:.9rem}
-  .ld-login .ld-wave,.ld-login .ld-stats{display:flex}
-  .ld-login .ld-form-side{padding:0}
-}
-@media(max-width:700px){
-  .ld-login .ld-split{min-height:100svh;grid-template-columns:1fr;place-items:center;padding:24px 20px}
-  .ld-login .ld-hero{display:none}
-  .ld-login .ld-form-side{width:100%;min-height:calc(100svh - 48px);display:grid;place-items:center;padding:0}
-  .ld-login .ld-split .ld-auth-card{width:100%;max-width:460px;padding:24px 0}
-}
-
-/* Sign-up shares the unified gradient auth layout. */
-.ld-signup{background:#15171C;color:#fff}
-.ld-signup .ld-split{grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:clamp(28px,5vw,76px);padding:clamp(28px,5vw,72px);background:
-  radial-gradient(55% 55% at 24% 42%, rgba(212,102,79,.52) 0%, rgba(212,102,79,.14) 48%, transparent 76%),
-  radial-gradient(42% 38% at 100% 100%, rgba(201,206,218,.15) 0%, transparent 72%),
-  linear-gradient(160deg,#23252C 0%,#15171C 55%,#101115 100%)}
-.ld-signup .ld-hero{background:transparent;border-radius:0;padding:24px 0;overflow:visible}
-.ld-signup .ld-hero::before{display:none}
-.ld-signup .ld-form-side{padding:24px 0}
-.ld-signup .ld-split .ld-auth-card{max-width:460px;background:transparent;box-shadow:none;color:#fff;padding:32px 0}
-.ld-signup .ld-split .ld-auth-title{color:#fff}
-.ld-signup .ld-split .ld-auth-sub,.ld-signup .ld-split .ld-label,.ld-signup .ld-split .ld-hint{color:rgba(255,255,255,.68)}
-.ld-signup .ld-seg{background:rgba(255,255,255,.09)}
-.ld-signup .ld-seg a{color:rgba(255,255,255,.7)}
-.ld-signup .ld-seg a:hover{color:#fff}
-.ld-signup .ld-seg a.on{background:rgba(255,255,255,.16);color:#fff}
-.ld-signup .ld-hr{border-color:rgba(255,255,255,.16)}
-.ld-signup .ld-btn-ghost{background:rgba(255,255,255,.1);color:#fff}
-.ld-signup .ld-btn-ghost:hover{background:rgba(255,255,255,.17)}
-.ld-signup .ld-alt{color:rgba(255,255,255,.68)}
-@media(min-width:701px) and (max-width:900px){
-  .ld-signup .ld-split{grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:24px;padding:24px}
-  .ld-signup .ld-hero{padding:20px 0;border-radius:0}
-  .ld-signup .ld-hero-body{margin-top:auto}
-  .ld-signup .ld-hero h1{font-size:clamp(2.3rem,5vw,3.4rem);margin:16px 0 12px}
-  .ld-signup .ld-hero h1 span{display:block}
-  .ld-signup .ld-hero p{font-size:.9rem}
-  .ld-signup .ld-wave,.ld-signup .ld-stats{display:flex}
-  .ld-signup .ld-form-side{padding:0}
-}
-@media(max-width:700px){
-  .ld-signup .ld-split{min-height:100svh;grid-template-columns:1fr;place-items:center;padding:24px 20px}
-  .ld-signup .ld-hero{display:none}
-  .ld-signup .ld-form-side{width:100%;min-height:calc(100svh - 48px);display:grid;place-items:center;padding:0}
-  .ld-signup .ld-split .ld-auth-card{width:100%;max-width:460px;padding:24px 0}
-}
-
-/* Keep white auth-page text out of the white teacher dialogs. */
-.ld-login .ld-modal-bg .ld-auth-title,.ld-signup .ld-modal-bg .ld-auth-title{color:var(--ld-ink)}
-.ld-login .ld-modal-bg .ld-auth-sub,.ld-signup .ld-modal-bg .ld-auth-sub{color:var(--ld-ink-2)}
-.ld-login .ld-modal-bg .ld-label,.ld-signup .ld-modal-bg .ld-label{color:var(--ld-ink-2)}
-
-/* Keep the introduction anchored independently of the form height. */
-.ld-login .ld-hero,.ld-signup .ld-hero{height:calc(100svh - 2 * clamp(28px,5vw,72px));align-self:start}
-@media(min-width:701px) and (max-width:900px){
-  .ld-login .ld-hero,.ld-signup .ld-hero{height:calc(100svh - 48px)}
-}
-
-/* Shared full-bleed auth layout, sized to match the Speaking reference. */
-.ld-login,.ld-signup{background:#111214;color:#fff}
-.ld-login .ld-split,.ld-signup .ld-split{
-  min-height:100svh;grid-template-columns:minmax(0,44fr) minmax(0,56fr);gap:0;padding:0;background:#111214
-}
-.ld-login .ld-hero,.ld-signup .ld-hero{
-  height:100svh;min-height:0;align-self:start;padding:42px clamp(24px,2.35vw,46px) 46px;
-  border-radius:0;overflow:hidden;
-  background:
-    radial-gradient(55% 55% at 28% 42%,rgba(212,102,79,.48) 0%,rgba(212,102,79,.12) 48%,transparent 76%),
-    radial-gradient(42% 38% at 100% 100%,rgba(201,206,218,.12) 0%,transparent 72%),
-    linear-gradient(160deg,#1B1B1D 0%,#111214 62%,#0D0E10 100%)
-}
-.ld-login .ld-hero::before,.ld-signup .ld-hero::before{display:block}
-.ld-login .ld-form-side,.ld-signup .ld-form-side{
-  width:100%;min-width:0;padding:44px clamp(28px,5.8vw,114px);background:#111214
-}
-.ld-login .ld-split .ld-auth-card,.ld-signup .ld-split .ld-auth-card{
-  width:100%;max-width:460px;padding:32px 0;background:transparent;box-shadow:none;color:#fff
-}
-.ld-login .ld-split .ld-auth-title,.ld-signup .ld-split .ld-auth-title{color:#fff}
-.ld-login .ld-split .ld-auth-sub,.ld-login .ld-split .ld-label,
-.ld-signup .ld-split .ld-auth-sub,.ld-signup .ld-split .ld-label,.ld-signup .ld-split .ld-hint{color:rgba(255,255,255,.68)}
-.ld-login .ld-seg,.ld-signup .ld-seg{background:rgba(255,255,255,.09)}
-.ld-login .ld-seg a,.ld-signup .ld-seg a{color:rgba(255,255,255,.7)}
-.ld-login .ld-seg a:hover,.ld-signup .ld-seg a:hover{color:#fff}
-.ld-login .ld-seg a.on,.ld-signup .ld-seg a.on{background:var(--ld-accent);color:#fff}
-.ld-login .ld-hr,.ld-signup .ld-hr{border-color:rgba(255,255,255,.16)}
-.ld-login .ld-btn-ghost,.ld-signup .ld-btn-ghost{background:rgba(255,255,255,.1);color:#fff}
-.ld-login .ld-btn-ghost:hover,.ld-signup .ld-btn-ghost:hover{background:rgba(255,255,255,.17)}
-.ld-login .ld-alt,.ld-signup .ld-alt{color:rgba(255,255,255,.68)}
-@media(min-width:701px) and (max-width:900px){
-  .ld-login .ld-hero,.ld-signup .ld-hero{height:100svh;padding:24px}
-  .ld-login .ld-hero h1,.ld-signup .ld-hero h1{font-size:clamp(2.1rem,5.2vw,3.6rem);margin:16px 0 12px}
-  .ld-login .ld-hero h1 span,.ld-signup .ld-hero h1 span{display:block}
-  .ld-login .ld-hero p,.ld-signup .ld-hero p{font-size:.86rem}
-  .ld-login .ld-wave,.ld-login .ld-stats,.ld-signup .ld-wave,.ld-signup .ld-stats{display:flex}
-  .ld-login .ld-stats,.ld-signup .ld-stats{gap:18px}
-  .ld-login .ld-form-side,.ld-signup .ld-form-side{padding:28px}
-}
-@media(max-width:700px){
-  .ld-login .ld-split,.ld-signup .ld-split{
-    min-height:100svh;grid-template-columns:1fr;place-items:center;padding:24px 20px;
-    background:radial-gradient(55% 45% at 28% 42%,rgba(212,102,79,.22),transparent 76%),linear-gradient(160deg,#17181B 0%,#111214 62%,#0D0E10 100%)
-  }
-  .ld-login .ld-hero,.ld-signup .ld-hero{display:none;height:auto}
-  .ld-login .ld-form-side,.ld-signup .ld-form-side{
-    width:100%;min-height:calc(100svh - 48px);display:grid;place-items:center;padding:0;background:transparent
-  }
-  .ld-login .ld-split .ld-auth-card,.ld-signup .ld-split .ld-auth-card{width:100%;max-width:460px;padding:24px 0}
-}
