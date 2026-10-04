@@ -51,3 +51,15 @@ Muốn quay lại bản Sheet: đổi về `enabled: false`.
 
 - **Dọn dữ liệu nháp:** khi xong đủ 3 phần, app bỏ script thô và danh sách từ A1–B1. Bài chỉ mới dán script, chưa làm phần nào, sẽ tự xoá sau 7 ngày.
 - **Mật khẩu:** Firebase lưu ở dạng mã hoá, không đọc lại được. Khi SV bấm "Quên mật khẩu", Apps Script đặt mật khẩu mới và gửi qua email.
+
+## Quản lý SV và lớp (Edit, Archive)
+Sửa thông tin SV, đổi mã SV, chuyển lớp, lưu trữ/khôi phục cả lớp đều chạy qua Apps Script (cần quyền quản trị Firebase). Sau khi cập nhật:
+1. Dán đè `gas/FirebaseLD.gs` vào file `FirebaseLD` trong Apps Script.
+2. **Deploy ▸ Manage deployments ▸ ✏️ Edit ▸ New version ▸ Deploy.**
+
+Chưa deploy thì các nút Edit / Archive class / Restore class báo lỗi. Lưu trữ từng SV (nút Archive trong danh sách lớp) vẫn chạy được.
+
+- **Đổi mã SV:** SV đăng nhập bằng mã mới, mật khẩu giữ nguyên. Bài làm cũ vẫn theo SV.
+- **Chuyển lớp:** bài đã làm vẫn nằm ở lớp cũ trong tab Sessions; bài mới thuộc lớp mới.
+- **Lưu trữ lớp:** mọi SV đang học trong lớp được lưu trữ cùng và không đăng nhập được. **Khôi phục lớp** chỉ mở lại những SV bị lưu trữ cùng lớp; SV đã lưu trữ riêng trước đó vẫn ở Student Archive.
+- Các chức năng này chỉ có ở bản Firebase (không có ở bản Google Sheet cũ).

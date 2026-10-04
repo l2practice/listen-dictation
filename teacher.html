@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
 <title>ListenDictation</title>
-<link rel="stylesheet" href="ld-theme.css?v=8">
+<link rel="stylesheet" href="ld-theme.css?v=9">
 <style>
 /* shared chrome, cards, buttons, forms, tables → ld-theme.css */
 .tab-pills{display:flex;gap:4px;background:var(--ld-surface-2);border-radius:var(--radius-pill);padding:4px;margin:0 auto}
@@ -24,6 +24,24 @@ table.ld-table td{white-space:nowrap}
 .badge-green{background:var(--ld-ok-lt);color:var(--ld-ok)}
 .badge-grey{background:var(--ld-surface-2);color:var(--ld-ink-3)}
 .badge-code{background:var(--ld-slate-lt);color:var(--ld-ink);font-family:var(--font-mono)}
+.sub-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.sub-tab{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:none;border-radius:var(--radius-pill);background:var(--ld-surface);color:var(--ld-ink-2);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;transition:var(--transition)}
+.sub-tab:hover{color:var(--ld-ink)}
+.sub-tab.active{background:var(--ld-ink);color:#fff}
+.sub-count{min-width:20px;padding:0 6px;border-radius:100px;background:var(--ld-surface-2);color:var(--ld-ink);font-size:11px;line-height:20px;text-align:center}
+.sub-tab.active .sub-count{background:rgba(255,255,255,.18);color:#fff}
+.class-card.clickable{cursor:pointer}
+.class-card.clickable:hover{background:var(--ld-slate-lt)}
+td.mono{font-family:var(--font-mono);font-size:12.5px}
+.row-actions{display:flex;gap:6px;justify-content:flex-end}
+th[data-sort="asc"]::after{content:" ↑";color:var(--ld-accent)}
+th[data-sort="desc"]::after{content:" ↓";color:var(--ld-accent)}
+.ld-modal-bg .ld-row{gap:10px}
+@media(max-width:640px){
+  .hide-sm{display:none}
+  .row-actions .btn{padding:7px 9px}
+  .row-actions .btn span{display:none}
+}
 .class-card{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-radius:18px;background:var(--ld-surface-2);margin-bottom:8px}
 .class-sub{font-size:12px;color:var(--ld-ink-3);margin-top:3px}
 .class-card .btn-secondary{background:#fff}
@@ -132,28 +150,72 @@ table.ld-table td{white-space:nowrap}
 
   <!-- ═══ CLASSES ═══ -->
   <div id="tab-classes" class="hidden">
-    <div class="card">
-      <div class="card-title"><span><i data-ic="plus"></i>Create New Class</span></div>
-      <div class="form-row">
-        <div style="flex:2 1 200px"><label class="form-label">Class Name</label><input class="form-input" id="new-class-name" placeholder="e.g. DH21NA1"></div>
-        <div><label class="form-label">Academic Year</label><input class="form-input" id="new-class-year" placeholder="2025-2026"></div>
-        <div><label class="form-label">Semester</label><input class="form-input" id="new-class-semester" placeholder="Sem 1"></div>
-        <button class="btn btn-primary" onclick="createClass()" style="flex:0 0 auto">Create Class <span class="ld-go"><i data-ic="plus"></i></span></button>
+    <div class="sub-tabs" role="tablist">
+      <button class="sub-tab active" id="ct-btn-classes" onclick="switchClassTab('classes')"><i data-ic="users"></i>Classes</button>
+      <button class="sub-tab" id="ct-btn-carchive" onclick="switchClassTab('carchive')"><i data-ic="archive"></i>Class Archive<span class="sub-count" id="ct-count-carchive"></span></button>
+      <button class="sub-tab" id="ct-btn-sarchive" onclick="switchClassTab('sarchive')"><i data-ic="archive"></i>Student Archive<span class="sub-count" id="ct-count-sarchive"></span></button>
+      <button class="topbar-btn round" onclick="loadClasses()" title="Refresh" style="margin-left:auto"><i data-ic="refresh"></i></button>
+    </div>
+
+    <!-- Lớp đang học -->
+    <div id="ct-pane-classes">
+      <div class="card">
+        <div class="card-title"><span><i data-ic="plus"></i>Create New Class</span></div>
+        <div class="form-row">
+          <div style="flex:2 1 200px"><label class="form-label">Class Name</label><input class="form-input" id="new-class-name" placeholder="e.g. DH21NA1"></div>
+          <div><label class="form-label">Academic Year</label><input class="form-input" id="new-class-year" placeholder="2025-2026"></div>
+          <div><label class="form-label">Semester</label><input class="form-input" id="new-class-semester" placeholder="Sem 1"></div>
+          <button class="btn btn-primary" onclick="createClass()" style="flex:0 0 auto">Create Class <span class="ld-go"><i data-ic="plus"></i></span></button>
+        </div>
+        <div id="new-class-result" style="margin-top:12px;font-size:13.5px"></div>
       </div>
-      <div id="new-class-result" style="margin-top:12px;font-size:13.5px"></div>
+      <div class="card">
+        <div class="card-title"><span><i data-ic="users"></i>Class List</span></div>
+        <div id="classes-list">Loading…</div>
+      </div>
     </div>
 
-    <div class="card">
-      <div class="card-title"><span><i data-ic="users"></i>Class List</span><button class="topbar-btn round" onclick="loadClasses()" title="Refresh"><i data-ic="refresh"></i></button></div>
-      <div id="classes-list">Loading…</div>
+    <!-- Lớp đã lưu trữ: bấm vào để xem danh sách SV cũ -->
+    <div id="ct-pane-carchive" class="hidden">
+      <div class="card">
+        <div class="card-title"><span><i data-ic="archive"></i>Class Archive</span><span class="muted">Click a class to see its former students</span></div>
+        <div id="carchive-list">Loading…</div>
+      </div>
     </div>
 
+    <!-- SV đã lưu trữ (riêng lẻ hoặc cùng lớp) -->
+    <div id="ct-pane-sarchive" class="hidden">
+      <div class="card">
+        <div class="card-title"><span><i data-ic="archive"></i>Student Archive</span>
+          <span class="search-pill"><i data-ic="search"></i><input class="form-input" id="sarchive-search" placeholder="Search ID / name / class…" oninput="renderStudentArchive()"></span>
+        </div>
+        <div style="overflow:auto">
+          <table class="ld-table"><thead><tr>
+            <th onclick="sortList('sarchive','studentId')" id="sarchive-th-studentId">Student ID</th>
+            <th onclick="sortList('sarchive','fullName')" id="sarchive-th-fullName">Full Name</th>
+            <th onclick="sortList('sarchive','className')" id="sarchive-th-className">Class</th>
+            <th class="hide-sm">Email</th><th class="hide-sm">Archived</th><th></th>
+          </tr></thead><tbody id="sarchive-tbody"></tbody></table>
+        </div>
+        <div id="sarchive-count" class="muted" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- Danh sách SV của 1 lớp (dùng chung cho lớp đang học và lớp lưu trữ) -->
     <div class="card hidden" id="roster-card">
-      <div class="card-title"><span><i data-ic="user"></i><span id="roster-title">Students in Class</span></span><button class="btn btn-secondary btn-sm" onclick="document.getElementById('roster-card').classList.add('hidden')"><i data-ic="x"></i>Close</button></div>
+      <div class="card-title"><span><i data-ic="user"></i><span id="roster-title">Students in Class</span></span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap">
+          <span id="roster-actions"></span>
+          <button class="btn btn-secondary btn-sm" onclick="closeRoster()"><i data-ic="x"></i>Close</button>
+        </span>
+      </div>
+      <div id="roster-note" class="muted" style="margin:-4px 0 10px"></div>
       <div style="overflow:auto">
-        <table class="ld-table"><thead><tr><th>Student ID</th><th>Full Name</th><th>Email</th><th>Status</th><th></th></tr></thead>
-          <tbody id="roster-tbody"></tbody>
-        </table>
+        <table class="ld-table"><thead><tr>
+          <th onclick="sortList('roster','studentId')" id="roster-th-studentId">Student ID</th>
+          <th onclick="sortList('roster','fullName')" id="roster-th-fullName">Full Name</th>
+          <th class="hide-sm">Email</th><th class="hide-sm">Phone</th><th class="hide-sm">Status</th><th></th>
+        </tr></thead><tbody id="roster-tbody"></tbody></table>
       </div>
     </div>
   </div>
@@ -281,9 +343,29 @@ table.ld-table td{white-space:nowrap}
   </div>
 </div>
 
-<script src="ld-common.js?v=2"></script>
+<!-- ═══ EDIT STUDENT ═══ -->
+<div class="ld-modal-bg" id="edit-modal" onclick="if(event.target===this)closeEdit()">
+  <div class="ld-auth-card" style="max-width:460px">
+    <div class="ld-auth-title" style="font-size:1.3rem;text-align:left">Edit student</div>
+    <p class="ld-auth-sub" style="text-align:left;margin-bottom:16px" id="edit-sub"></p>
+    <div class="ld-row">
+      <div class="ld-field"><label class="ld-label" for="ed-sid">Student ID</label><input class="ld-input" id="ed-sid"></div>
+      <div class="ld-field"><label class="ld-label" for="ed-class">Class</label><select class="ld-input form-select" id="ed-class"></select></div>
+    </div>
+    <div class="ld-field"><label class="ld-label" for="ed-name">Full Name</label><input class="ld-input" id="ed-name"></div>
+    <div class="ld-row">
+      <div class="ld-field"><label class="ld-label" for="ed-email">Email</label><input class="ld-input" id="ed-email" type="email"></div>
+      <div class="ld-field"><label class="ld-label" for="ed-phone">Phone</label><input class="ld-input" id="ed-phone"></div>
+    </div>
+    <div class="ld-hint" style="margin:-4px 0 16px">Đổi mã SV → SV đăng nhập bằng mã mới, mật khẩu giữ nguyên. Đổi lớp → bài đã làm vẫn giữ ở lớp cũ trong tab Sessions.</div>
+    <button class="ld-btn ld-btn-primary" id="ed-save" onclick="saveEdit()">Save changes</button>
+    <div style="text-align:center;margin-top:12px"><a href="#" class="ld-link" style="color:var(--ld-ink-2)" onclick="closeEdit();return false">Cancel</a></div>
+  </div>
+</div>
+
+<script src="ld-common.js?v=3"></script>
 <script>
-var App = { classes: [], sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false,
+var App = { classes: [], students: [], roster: null, editing: null, sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false,
   practice: [] };
 
 (function init() {
@@ -316,43 +398,197 @@ async function createClass() {
   document.getElementById('new-class-name').value = ''; document.getElementById('new-class-year').value = ''; document.getElementById('new-class-semester').value = '';
   loadClasses();
 }
+// ── CLASSES: lớp đang học, Class Archive, Student Archive ──
+// Tải lớp + toàn bộ SV của GV 1 lần; các bảng lọc/sắp xếp tại chỗ.
 async function loadClasses() {
   var el = document.getElementById('classes-list');
   el.innerHTML = '<span class="spinner"></span> Loading…';
-  var r = await LD.api('teacher.getClasses', {});
+  var res = await Promise.all([LD.api('teacher.getClasses', {}), LD.api('teacher.getRoster', {})]);
+  var r = res[0], st = res[1];
   if (!r.success) { el.innerHTML = '<span style="color:var(--ld-danger)">Error: ' + LD.esc(r.error) + '</span>'; return; }
   App.classes = r.data;
-  // filter options sẽ được merge vào khi GV mở tab Sessions (loadFilterOptions)
-  el.innerHTML = r.data.length ? r.data.map(function (c) {
-    return '<div class="class-card"><div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-code">' + c.ClassID + '</span> ' +
-      '<span class="badge ' + (c.Status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + c.Status + '</span>' +
-      '<div class="class-sub">' + (c.AcademicYear || '') + ' ' + (c.Semester || '') + ' · ' + c.StudentCount + ' students</div></div>' +
-      '<div style="display:flex;gap:6px">' +
-      '<button class="btn btn-secondary btn-sm" onclick="viewRoster(\'' + c.ClassID + '\',\'' + LD.esc(c.ClassName).replace(/'/g, "\\'") + '\')">' + LD.label('users', 'Roster') + '</button>' +
-      '<button class="btn btn-secondary btn-sm" onclick="toggleClassStatus(\'' + c.ClassID + '\',\'' + c.Status + '\')">' + (c.Status === 'Active' ? LD.label('lock', 'Lock') : LD.label('refresh', 'Reopen')) + '</button>' +
+  App.students = (st.success && st.data) || [];
+  renderClassLists();
+  renderStudentArchive();
+  if (App.roster) renderRoster();
+}
+function classById(id) { return App.classes.find(function (c) { return c.ClassID === id; }); }
+function jsq(s) { return LD.esc(String(s)).replace(/'/g, "\\'"); }
+function renderClassLists() {
+  var active = App.classes.filter(function (c) { return c.Status !== 'Archived'; });
+  var archived = App.classes.filter(function (c) { return c.Status === 'Archived'; });
+  var card = function (c, isArchived) {
+    var former = App.students.filter(function (s) { return s.classId === c.ClassID; }).length;
+    return '<div class="class-card' + (isArchived ? ' clickable' : '') + '"' + (isArchived ? ' onclick="viewRoster(\'' + c.ClassID + '\')"' : '') + '>' +
+      '<div><b>' + LD.esc(c.ClassName) + '</b> <span class="badge badge-code">' + c.ClassID + '</span> ' +
+      (isArchived ? '<span class="badge badge-grey">Archived</span>' : '') +
+      '<div class="class-sub">' + LD.esc((c.AcademicYear || '') + ' ' + (c.Semester || '')) + ' · ' +
+      (isArchived ? former + ' former students' + (c.ArchivedAt ? ' · archived ' + LD.fmtDate(c.ArchivedAt).split(' ')[0] : '') : c.StudentCount + ' students') + '</div></div>' +
+      '<div style="display:flex;gap:6px" onclick="event.stopPropagation()">' +
+      '<button class="btn btn-secondary btn-sm" onclick="viewRoster(\'' + c.ClassID + '\')">' + LD.label('users', isArchived ? 'Students' : 'Roster') + '</button>' +
+      (isArchived
+        ? '<button class="btn btn-secondary btn-sm" onclick="restoreClass(\'' + c.ClassID + '\',this)">' + LD.label('refresh', 'Restore') + '</button>'
+        : '<button class="btn btn-secondary btn-sm" onclick="archiveClass(\'' + c.ClassID + '\',this)">' + LD.label('archive', 'Archive') + '</button>') +
       '</div></div>';
-  }).join('') : '<p style="color:var(--ld-ink-3);font-size:13px">No classes yet.</p>';
+  };
+  document.getElementById('classes-list').innerHTML = active.length ? active.map(function (c) { return card(c, false); }).join('')
+    : '<p class="muted" style="font-size:13px">No active classes.</p>';
+  document.getElementById('carchive-list').innerHTML = archived.length ? archived.map(function (c) { return card(c, true); }).join('')
+    : '<p class="muted" style="font-size:13px">No archived classes.</p>';
+  var setCount = function (id, n) { var e = document.getElementById(id); e.textContent = n || ''; e.classList.toggle('hidden', !n); };
+  setCount('ct-count-carchive', archived.length);
+  setCount('ct-count-sarchive', App.students.filter(function (s) { return s.status === 'Archived'; }).length);
 }
-async function toggleClassStatus(classId, curStatus) {
-  var newStatus = curStatus === 'Active' ? 'Archived' : 'Active';
-  var r = await LD.api('teacher.setClassStatus', { classId: classId, status: newStatus });
-  if (r.success) loadClasses(); else LD.toast(r.error || 'Error', 'err');
+function switchClassTab(tab) {
+  ['classes', 'carchive', 'sarchive'].forEach(function (t) {
+    document.getElementById('ct-pane-' + t).classList.toggle('hidden', t !== tab);
+    document.getElementById('ct-btn-' + t).classList.toggle('active', t === tab);
+  });
+  closeRoster();
 }
-async function viewRoster(classId, className) {
-  document.getElementById('roster-title').textContent = 'Students in ' + className;
-  document.getElementById('roster-card').classList.remove('hidden');
-  document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
-  var r = await LD.api('teacher.getRoster', { classId: classId });
-  if (!r.success) { document.getElementById('roster-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--ld-danger)">Error</td></tr>'; return; }
-  document.getElementById('roster-tbody').innerHTML = r.data.length ? r.data.map(function (s) {
-    return '<tr><td>' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td><td>' + LD.esc(s.email) + '</td>' +
-      '<td><span class="badge ' + (s.status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + s.status + '</span></td>' +
-      '<td><button class="btn btn-secondary btn-sm" onclick="toggleStudentStatus(\'' + s.studentId + '\',\'' + s.status + '\')">' + (s.status === 'Active' ? 'Lock' : 'Reopen') + '</button></td></tr>';
-  }).join('') : '<tr><td colspan="5" style="color:var(--ld-ink-3)">No students in this class yet.</td></tr>';
+
+// Sắp xếp: bấm tiêu đề cột; mã SV so theo số (IE41-2 < IE41-10)
+App.sorts = { roster: { key: 'studentId', dir: 1 }, sarchive: { key: 'studentId', dir: 1 } };
+function sortRows(rows, which) {
+  var o = App.sorts[which];
+  return rows.slice().sort(function (a, b) {
+    return o.dir * String(a[o.key] || '').localeCompare(String(b[o.key] || ''), 'vi', { numeric: true, sensitivity: 'base' });
+  });
 }
-async function toggleStudentStatus(studentId, curStatus) {
-  var r = await LD.api('teacher.archiveStudent', { studentId: studentId, archived: curStatus === 'Active' });
-  if (r.success) { LD.toast('Updated', 'ok'); loadClasses(); } else LD.toast(r.error || 'Error', 'err');
+function sortList(which, key) {
+  var o = App.sorts[which];
+  o.dir = o.key === key ? -o.dir : 1; o.key = key;
+  which === 'roster' ? renderRoster() : renderStudentArchive();
+}
+function markSort(which) {
+  var o = App.sorts[which];
+  document.querySelectorAll('[id^="' + which + '-th-"]').forEach(function (th) {
+    var k = th.id.slice(which.length + 4);
+    th.dataset.sort = k === o.key ? (o.dir > 0 ? 'asc' : 'desc') : '';
+  });
+}
+
+function viewRoster(classId) {
+  App.roster = classId;
+  renderRoster();
+  var card = document.getElementById('roster-card');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function closeRoster() { App.roster = null; document.getElementById('roster-card').classList.add('hidden'); }
+function renderRoster() {
+  var c = classById(App.roster);
+  if (!c) { closeRoster(); return; }
+  var isArchived = c.Status === 'Archived';
+  var all = App.students.filter(function (s) { return s.classId === c.ClassID; });
+  // Lớp đang học: chỉ SV đang học (SV đã lưu trữ ở tab Student Archive). Lớp lưu trữ: mọi SV cũ.
+  var rows = isArchived ? all : all.filter(function (s) { return s.status === 'Active'; });
+  var gone = all.length - rows.length;
+  document.getElementById('roster-title').textContent = (isArchived ? 'Former students of ' : 'Students in ') + c.ClassName;
+  document.getElementById('roster-note').textContent = isArchived
+    ? 'This class is archived. Restore the class to bring back the students archived with it.'
+    : rows.length + ' students' + (gone ? ' · ' + gone + ' archived (see Student Archive)' : '');
+  document.getElementById('roster-actions').innerHTML = isArchived
+    ? '<button class="btn btn-secondary btn-sm" onclick="restoreClass(\'' + c.ClassID + '\',this)">' + LD.label('refresh', 'Restore class') + '</button>'
+    : (rows.length ? '<button class="btn btn-secondary btn-sm" onclick="archiveClass(\'' + c.ClassID + '\',this)">' + LD.label('archive', 'Archive class') + '</button>' : '');
+  markSort('roster');
+  document.getElementById('roster-tbody').innerHTML = rows.length ? sortRows(rows, 'roster').map(function (s) {
+    return '<tr><td class="mono">' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td><td class="hide-sm">' + LD.esc(s.email) + '</td><td class="hide-sm">' + LD.esc(s.phone) + '</td>' +
+      '<td class="hide-sm"><span class="badge ' + (s.status === 'Active' ? 'badge-green' : 'badge-grey') + '">' + s.status + '</span></td>' +
+      '<td><div class="row-actions">' + studentButtons(s) + '</div></td></tr>';
+  }).join('') : '<tr><td colspan="6" style="color:var(--ld-ink-3)">No students in this class yet.</td></tr>';
+}
+function studentButtons(s) {
+  return '<button class="btn btn-secondary btn-sm" onclick="openEdit(\'' + jsq(s.uid) + '\')">' + LD.label('pen', 'Edit') + '</button>' +
+    (s.status === 'Active'
+      ? '<button class="btn btn-secondary btn-sm" onclick="setStudentArchived(\'' + jsq(s.uid) + '\',true,this)">' + LD.label('archive', 'Archive') + '</button>'
+      : '<button class="btn btn-secondary btn-sm" onclick="setStudentArchived(\'' + jsq(s.uid) + '\',false,this)">' + LD.label('refresh', 'Restore') + '</button>');
+}
+function renderStudentArchive() {
+  var term = (document.getElementById('sarchive-search').value || '').trim().toLowerCase();
+  var rows = App.students.filter(function (s) {
+    return s.status === 'Archived' && (!term || [s.studentId, s.fullName, s.className, s.email].join(' ').toLowerCase().indexOf(term) >= 0);
+  });
+  markSort('sarchive');
+  document.getElementById('sarchive-tbody').innerHTML = rows.length ? sortRows(rows, 'sarchive').map(function (s) {
+    var c = classById(s.classId);
+    return '<tr><td class="mono">' + LD.esc(s.studentId) + '</td><td>' + LD.esc(s.fullName) + '</td>' +
+      '<td>' + LD.esc(s.className) + (c && c.Status === 'Archived' ? ' <span class="badge badge-grey">archived class</span>' : '') + '</td>' +
+      '<td class="hide-sm">' + LD.esc(s.email) + '</td>' +
+      '<td class="hide-sm"><span class="badge badge-grey">' + (s.archivedBy === 'class' ? 'with class' : 'individually') + '</span></td>' +
+      '<td><div class="row-actions">' + studentButtons(s) + '</div></td></tr>';
+  }).join('') : '<tr><td colspan="6" style="color:var(--ld-ink-3)">' + (term ? 'No match.' : 'No archived students.') + '</td></tr>';
+  document.getElementById('sarchive-count').textContent = rows.length ? rows.length + ' archived student(s)' : '';
+}
+
+async function busy(btn, fn) {
+  var orig = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  try { return await fn(); } finally { if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = orig; } }
+}
+async function setStudentArchived(uid, archived, btn) {
+  var s = App.students.find(function (x) { return x.uid === uid; });
+  if (!s) return;
+  var c = classById(s.classId);
+  if (!archived && c && c.Status === 'Archived') {
+    LD.toast('Lớp ' + c.ClassName + ' đang lưu trữ. Bấm Edit để chuyển SV sang lớp đang học, rồi Restore.', 'err', 5000);
+    return;
+  }
+  if (archived && !confirm('Lưu trữ ' + s.fullName + ' (' + s.studentId + ')? SV sẽ không đăng nhập được cho tới khi được khôi phục.')) return;
+  var r = await busy(btn, function () { return LD.api('teacher.archiveStudent', { studentId: s.studentId, archived: archived }); });
+  if (!r.success) { LD.toast(r.error || 'Error', 'err'); return; }
+  LD.toast(archived ? 'Đã lưu trữ ' + s.fullName : 'Đã khôi phục ' + s.fullName, 'ok');
+  loadClasses();
+}
+async function archiveClass(classId, btn) {
+  var c = classById(classId); if (!c) return;
+  var n = App.students.filter(function (s) { return s.classId === classId && s.status === 'Active'; }).length;
+  if (!confirm('Lưu trữ lớp ' + c.ClassName + '?\n\n' + n + ' SV đang học sẽ được lưu trữ cùng lớp và không đăng nhập được nữa. Bài đã làm vẫn giữ nguyên.\nCó thể khôi phục lại trong tab Class Archive.')) return;
+  var r = await busy(btn, function () { return LD.api('teacher.archiveClass', { classId: classId }); });
+  if (!r.success) { LD.toast(r.error || 'Error', 'err'); return; }
+  LD.toast('Đã lưu trữ lớp ' + c.ClassName + ' và ' + (r.students || 0) + ' SV', 'ok');
+  closeRoster(); loadClasses();
+}
+async function restoreClass(classId, btn) {
+  var c = classById(classId); if (!c) return;
+  if (!confirm('Khôi phục lớp ' + c.ClassName + '?\n\nCác SV bị lưu trữ cùng lớp sẽ đăng nhập lại được. SV đã lưu trữ riêng trước đó vẫn ở Student Archive.')) return;
+  var r = await busy(btn, function () { return LD.api('teacher.restoreClass', { classId: classId }); });
+  if (!r.success) { LD.toast(r.error || 'Error', 'err'); return; }
+  LD.toast('Đã khôi phục lớp ' + c.ClassName + ' và ' + (r.students || 0) + ' SV', 'ok');
+  closeRoster(); loadClasses();
+}
+
+// ── Sửa thông tin SV / đổi lớp ──
+function openEdit(uid) {
+  var s = App.students.find(function (x) { return x.uid === uid; });
+  if (!s) return;
+  App.editing = s;
+  document.getElementById('edit-sub').textContent = s.fullName + ' · ' + s.studentId + (s.status === 'Archived' ? ' · archived' : '');
+  document.getElementById('ed-sid').value = s.studentId || '';
+  document.getElementById('ed-name').value = s.fullName || '';
+  document.getElementById('ed-email').value = s.email || '';
+  document.getElementById('ed-phone').value = s.phone || '';
+  // Chỉ chuyển vào lớp đang học; lớp hiện tại luôn có trong danh sách
+  document.getElementById('ed-class').innerHTML = App.classes.filter(function (c) { return c.Status !== 'Archived' || c.ClassID === s.classId; })
+    .map(function (c) { return '<option value="' + c.ClassID + '"' + (c.ClassID === s.classId ? ' selected' : '') + '>' + LD.esc(c.ClassName) + (c.Status === 'Archived' ? ' (archived)' : '') + '</option>'; }).join('');
+  document.getElementById('edit-modal').classList.add('show');
+  setTimeout(function () { document.getElementById('ed-name').focus(); }, 50);
+}
+function closeEdit() { App.editing = null; document.getElementById('edit-modal').classList.remove('show'); }
+async function saveEdit() {
+  var s = App.editing; if (!s) return;
+  var p = { uid: s.uid, studentId: document.getElementById('ed-sid').value.trim(), fullName: document.getElementById('ed-name').value.trim(),
+            email: document.getElementById('ed-email').value.trim(), phone: document.getElementById('ed-phone').value.trim(),
+            classId: document.getElementById('ed-class').value };
+  if (!p.studentId || !p.fullName) { LD.toast('Mã SV và họ tên không được để trống.', 'err'); return; }
+  if (p.studentId !== s.studentId && !confirm('Đổi mã SV ' + s.studentId + ' → ' + p.studentId + '?\nSV sẽ đăng nhập bằng mã mới (mật khẩu giữ nguyên).')) return;
+  var btn = document.getElementById('ed-save');
+  var r = await busy(btn, function () { return LD.api('teacher.updateStudent', p); });
+  if (!r.success) { LD.toast(r.error || 'Error', 'err', 5000); return; }
+  var moved = p.classId !== s.classId;
+  closeEdit();
+  LD.toast('Đã lưu ' + p.fullName + (moved ? ' · chuyển sang ' + ((classById(p.classId) || {}).ClassName || p.classId) : ''), 'ok');
+  loadClasses();
 }
 
 // ── SESSIONS DASHBOARD ──
@@ -365,7 +601,7 @@ async function loadFilterOptions() {
     App.filterOptionsLoaded = true;
 
     var classOpts = r.data.map(function(c){
-      return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + '</option>';
+      return '<option value="' + c.ClassID + '">' + LD.esc(c.ClassName) + (c.Status === 'Archived' ? ' (archived)' : '') + '</option>';
     }).join('');
     ['sess-filter-class'].forEach(function(id){
       var el = document.getElementById(id);
