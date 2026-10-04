@@ -492,7 +492,7 @@
   </div>
 </div>
 
-<script src="ld-common.js?v=3"></script>
+<script src="ld-common.js?v=4"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -1510,6 +1510,13 @@ function checkSentence(i) {
   App.dictationAnswers[i].typed = (inputEl ? inputEl.value : '').trim();
   App.dictationAnswers[i].attempted = true;
   var res = gradeDictSentence(i), allCorrect = res.allCorrect;
+  // Ghi lại lần Check bị sai (GV xem lại quá trình trong Detail / Report); gõ y hệt lần trước thì không ghi thêm
+  var ans = App.dictationAnswers[i], typedNow = ans.typed;
+  if (!allCorrect && typedNow) {
+    ans.wrong = ans.wrong || [];
+    if (ans.wrong[ans.wrong.length - 1] !== typedNow) ans.wrong.push(typedNow);
+    if (ans.wrong.length > LD.DICT_MAX_WRONG) ans.wrong.shift();
+  }
   // resultHtml CHỈ giữ trong bộ nhớ để hiển thị — không gửi lên server (xem dictAnswersForSave)
   App.dictationAnswers[i].resultHtml = res.html;
   document.getElementById('sb-result-' + i).innerHTML = res.html;
@@ -1588,15 +1595,13 @@ function dictScore() {
 // Chỉ gửi những gì SV gõ — câu gốc đã có trong CorrectedScriptJSON, không lưu lại lần nữa.
 // (Trước đây mỗi câu gửi kèm resultHtml = cả câu script bọc HTML → sheet nặng gấp nhiều lần.)
 function dictAnswersForSave() {
-  return App.dictationAnswers.map(function (a) {
-    return { typed: a.typed || '', checked: !!a.checked, attempted: !!(a.attempted || a.checked || a.resultHtml) };
-  });
+  return App.dictationAnswers.map(LD.compactDictAnswer);
 }
 // Khi làm tiếp bài dở: dựng lại phần kết quả từ câu đã gõ (vì resultHtml không còn được lưu)
 function restoreDictAnswers(saved) {
   App.dictationAnswers = App.correctedSentences.map(function (s, i) {
     var a = (saved && saved[i]) || {};
-    var st = { typed: a.typed || '', checked: !!a.checked, attempted: !!(a.attempted || a.checked || a.resultHtml) };
+    var st = LD.compactDictAnswer(a);
     if (st.attempted) st.resultHtml = gradeDictSentence(i, st).html;
     return st;
   });

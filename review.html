@@ -46,6 +46,8 @@ td{border-bottom:1px solid var(--ld-surface-2)}
 .dict .h{font-weight:600}
 .dict.ok .h{color:var(--ld-ok)}.dict.bad .h{color:var(--ld-danger)}
 .dict div{font-size:13.5px;margin-left:22px;line-height:1.7}
+.try-n{display:inline-block;min-width:44px;text-align:center;font-size:11px;font-weight:700;border-radius:100px;padding:0 8px;margin-right:8px;background:var(--ld-danger-lt);color:var(--ld-danger);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.try-n.ok{background:var(--ld-ok-lt);color:var(--ld-ok)}
 .d-ok{color:var(--ld-ok)}.d-sub{color:var(--ld-danger);text-decoration:line-through}.d-fix{color:var(--ld-ok);font-weight:800;text-decoration:underline}
 .d-miss{color:var(--ld-warn);font-weight:800}.d-extra{color:var(--ld-danger);text-decoration:line-through;opacity:.8}
 .center{text-align:center;padding:60px 20px;color:var(--ld-ink-2)}
@@ -68,7 +70,7 @@ td{border-bottom:1px solid var(--ld-surface-2)}
 </div>
 <div class="page" id="page"><div class="center"><span class="spinner"></span> Loading…</div></div>
 
-<script src="ld-common.js?v=3"></script>
+<script src="ld-common.js?v=4"></script>
 <script>
 (function () {
   var s = LD.session.require();
@@ -159,16 +161,23 @@ function render(d) {
 
   // 6. Dictation (so khớp theo dãy từ — LD.alignWords)
   var da = ((d.DictationJSON || {}).answers) || [];
-  html += '<h2><span class="num">6</span>Dictation Review</h2>' + sentences.map(function (t, i) {
-    var typed = (da[i] && da[i].typed) || '', al = LD.alignWords(t, typed);
-    var line = al.ops.map(function (o) {
+  var dline = function (t, typed) {
+    return LD.alignWords(t, typed).ops.map(function (o) {
       if (o.op === 'ok') return '<span class="d-ok">' + e(o.t) + '</span>';
       if (o.op === 'miss') return '<span class="d-miss" title="missing">[' + e(o.t) + ']</span>';
       if (o.op === 'extra') return '<span class="d-extra" title="extra">' + e(o.y) + '</span>';
       return '<span class="d-sub">' + e(o.y) + '</span> <span class="d-fix">' + e(o.t) + '</span>';
     }).join(' ');
-    return '<div class="dict ' + (al.allCorrect ? 'ok' : 'bad') + '"><div class="h" style="margin-left:0">' + (al.allCorrect ? '✓ ' : '✗ ') + 'Câu ' + (i + 1) + ' — ' + al.correct + '/' + al.total + ' từ</div>' +
-      (al.allCorrect ? '<div>' + e(t) + '</div>' : '<div>' + line + '</div><div class="muted">Target: ' + e(t) + '</div>') + '</div>';
+  };
+  html += '<h2><span class="num">6</span>Dictation Review</h2>' + sentences.map(function (t, i) {
+    var a = da[i] || {}, typed = a.typed || '', al = LD.alignWords(t, typed);
+    // Các lần bấm Check bị sai, theo thứ tự → rồi câu cuối cùng
+    var wrong = LD.dictWrongBeforeFinal(a, al.allCorrect);
+    return '<div class="dict ' + (al.allCorrect ? 'ok' : 'bad') + '"><div class="h" style="margin-left:0">' + (al.allCorrect ? '✓ ' : '✗ ') + 'Câu ' + (i + 1) + ' — ' + al.correct + '/' + al.total + ' từ' +
+      (wrong.length ? ' · ' + (wrong.length + 1) + ' lần' : '') + '</div>' +
+      wrong.map(function (w, k) { return '<div class="try"><span class="try-n">Lần ' + (k + 1) + '</span>' + dline(t, w) + '</div>'; }).join('') +
+      (al.allCorrect ? '<div>' + (wrong.length ? '<span class="try-n ok">Đúng</span>' : '') + e(t) + '</div>'
+                     : '<div>' + (wrong.length ? '<span class="try-n">Cuối</span>' : '') + dline(t, typed) + '</div><div class="muted">Target: ' + e(t) + '</div>') + '</div>';
   }).join('');
 
   show(html);

@@ -74,7 +74,7 @@
     if (!_fbLoad) {
       _fbLoad = loadScript(FB_SDK + 'firebase-app-compat.js')
         .then(function () { return Promise.all([loadScript(FB_SDK + 'firebase-auth-compat.js'), loadScript(FB_SDK + 'firebase-firestore-compat.js')]); })
-        .then(function () { return loadScript('ld-fbdata.js?v=2'); })
+        .then(function () { return loadScript('ld-fbdata.js?v=3'); })
         .then(function () { return global.FB; });
       _fbLoad.catch(function () { _fbLoad = null; });   // cho phép thử lại sau lỗi mạng
     }
@@ -276,6 +276,23 @@
     ops.reverse();
     var correct = ops.filter(function (o) { return o.op === 'ok'; }).length;
     return { ops: ops, correct: correct, total: n, allCorrect: correct === n && m === n };
+  };
+
+  /*── DICTATION: 1 câu đã lưu ─────────────────────
+    { typed, checked, attempted, wrong: [các lần bấm Check bị sai, theo thứ tự] }
+    Chỉ lưu chữ SV gõ (câu gốc đã có trong script). Tối đa 20 lần sai gần nhất, mỗi lần ≤ 500 ký tự. */
+  LD.DICT_MAX_WRONG = 20;
+  LD.compactDictAnswer = function (a) {
+    a = a || {};
+    var wrong = (Array.isArray(a.wrong) ? a.wrong : []).map(function (w) { return String(w || '').trim().slice(0, 500); })
+      .filter(Boolean).slice(-LD.DICT_MAX_WRONG);
+    return { typed: String(a.typed || ''), checked: !!a.checked, attempted: !!(a.attempted || a.checked || a.resultHtml), wrong: wrong };
+  };
+  // Các lần gõ sai cần hiển thị TRƯỚC dòng cuối: bỏ lần sai cuối nếu nó chính là câu cuối cùng còn sai
+  LD.dictWrongBeforeFinal = function (a, finalCorrect) {
+    var w = (a && Array.isArray(a.wrong)) ? a.wrong.slice() : [];
+    if (!finalCorrect && w.length && w[w.length - 1] === String((a && a.typed) || '').trim()) w.pop();
+    return w;
   };
 
   /*── ICONS ───────────────────────────────────────
