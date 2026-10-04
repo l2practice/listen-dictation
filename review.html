@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
-<title>Report · LisDictation</title>
-<link rel="stylesheet" href="ld-theme.css?v=3">
+<title>ListenDictation</title>
+<link rel="stylesheet" href="ld-theme.css?v=8">
 <style>
 /* topbar, buttons → ld-theme.css */
 .page{max-width:900px;margin:16px auto 60px;background:var(--ld-surface);border-radius:28px;padding:34px 40px}
@@ -88,7 +88,7 @@ function pct(v) { return v === '' || v == null ? '—' : v + '%'; }
 
 function render(d) {
   var e = LD.esc, sentences = d.CorrectedScriptJSON || [];
-  document.title = (d.BookTestPart || 'Report') + ' · ' + (d.StudentName || '') + ' · LisDictation';
+  document.title = (d.BookTestPart || 'Report') + ' · ' + (d.StudentName || '') + ' · ListenDictation';
   var html = '<div class="kicker">LisDictation · Session report</div><h1>' + e(d.BookTestPart || 'Session') + '</h1>' +
     '<div class="meta">' + e(d.StudentName || '') + (d.StudentID ? ' (' + e(d.StudentID) + ')' : '') + ' · ' + e(d.ClassName || '') +
     (d.EndTime ? ' · Completed ' + e(LD.fmtDate(d.EndTime)) : '') + (d.DurationMin !== '' && d.DurationMin != null ? ' · ' + e(LD.fmtDuration(d.DurationMin)) : '') + '</div>' +
