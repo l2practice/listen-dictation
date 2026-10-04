@@ -595,7 +595,10 @@ function sessionSaveGapFill(user, p) {
 function _compactDictAnswers(answers) {
   return (answers || []).map(function (a) {
     a = a || {};
-    return { typed: String(a.typed || ''), checked: !!a.checked, attempted: !!(a.attempted || a.checked || a.resultHtml) };
+    // wrong = các lần bấm Check bị sai (tối đa 20 lần gần nhất, như LD.compactDictAnswer trong ld-common.js)
+    var wrong = (Array.isArray(a.wrong) ? a.wrong : []).map(function (w) { return String(w || '').trim().slice(0, 500); })
+      .filter(function (w) { return w; }).slice(-20);
+    return { typed: String(a.typed || ''), checked: !!a.checked, attempted: !!(a.attempted || a.checked || a.resultHtml), wrong: wrong };
   });
 }
 

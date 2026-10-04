@@ -90,6 +90,12 @@ th[data-sort="desc"]::after{content:" ↓";color:var(--ld-accent)}
 .dt-sentence .sn{font-size:11.5px;font-weight:600;color:var(--ld-ink-3);margin-bottom:6px}
 .dt-sentence .target{font-size:12.5px;color:var(--ld-ink-2);margin-bottom:6px;line-height:1.6}
 .dt-sentence .typed{font-size:14px;line-height:1.9}
+.dt-try{display:flex;gap:10px;align-items:baseline;font-size:14px;line-height:1.9;padding:2px 0}
+.dt-try + .dt-try{border-top:1px dashed var(--ld-line)}
+.dt-try.final{font-size:14.5px}
+.dt-try-n{flex:0 0 auto;min-width:46px;text-align:center;font-size:11px;font-weight:700;border-radius:100px;padding:1px 8px;line-height:1.7}
+.dt-try-n.bad{background:var(--ld-danger-lt);color:var(--ld-danger)}
+.dt-try-n.ok{background:var(--ld-ok-lt);color:var(--ld-ok)}
 .dt-w-ok{color:var(--ld-ok);font-weight:700}
 .dt-w-bad{color:var(--ld-danger);font-weight:700;text-decoration:line-through}
 .dt-w-miss{color:var(--ld-warn);font-weight:800}
@@ -363,7 +369,7 @@ th[data-sort="desc"]::after{content:" ↓";color:var(--ld-accent)}
   </div>
 </div>
 
-<script src="ld-common.js?v=3"></script>
+<script src="ld-common.js?v=4"></script>
 <script>
 var App = { classes: [], students: [], roster: null, editing: null, sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false,
   practice: [] };
@@ -773,27 +779,38 @@ function renderDetailHeader() {
     ['Total', d.TotalScore != null && d.TotalScore !== '' ? d.TotalScore + '%' : '—']
   ].map(function (kv) { return '<div class="dt-stat-card"><div class="n">' + kv[1] + '</div><div class="l">' + kv[0] + '</div></div>'; }).join('');
 }
+// Câu SV gõ so với câu gốc (LD.alignWords — cùng cách chấm với trang SV)
+function dictLineHtml(target, typed) {
+  return LD.alignWords(target, typed || '').ops.map(function (o) {
+    if (o.op === 'ok') return '<span class="dt-w-ok">' + LD.esc(o.t) + '</span>';
+    if (o.op === 'miss') return '<span class="dt-w-miss" title="missing">' + LD.esc(o.t) + '</span>';
+    if (o.op === 'extra') return '<span class="dt-w-bad" title="extra word">' + LD.esc(o.y) + '</span>';
+    return '<span class="dt-w-bad" title="typed">' + LD.esc(o.y) + '</span> <span class="dt-w-miss" title="correct">' + LD.esc(o.t) + '</span>';
+  }).join(' ');
+}
 function renderDictationDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-dictation');
   var dj = d.DictationJSON;
   var sentences = d.CorrectedScriptJSON || [];
   if (!dj || !sentences.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Dictation part yet.</div>'; return; }
   var answers = dj.answers || [];
-  // Cùng cách chấm với trang SV (LD.alignWords): thiếu/thừa 1 từ không làm lệch cả câu
-  pane.innerHTML = sentences.map(function (s, i) {
+  // Các lần bấm Check bị sai (theo thứ tự), rồi tới câu cuối cùng
+  pane.innerHTML = '<div class="dt-gf-sum"><span class="dt-w-ok">xanh</span> = gõ đúng · <span class="dt-w-bad">đỏ gạch</span> = gõ sai / thừa · ' +
+    '<span class="dt-w-miss">cam</span> = từ đúng bị thiếu hoặc gõ sai</div>' + sentences.map(function (s, i) {
     var st = answers[i] || { typed: '', checked: false };
     var al = LD.alignWords(s, st.typed || '');
-    var html = al.ops.map(function (o) {
-      if (o.op === 'ok') return '<span class="dt-w-ok">' + LD.esc(o.t) + '</span>';
-      if (o.op === 'miss') return '<span class="dt-w-miss" title="missing">' + LD.esc(o.t) + '</span>';
-      if (o.op === 'extra') return '<span class="dt-w-bad" title="extra word">' + LD.esc(o.y) + '</span>';
-      return '<span class="dt-w-bad" title="typed">' + LD.esc(o.y) + '</span> <span class="dt-w-miss" title="correct">' + LD.esc(o.t) + '</span>';
-    }).join(' ');
+    var wrong = LD.dictWrongBeforeFinal(st, al.allCorrect);
     var attempted = st.checked || st.attempted || st.resultHtml || st.typed;
+    var tries = wrong.length + (attempted ? 1 : 0);
     return '<div class="dt-sentence ' + (attempted ? (al.allCorrect ? 'ok' : 'bad') : '') + '">' +
-      '<div class="sn">Sentence ' + (i + 1) + ' · ' + al.correct + '/' + al.total + ' words' + (attempted ? '' : ' · not attempted') + '</div>' +
+      '<div class="sn">Sentence ' + (i + 1) + ' · ' + al.correct + '/' + al.total + ' words' +
+      (attempted ? (tries > 1 ? ' · ' + tries + ' tries' : ' · first try') : ' · not attempted') + '</div>' +
       '<div class="target">Target: ' + LD.esc(s) + '</div>' +
-      '<div class="typed">Typed: ' + html + '</div></div>';
+      wrong.map(function (w, k) {
+        return '<div class="dt-try"><span class="dt-try-n bad">Try ' + (k + 1) + '</span><span>' + dictLineHtml(s, w) + '</span></div>';
+      }).join('') +
+      '<div class="dt-try final"><span class="dt-try-n ' + (al.allCorrect ? 'ok' : 'bad') + '">' + (wrong.length ? 'Final' : 'Typed') + '</span><span>' + dictLineHtml(s, st.typed) + '</span></div>' +
+      '</div>';
   }).join('');
 }
 // Toàn bộ script; ô điền gạch dưới. Đúng lần đầu → xanh đậm gạch dưới; sai → từ SV điền gạch ngang đỏ + từ đúng xanh.

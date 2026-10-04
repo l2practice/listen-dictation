@@ -238,7 +238,7 @@ async function saveGapFill(p) {
 }
 // Chỉ lưu câu SV gõ — câu gốc đã có trong correctedJSON.
 function compactDict(answers) {
-  return (answers || []).map(a => { a = a || {}; return { typed: String(a.typed || ''), checked: !!a.checked, attempted: !!(a.attempted || a.checked || a.resultHtml) }; });
+  return (answers || []).map(LD.compactDictAnswer);
 }
 async function saveDictationProgress(p) {
   const { u } = await ownSession(p.sessionId);
