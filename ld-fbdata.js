@@ -167,6 +167,27 @@ async function teacherLogin(p) {
   if (err) return fail(err === 'WRONG' ? 'Sai email hoặc mật khẩu.' : err);
   return finishLogin(true);
 }
+async function changePassword(p) {
+  await authReady();
+  const u = auth.currentUser;
+  if (!u) return fail('SESSION_EXPIRED');
+  const current = str(p.currentPassword);
+  const next = str(p.newPassword);
+  if (!current || !next) return fail('Vui lòng nhập mật khẩu hiện tại và mật khẩu mới.');
+  if (next.length < 6) return fail('Mật khẩu mới phải có ít nhất 6 ký tự.');
+  if (authPw(current) === authPw(next)) return fail('Mật khẩu mới phải khác mật khẩu hiện tại.');
+  try {
+    const credential = firebase.auth.EmailAuthProvider.credential(u.email, authPw(current));
+    await u.reauthenticateWithCredential(credential);
+    await u.updatePassword(authPw(next));
+    return ok();
+  } catch (e) {
+    if (/wrong-password|invalid-credential/.test(e.code || '')) return fail('Mật khẩu hiện tại không đúng.');
+    if (/weak-password/.test(e.code || '')) return fail('Mật khẩu mới quá yếu. Hãy chọn mật khẩu mạnh hơn.');
+    if (/requires-recent-login/.test(e.code || '')) return fail('Phiên đăng nhập đã cũ. Vui lòng đăng xuất rồi đăng nhập lại trước khi đổi mật khẩu.');
+    throw e;
+  }
+}
 async function signOut() { init(); _me = null; forget(); try { await auth.signOut(); } catch (e) {} }
 
 // ════════════════════════════════════════════
@@ -564,6 +585,7 @@ const GAS_FB = {
 
 const ACTIONS = {
   'auth.login': studentLogin, 'auth.teacherLogin': teacherLogin,
+  'auth.changePassword': changePassword,
   'session.start': sessionStart, 'session.saveAnalysis': saveAnalysis, 'session.saveQuiz': saveQuiz,
   'session.saveGapFill': saveGapFill, 'session.saveDictationProgress': saveDictationProgress,
   'session.finishDictation': finishDictation, 'session.exportReport': exportReport,
