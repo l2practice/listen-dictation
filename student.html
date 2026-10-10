@@ -9,7 +9,7 @@
 <!-- cefr-dict.js: copy this file as-is from the omni-practice repo (ReadWise), same filename.
      It provides the global function cefrOf(word) → {level, pos, lemma}. Without it, the
      CEFR% on the Study screen will show every word as "Unknown" (app still runs fine). -->
-<script src="cefr-dict.js" onerror="console.warn('cefr-dict.js missing — CEFR% will be inaccurate')"></script>
+<script src="cefr-dict.js?v=2" onerror="console.warn('cefr-dict.js missing — CEFR% will be inaccurate')"></script>
 <style>
 /* shared chrome, cards, buttons, forms, tables → ld-theme.css */
 .screen{display:none;flex-direction:column;min-height:100vh}
@@ -33,6 +33,40 @@
 .pct-bar-outer{flex:1;height:10px;background:var(--ld-surface-2);border-radius:999px;overflow:hidden}
 .pct-bar-fill{height:100%;border-radius:999px}
 .lv-A1{background:#0EA5E9}.lv-A2{background:#10B981}.lv-B1{background:#3B82F6}.lv-B2{background:#8B5CF6}.lv-C1{background:#EC4899}.lv-C2{background:#DC2626}
+.study-hint{margin-top:12px;font-size:12px}
+.study-word.has-c{text-decoration:underline dotted var(--ld-ink-3);text-underline-offset:4px}
+.has-c{text-decoration:underline dotted var(--ld-ink-3);text-underline-offset:4px}
+.lv-tag{display:inline-block;min-width:28px;text-align:center;font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 5px;color:#fff}
+.wordbank{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.wb-item{display:flex;flex-direction:column;justify-content:flex-start;width:100%;text-align:left;background:var(--ld-surface-2);border:1.5px solid transparent;border-radius:14px;padding:10px 12px;cursor:pointer;font-family:var(--font-body);color:var(--ld-ink);transition:var(--transition)}
+.wb-item:hover{border-color:var(--ld-ink-3)}
+.wb-head{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:3px}
+.wb-in{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--ld-ok);background:var(--ld-ok-lt);border-radius:100px;padding:1px 8px;white-space:nowrap}
+.wb-c{display:block;font-size:12.5px;color:var(--ld-ink-2);line-height:1.5}
+.wb-e{font-weight:600;color:var(--ld-ink)}
+.word-panel{position:sticky;top:96px;z-index:5;max-height:calc(100vh - 110px);overflow:auto}
+.wp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.wp-word{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;line-height:1.2}
+.wp-meta{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ld-ink-3);margin-top:4px}
+.wp-ipa{font-family:var(--font-mono)}
+.wp-vi{margin-top:10px;font-size:14px;font-weight:600;color:var(--ld-accent-dk)}
+.wp-label{margin:14px 0 6px;font-size:11.5px;font-weight:700;color:var(--ld-ink-3);text-transform:uppercase;letter-spacing:.06em}
+.wp-c{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;padding:7px 10px;border-radius:12px;background:var(--ld-surface-2);margin-bottom:5px}
+.wp-c.hit{background:var(--ld-ok-lt)}
+.wp-e{font-weight:600;font-size:13.5px}
+.wp-c .wb-in{margin-left:0}
+.wp-cv{flex-basis:100%;font-size:12.5px;color:var(--ld-ink-2)}
+.wp-ex{font-size:13.5px;line-height:1.55;border-left:3px solid var(--ld-accent);padding:2px 0 2px 12px}
+.wp-exv{color:var(--ld-ink-2);font-style:italic;margin-top:2px}
+.wp-note{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:12.5px;color:var(--ld-ink-2);background:var(--ld-warn-lt);border-radius:12px;padding:8px 10px}
+.wp-note .ic{width:15px;height:15px;flex:0 0 auto;margin-top:2px;color:var(--ld-warn)}
+.wp-close{display:none}
+@media(max-width:960px){
+  /* điện thoại / máy tính bảng: thẻ từ trượt lên từ dưới, chỉ khi bấm 1 từ */
+  .word-panel{display:none;position:fixed;left:10px;right:10px;bottom:10px;top:auto;max-height:62vh;overflow:auto;z-index:300;box-shadow:var(--shadow-lg);margin:0}
+  .word-panel.open{display:block}
+  .wp-close{display:grid}
+}
 .colloc-card{background:var(--ld-surface-2);border-radius:14px;padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--ld-accent)}
 .colloc-en{font-weight:600;color:var(--ld-ink);font-size:13.5px}
 .colloc-vi{font-size:12.5px;color:var(--ld-ink-2);margin-top:2px}
@@ -296,8 +330,21 @@
       <button class="btn btn-secondary btn-sm" id="btn-listen-toggle" onclick="toggleListenMode()"><i data-ic="volume"></i>Listen</button>
     </div>
     <div class="setup-grid">
-      <div class="card"><div id="study-passage" style="font-size:16px;line-height:2.1"></div></div>
       <div>
+        <div class="card"><div id="study-passage" style="font-size:16px;line-height:2.1"></div>
+          <div class="study-hint muted">Click a word to see its collocations, an example and its meaning. <span class="has-c" style="cursor:default">Dotted</span> words have collocations in the dictionary.</div>
+        </div>
+        <!-- Từ khoá của bài (theo cấp CEFR đang bật) + collocation gợi ý -->
+        <div class="card">
+          <div class="card-title"><span><i data-ic="key"></i>Key Words &amp; Collocations</span><span class="muted" id="wordbank-sub"></span></div>
+          <div id="wordbank" class="wordbank"></div>
+        </div>
+      </div>
+      <div>
+        <!-- Thẻ từ: bấm 1 từ → collocation + ví dụ + nghĩa (collocations.json). Điện thoại: trượt lên từ dưới. -->
+        <div class="card word-panel" id="word-panel">
+          <div id="word-panel-body"><p class="muted" style="font-size:13px">Click a word in the passage or in Key Words to see its collocations, an example and its meaning.</p></div>
+        </div>
         <div class="card">
           <div class="card-title"><span><i data-ic="link"></i>Phrases &amp; Collocations</span></div>
           <div id="colloc-list"></div>
@@ -916,6 +963,7 @@ async function runAnalyzeScript() {
     // Kick off quiz generation in the background — student is still on screen-study
     // so by the time they reach screen-quiz it will likely already be ready.
     prefetchQuiz();
+    loadCollocations();
   } catch (err) {
     document.getElementById('analyze-status').innerHTML = '<span style="color:var(--ld-danger)">Error: ' + LD.esc(err.message) + '</span>';
   } finally {
@@ -1024,8 +1072,10 @@ function dupForceCreate() {
   _doStartSession(document.getElementById('btn-start-session'));
 }
 function goStudy() {
-  renderLevelChips(); renderStudyPassage(); renderCefrDist(); renderCollocations();
+  renderLevelChips(); renderStudyPassage(); renderCefrDist(); renderCollocations(); renderWordBank();
   showScreen('screen-study');
+  // Từ điển collocation (~1.3 MB, tải 1 lần) → vẽ lại khi có
+  loadCollocations().then(function () { renderStudyPassage(); renderWordBank(); });
 }
 
 // ── ReadWise-style leveled reading ──
@@ -1051,7 +1101,7 @@ function renderStudyPassage() {
     var show = tk.lv && App.showLevels[tk.lv];
     var g = App.gloss[tk.w.toLowerCase()];
     var posCls = App.posColor && tk.pos && posMap[tk.pos] ? ' pos-' + posMap[tk.pos] : '';
-    var span = '<span class="study-word' + (show ? ' hi' : '') + posCls + '" onclick="onStudyWordClick(\'' + tk.w.replace(/'/g, "\\'") + '\')">' + LD.esc(tk.w) + '</span>';
+    var span = '<span class="study-word' + (show ? ' hi' : '') + (collocKey(tk.w) ? ' has-c' : '') + posCls + '" onclick="onStudyWordClick(\'' + tk.w.replace(/'/g, "\\'") + '\')">' + LD.esc(tk.w) + '</span>';
     if (show && g && g.vi) span += '<span class="gl">(' + LD.esc(g.vi) + ')</span>';
     return span;
   }).join('');
@@ -1060,7 +1110,7 @@ function renderStudyPassage() {
 function renderLevelChips() {
   var counts = (App.cefr && App.cefr.counts) || {};
   document.getElementById('level-chips').innerHTML = LEVELS.map(function (lv) {
-    return '<label class="lv-chip lv-' + lv + '"><input type="checkbox" ' + (App.showLevels[lv] ? 'checked' : '') + ' onchange="App.showLevels[\'' + lv + '\']=this.checked;renderStudyPassage()"> ' + lv + ' <b>' + (counts[lv] || 0) + '</b></label>';
+    return '<label class="lv-chip lv-' + lv + '"><input type="checkbox" ' + (App.showLevels[lv] ? 'checked' : '') + ' onchange="App.showLevels[\'' + lv + '\']=this.checked;renderStudyPassage();renderWordBank()"> ' + lv + ' <b>' + (counts[lv] || 0) + '</b></label>';
   }).join(' ');
 }
 function togglePosColor() { App.posColor = !App.posColor; document.getElementById('btn-pos-toggle').classList.toggle('active', App.posColor); renderStudyPassage(); }
@@ -1069,10 +1119,109 @@ function toggleListenMode() {
   document.getElementById('btn-listen-toggle').classList.toggle('active', App.listenMode);
   if (App.listenMode) LD.toast('Click any word in the passage to hear it.', 'ok');
 }
-function onStudyWordClick(w) {
-  if (!App.listenMode) return;
+function speakWord(w) {
   try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(w); u.lang = 'en-GB'; u.rate = .9; speechSynthesis.speak(u); } catch (e) {}
 }
+function onStudyWordClick(w) {
+  if (App.listenMode) speakWord(w);
+  showWordPanel(w);
+}
+
+// ── Từ điển collocation (collocations.json): { word: { c:[{e,v}], e: ví dụ, v: nghĩa ví dụ, n: ghi chú } } ──
+var COLLOC = null, _collocLoad = null;
+function loadCollocations() {
+  if (!_collocLoad) {
+    _collocLoad = fetch('collocations.json?v=1').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) { COLLOC = d || {}; return COLLOC; })
+      .catch(function () { _collocLoad = null; return COLLOC; });   // lỗi mạng → thử lại lần sau
+  }
+  return _collocLoad;
+}
+// Từ trong bài → mục trong từ điển: nguyên dạng, lemma của cefr-dict, rồi bỏ đuôi (-s/-es/-ies/-ed/-ing, phụ âm đôi).
+// cefrLemma giữ nguyên "abandoned"/"dancing" (có mục riêng trong CEFR) nên phải thử bỏ đuôi ở đây.
+var _collocKeyCache = {};
+function collocKey(word) {
+  if (!COLLOC) return null;
+  var w = String(word || '').toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/'s$/, '').replace(/[^a-z'-]/g, '');
+  if (w in _collocKeyCache) return _collocKeyCache[w];
+  var tries = [w];
+  if (typeof cefrLemma === 'function') { try { var l = cefrLemma(w); if (l) tries.push(l); } catch (e) {} }
+  if (/ies$|ied$/.test(w)) tries.push(w.slice(0, -3) + 'y');
+  if (/(s|x|z|ch|sh)es$/.test(w)) tries.push(w.slice(0, -2));
+  if (/s$/.test(w) && !/ss$/.test(w)) tries.push(w.slice(0, -1));
+  if (/ed$/.test(w)) tries.push(w.slice(0, -2), w.slice(0, -1));
+  if (/ing$/.test(w)) tries.push(w.slice(0, -3), w.slice(0, -3) + 'e');
+  var m = w.match(/^(.*?)([bcdfgklmnprtvz])\2(ed|ing|er|est)$/);
+  if (m) tries.push(m[1] + m[2]);
+  var hit = null;
+  for (var i = 0; i < tries.length && !hit; i++) if (tries[i] && Object.prototype.hasOwnProperty.call(COLLOC, tries[i])) hit = tries[i];
+  return (_collocKeyCache[w] = hit);
+}
+function scriptLower() { return App.correctedSentences.join(' ').toLowerCase().replace(/[\u2018\u2019]/g, "'"); }
+// Collocation có xuất hiện nguyên cụm trong bài không (bỏ qua hoa/thường)
+function inScript(phrase, text) {
+  var p = String(phrase || '').toLowerCase().replace(/[\u2018\u2019]/g, "'").trim();
+  return !!p && p.indexOf(' ') > 0 && new RegExp('(^|[^a-z])' + p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z])').test(text);
+}
+var LV_RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+// Từ khoá: từ trong bài có trong từ điển collocation, thuộc các cấp CEFR đang bật, khó trước
+function renderWordBank() {
+  var el = document.getElementById('wordbank'), sub = document.getElementById('wordbank-sub');
+  if (!el) return;
+  if (!COLLOC) { el.innerHTML = '<p class="muted" style="font-size:13px;grid-column:1/-1"><span class="spinner"></span> Loading the collocation dictionary…</p>'; sub.textContent = ''; return; }
+  var text = scriptLower(), seen = {}, all = [];
+  (text.match(/[a-z][a-z'-]*/g) || []).forEach(function (w) {
+    var k = collocKey(w);
+    if (!k || seen[k]) return;
+    seen[k] = true;
+    var info = safeCefrOf(k) || safeCefrOf(w);
+    var e = COLLOC[k];
+    all.push({ key: k, lv: (info && info.level) || '', hits: (e.c || []).filter(function (c) { return inScript(c.e, text); }) });
+  });
+  var rows = all.filter(function (x) { return x.lv && App.showLevels[x.lv]; })
+    .sort(function (a, b) { return (b.hits.length - a.hits.length) || ((LV_RANK[b.lv] || 0) - (LV_RANK[a.lv] || 0)) || a.key.localeCompare(b.key); });
+  sub.textContent = rows.length + ' / ' + all.length + ' words';
+  if (!rows.length) {
+    el.innerHTML = '<p class="muted" style="font-size:13px;grid-column:1/-1">' + (all.length ? 'No key words at the ticked CEFR levels — tick B1 or A2 above to see ' + all.length + ' more.' : 'No words of this script are in the collocation dictionary.') + '</p>';
+    return;
+  }
+  el.innerHTML = rows.map(function (x) {
+    var e = COLLOC[x.key], show = x.hits.length ? x.hits : (e.c || []).slice(0, 2);
+    return '<button class="wb-item" data-w="' + LD.esc(x.key) + '" onclick="showWordPanel(this.dataset.w)">' +
+      '<span class="wb-head"><span class="lv-tag lv-' + x.lv + '">' + x.lv + '</span><b>' + LD.esc(x.key) + '</b>' +
+      (x.hits.length ? '<span class="wb-in">' + x.hits.length + ' in script</span>' : '') + '</span>' +
+      show.map(function (c) { return '<span class="wb-c"><span class="wb-e">' + LD.esc(c.e) + '</span> · ' + LD.esc(c.v) + '</span>'; }).join('') +
+      '</button>';
+  }).join('');
+}
+// Thẻ từ: cấp CEFR, loại từ, nghĩa (AI gloss nếu có), collocation, ví dụ, ghi chú
+function showWordPanel(word) {
+  var panel = document.getElementById('word-panel'), body = document.getElementById('word-panel-body');
+  var k = collocKey(word), e = k ? COLLOC[k] : null;
+  var info = safeCefrOf(k || String(word).toLowerCase()) || safeCefrOf(String(word).toLowerCase());
+  var g = App.gloss[String(word).toLowerCase()] || (k && App.gloss[k]) || null;
+  var head = k || String(word).toLowerCase(), text = scriptLower();
+  var html = '<div class="wp-head"><div><div class="wp-word">' + LD.esc(head) + '</div>' +
+    '<div class="wp-meta">' + (info && info.level ? '<span class="lv-tag lv-' + info.level + '">' + info.level + '</span>' : '') +
+    (info && info.pos ? '<span>' + LD.esc(info.pos) + '</span>' : '') + (g && g.ipa ? '<span class="wp-ipa">' + LD.esc(g.ipa) + '</span>' : '') + '</div></div>' +
+    '<div style="display:flex;gap:6px"><button class="topbar-btn round" title="Listen" data-w="' + LD.esc(head) + '" onclick="speakWord(this.dataset.w)">' + LD.icon('volume') + '</button>' +
+    '<button class="topbar-btn round wp-close" title="Close" onclick="closeWordPanel()">' + LD.icon('x') + '</button></div></div>';
+  if (g && g.vi) html += '<div class="wp-vi">' + LD.esc(g.vi) + '</div>';
+  if (e) {
+    html += '<div class="wp-label">Collocations</div>' + (e.c || []).map(function (c) {
+      var hit = inScript(c.e, text);
+      return '<div class="wp-c' + (hit ? ' hit' : '') + '"><span class="wp-e">' + LD.esc(c.e) + '</span>' + (hit ? '<span class="wb-in">in script</span>' : '') + '<span class="wp-cv">' + LD.esc(c.v) + '</span></div>';
+    }).join('');
+    if (e.e) html += '<div class="wp-label">Example</div><div class="wp-ex"><div>' + LD.esc(e.e) + '</div>' + (e.v ? '<div class="wp-exv">' + LD.esc(e.v) + '</div>' : '') + '</div>';
+    if (e.n) html += '<div class="wp-note">' + LD.icon('alert') + '<span>' + LD.esc(e.n) + '</span></div>';
+  } else {
+    html += '<p class="muted" style="font-size:13px;margin-top:8px">' + (COLLOC ? 'This word is not in the collocation dictionary.' : 'Loading the collocation dictionary…') + '</p>';
+  }
+  body.innerHTML = html;
+  panel.classList.add('open');
+  if (window.matchMedia('(min-width: 961px)').matches) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function closeWordPanel() { document.getElementById('word-panel').classList.remove('open'); }
 
 // ═══════════════════════════════════════════════════════════
 // AI CALL #2 — Generate the 15-question quiz (5 content + 10 vocab), all in English
