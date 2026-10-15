@@ -44,7 +44,10 @@
 .wb-in{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--ld-ok);background:var(--ld-ok-lt);border-radius:100px;padding:1px 8px;white-space:nowrap}
 .wb-c{display:block;font-size:12.5px;color:var(--ld-ink-2);line-height:1.5}
 .wb-e{font-weight:600;color:var(--ld-ink)}
-.word-panel{position:sticky;top:96px;z-index:5;max-height:calc(100vh - 110px);overflow:auto}
+/* Thẻ từ: khung nổi cạnh từ vừa bấm; đóng bằng ✕ / Esc / bấm ra ngoài. Cuộn trang thì đi theo từ. */
+.word-pop{display:none;position:absolute;z-index:300;width:370px;max-height:min(70vh,560px);overflow:auto;background:var(--ld-surface);border:1px solid var(--ld-line);border-radius:20px;box-shadow:var(--shadow-lg);padding:18px 18px 16px}
+.word-pop.open{display:block}
+
 .wp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .wp-word{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;line-height:1.2}
 .wp-meta{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ld-ink-3);margin-top:4px}
@@ -60,12 +63,9 @@
 .wp-exv{color:var(--ld-ink-2);font-style:italic;margin-top:2px}
 .wp-note{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:12.5px;color:var(--ld-ink-2);background:var(--ld-warn-lt);border-radius:12px;padding:8px 10px}
 .wp-note .ic{width:15px;height:15px;flex:0 0 auto;margin-top:2px;color:var(--ld-warn)}
-.wp-close{display:none}
 @media(max-width:960px){
-  /* điện thoại / máy tính bảng: thẻ từ trượt lên từ dưới, chỉ khi bấm 1 từ */
-  .word-panel{display:none;position:fixed;left:10px;right:10px;bottom:10px;top:auto;max-height:62vh;overflow:auto;z-index:300;box-shadow:var(--shadow-lg);margin:0}
-  .word-panel.open{display:block}
-  .wp-close{display:grid}
+  /* điện thoại / máy tính bảng: trượt lên từ dưới màn hình */
+  .word-pop{position:fixed;left:10px!important;right:10px;bottom:10px;top:auto!important;width:auto;max-height:62vh}
 }
 .colloc-card{background:var(--ld-surface-2);border-radius:14px;padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--ld-accent)}
 .colloc-en{font-weight:600;color:var(--ld-ink);font-size:13.5px}
@@ -139,6 +139,7 @@
 .study-word{border-radius:4px;padding:0 1px;cursor:pointer;transition:background .1s}
 .study-word:hover{background:var(--ld-accent-lt)}
 .study-word.hi{background:#FBD9D0}
+.study-word.sel,.study-word.hi.sel{background:var(--ld-ink);color:#fff;text-decoration:none}
 .gl{font-family:var(--font-body);font-size:.72em;font-style:italic;color:var(--ld-accent-dk);white-space:nowrap;margin-left:2px;font-weight:600}
 .pos-n{color:#2563EB}.pos-v{color:#DC2626}.pos-j{color:#059669}.pos-r{color:#D97706}
 .lv-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:11.5px;font-weight:700;cursor:pointer;user-select:none;margin:2px 0}
@@ -341,10 +342,6 @@
         </div>
       </div>
       <div>
-        <!-- Thẻ từ: bấm 1 từ → collocation + ví dụ + nghĩa (collocations.json). Điện thoại: trượt lên từ dưới. -->
-        <div class="card word-panel" id="word-panel">
-          <div id="word-panel-body"><p class="muted" style="font-size:13px">Click a word in the passage or in Key Words to see its collocations, an example and its meaning.</p></div>
-        </div>
         <div class="card">
           <div class="card-title"><span><i data-ic="link"></i>Phrases &amp; Collocations</span></div>
           <div id="colloc-list"></div>
@@ -629,6 +626,7 @@ function showScreen(id) {
     if (!a.paused) a.pause();
     a.currentTime = 0;
   });
+  if (typeof closeWordPanel === 'function') closeWordPanel();
   document.querySelectorAll('.screen').forEach(function (s) { s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
@@ -1101,7 +1099,7 @@ function renderStudyPassage() {
     var show = tk.lv && App.showLevels[tk.lv];
     var g = App.gloss[tk.w.toLowerCase()];
     var posCls = App.posColor && tk.pos && posMap[tk.pos] ? ' pos-' + posMap[tk.pos] : '';
-    var span = '<span class="study-word' + (show ? ' hi' : '') + (collocKey(tk.w) ? ' has-c' : '') + posCls + '" onclick="onStudyWordClick(\'' + tk.w.replace(/'/g, "\\'") + '\')">' + LD.esc(tk.w) + '</span>';
+    var span = '<span class="study-word' + (show ? ' hi' : '') + (collocKey(tk.w) ? ' has-c' : '') + posCls + '" onclick="onStudyWordClick(\'' + tk.w.replace(/'/g, "\\'") + '\',this)">' + LD.esc(tk.w) + '</span>';
     if (show && g && g.vi) span += '<span class="gl">(' + LD.esc(g.vi) + ')</span>';
     return span;
   }).join('');
@@ -1122,9 +1120,9 @@ function toggleListenMode() {
 function speakWord(w) {
   try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(w); u.lang = 'en-GB'; u.rate = .9; speechSynthesis.speak(u); } catch (e) {}
 }
-function onStudyWordClick(w) {
+function onStudyWordClick(w, el) {
   if (App.listenMode) speakWord(w);
-  showWordPanel(w);
+  showWordPanel(w, el);
 }
 
 // ── Từ điển collocation (collocations.json): { word: { c:[{e,v}], e: ví dụ, v: nghĩa ví dụ, n: ghi chú } } ──
@@ -1187,7 +1185,7 @@ function renderWordBank() {
   }
   el.innerHTML = rows.map(function (x) {
     var e = COLLOC[x.key], show = x.hits.length ? x.hits : (e.c || []).slice(0, 2);
-    return '<button class="wb-item" data-w="' + LD.esc(x.key) + '" onclick="showWordPanel(this.dataset.w)">' +
+    return '<button class="wb-item" data-w="' + LD.esc(x.key) + '" onclick="showWordPanel(this.dataset.w,this)">' +
       '<span class="wb-head"><span class="lv-tag lv-' + x.lv + '">' + x.lv + '</span><b>' + LD.esc(x.key) + '</b>' +
       (x.hits.length ? '<span class="wb-in">' + x.hits.length + ' in script</span>' : '') + '</span>' +
       show.map(function (c) { return '<span class="wb-c"><span class="wb-e">' + LD.esc(c.e) + '</span> · ' + LD.esc(c.v) + '</span>'; }).join('') +
@@ -1195,8 +1193,8 @@ function renderWordBank() {
   }).join('');
 }
 // Thẻ từ: cấp CEFR, loại từ, nghĩa (AI gloss nếu có), collocation, ví dụ, ghi chú
-function showWordPanel(word) {
-  var panel = document.getElementById('word-panel'), body = document.getElementById('word-panel-body');
+function showWordPanel(word, anchor) {
+  var pop = wordPop();
   var k = collocKey(word), e = k ? COLLOC[k] : null;
   var info = safeCefrOf(k || String(word).toLowerCase()) || safeCefrOf(String(word).toLowerCase());
   var g = App.gloss[String(word).toLowerCase()] || (k && App.gloss[k]) || null;
@@ -1205,7 +1203,7 @@ function showWordPanel(word) {
     '<div class="wp-meta">' + (info && info.level ? '<span class="lv-tag lv-' + info.level + '">' + info.level + '</span>' : '') +
     (info && info.pos ? '<span>' + LD.esc(info.pos) + '</span>' : '') + (g && g.ipa ? '<span class="wp-ipa">' + LD.esc(g.ipa) + '</span>' : '') + '</div></div>' +
     '<div style="display:flex;gap:6px"><button class="topbar-btn round" title="Listen" data-w="' + LD.esc(head) + '" onclick="speakWord(this.dataset.w)">' + LD.icon('volume') + '</button>' +
-    '<button class="topbar-btn round wp-close" title="Close" onclick="closeWordPanel()">' + LD.icon('x') + '</button></div></div>';
+    '<button class="topbar-btn round" title="Close (Esc)" onclick="closeWordPanel()">' + LD.icon('x') + '</button></div></div>';
   if (g && g.vi) html += '<div class="wp-vi">' + LD.esc(g.vi) + '</div>';
   if (e) {
     html += '<div class="wp-label">Collocations</div>' + (e.c || []).map(function (c) {
@@ -1217,11 +1215,51 @@ function showWordPanel(word) {
   } else {
     html += '<p class="muted" style="font-size:13px;margin-top:8px">' + (COLLOC ? 'This word is not in the collocation dictionary.' : 'Loading the collocation dictionary…') + '</p>';
   }
-  body.innerHTML = html;
-  panel.classList.add('open');
-  if (window.matchMedia('(min-width: 961px)').matches) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  pop.innerHTML = html;
+  pop.scrollTop = 0;
+  pop.classList.add('open');
+  markSelectedWord(anchor);
+  placeWordPop(pop, anchor);
 }
-function closeWordPanel() { document.getElementById('word-panel').classList.remove('open'); }
+// 1 khung nổi dùng chung, gắn vào <body> để không bị cột nào cắt hay che
+function wordPop() {
+  var pop = document.getElementById('word-pop');
+  if (!pop) {
+    pop = document.createElement('div');
+    pop.id = 'word-pop'; pop.className = 'word-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Word details');
+    document.body.appendChild(pop);
+    // Đóng khi bấm ra ngoài (trừ khi bấm sang từ khác — từ đó tự mở thẻ mới) hoặc nhấn Esc
+    document.addEventListener('mousedown', function (ev) {
+      if (pop.classList.contains('open') && !pop.contains(ev.target) && !ev.target.closest('.study-word,.wb-item')) closeWordPanel();
+    });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && pop.classList.contains('open')) closeWordPanel(); });
+  }
+  return pop;
+}
+// Máy tính: ngay dưới từ (không đủ chỗ thì phía trên), không tràn khỏi màn hình. Điện thoại: CSS đặt ở đáy màn hình.
+function placeWordPop(pop, anchor) {
+  if (!anchor || window.matchMedia('(max-width: 960px)').matches) { pop.style.left = ''; pop.style.top = ''; return; }
+  pop.style.maxHeight = '';
+  var r = anchor.getBoundingClientRect(), gap = 8, w = pop.offsetWidth, h = pop.offsetHeight;
+  var bar = document.querySelector('.screen.active .topbar'), barBottom = bar ? bar.getBoundingClientRect().bottom : 0;
+  var below = window.innerHeight - r.bottom - gap - 12, above = r.top - gap - Math.max(12, barBottom + 8);
+  // vừa phía dưới → dưới; không thì vừa phía trên → trên; không vừa cả hai → bên rộng hơn, thu chiều cao lại
+  var under = h <= below || (h > above && below >= above);
+  if (h > (under ? below : above)) { h = Math.max(200, under ? below : above); pop.style.maxHeight = h + 'px'; }
+  var left = Math.min(Math.max(12, r.left), window.innerWidth - w - 12);
+  var top = under ? r.bottom + gap : r.top - gap - h;
+  pop.style.left = (left + window.scrollX) + 'px';
+  pop.style.top = (top + window.scrollY) + 'px';
+}
+function markSelectedWord(el) {
+  document.querySelectorAll('.study-word.sel').forEach(function (x) { x.classList.remove('sel'); });
+  if (el && el.classList.contains('study-word')) el.classList.add('sel');
+}
+function closeWordPanel() {
+  var pop = document.getElementById('word-pop');
+  if (pop) pop.classList.remove('open');
+  markSelectedWord(null);
+}
 
 // ═══════════════════════════════════════════════════════════
 // AI CALL #2 — Generate the 15-question quiz (5 content + 10 vocab), all in English
