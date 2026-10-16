@@ -397,11 +397,12 @@
     <div id="gapfill-audio-bar" class="audio-bar">
       <audio id="gapfill-audio" controls></audio>
       <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap">
-        <label class="ios-toggle" title="Dừng tự động tại khoảng lặng trong audio">
-          <input type="checkbox" id="chk-gap-autopause" onchange="toggleGapAutoPause(this.checked)">
+        <label class="ios-toggle" title="Dừng sau mỗi câu để điền">
+          <input type="checkbox" id="chk-gap-autopause" onchange="setAutoPause('gap', this.checked)">
           <span class="ios-track"><span class="ios-thumb"></span></span>
-          <span>Auto-pause</span>
+          <span>Auto-pause after each sentence</span>
         </label>
+        <span class="muted" id="gap-ap-note"></span>
       </div>
       <div id="gapfill-audio-upload-row" class="audio-missing">
         <span>No audio — add a file to listen while filling:</span>
@@ -450,13 +451,12 @@
     <div class="audio-bar" id="dict-audio-row">
       <audio id="dict-audio" controls></audio>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
-        <label class="ios-toggle" title="Auto-pause dựa trên khoảng lặng của audio">
-          <input type="checkbox" id="chk-dict-autopause" onchange="toggleDictAutoPause(this.checked)">
+        <label class="ios-toggle" title="Dừng sau mỗi câu để gõ">
+          <input type="checkbox" id="chk-dict-autopause" onchange="setAutoPause('dict', this.checked)">
           <span class="ios-track"><span class="ios-thumb"></span></span>
-          <span id="lbl-dict-autopause">Auto-pause</span>
+          <span>Auto-pause after each sentence</span>
         </label>
-        <button class="btn btn-secondary btn-sm" id="btn-mode-auto" onclick="setDictMode('auto')"><i data-ic="target"></i>Per sentence</button>
-        <button class="btn btn-secondary btn-sm" id="btn-mode-manual" onclick="setDictMode('manual')"><i data-ic="hand"></i>Manual</button>
+        <span class="muted" id="dict-ap-note"></span>
       </div>
       <!-- Audio upload for resumed sessions (no audio loaded yet) -->
       <div id="dict-audio-upload-row" class="audio-missing">
@@ -594,7 +594,7 @@ var App = {
   quiz: [], quizAnswers: [],
   gapfill: [], gapfillAnswers: [], gapBlankState: [], gapSegments: [], gapSegIdx: 0,
   dictationIdx: 0, dictationAnswers: [], dictationReplaysUsed: [],
-  dictMode: 'auto', pausePoints: [], _pausedForCurrentIdx: false,
+  autoPause: { dict: localStorage.getItem('ld_autopause_dict') !== '0', gap: localStorage.getItem('ld_autopause_gap') === '1' },
   histRows: [], histSortKey: 'startTime', histSortDir: -1
 };
 
@@ -915,15 +915,14 @@ function handleAudioFile(e) {
   var f = e.target.files[0]; if (!f) return;
   App.audioBlobUrl = URL.createObjectURL(f);
   document.getElementById('audio-status').textContent = '✓ ' + f.name;
-  // Start silence analysis in background immediately — will be ready by the time student reaches Dictation
-  App_silenceAnalysisDone = false;
-  App_silencePauses = [];
+  // Phân tích khoảng lặng ngay (chạy nền) — xong trước khi SV tới Gap-fill/Dictation
   analyseAudioSilence(App.audioBlobUrl);
 }
 function loadDriveAudio() {
   var id = document.getElementById('drive-file-id').value.trim();
   if (!id) return;
   App.audioBlobUrl = 'https://drive.google.com/uc?export=download&id=' + id;
+  analyseAudioSilence(App.audioBlobUrl);   // Drive thường chặn CORS → auto-pause dùng ước lượng theo số từ
   document.getElementById('audio-status').textContent = '✓ Google Drive: ' + id;
 }
 
@@ -1401,8 +1400,8 @@ function goGapFill() {
   var audio = document.getElementById('gapfill-audio');
   if (App.audioBlobUrl) { audio.src = App.audioBlobUrl; audio.load(); }
   _showAudioUploadIfNeeded(['gapfill']);
-  if (App.audioBlobUrl && !App_silenceAnalysisDone) { analyseAudioSilence(App.audioBlobUrl); }
-  setupGapAutoPause();
+  if (App.audioBlobUrl) analyseAudioSilence(App.audioBlobUrl);
+  attachAutoPause(audio, 'gap');
   renderGapFill();
 }
 function buildGapFill() {
@@ -1538,13 +1537,9 @@ function goDictation() {
   App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false, replaysUsed: 0 }; });
   showScreen('screen-dictation');
   _initDictAudio();
-  App.dictSilenceMode = localStorage.getItem('ld_dict_silence_mode') || 'off';
-  var silBtn = document.getElementById('chk-dict-autopause');
-  if (silBtn) silBtn.checked = App.dictSilenceMode !== 'off';
   setupDictAudioListeners();
-  setDictMode(App.dictSilenceMode === 'off' ? 'manual' : 'auto');
   renderDictation();
-  if (App.audioBlobUrl && !App_silenceAnalysisDone) { analyseAudioSilence(App.audioBlobUrl); }
+  if (App.audioBlobUrl) analyseAudioSilence(App.audioBlobUrl);
   if (localStorage.getItem('ld_sc_hidden') !== '1') { setTimeout(openShortcutModal, 400); }
 }
 
@@ -1568,7 +1563,6 @@ function handleDictAudioFile(e) {
   var audio = document.getElementById('dict-audio');
   audio.src = App.audioBlobUrl; audio.load();
   document.getElementById('dict-audio-upload-row').style.display = 'none';
-  App_silenceAnalysisDone = false; App_silencePauses = [];
   analyseAudioSilence(App.audioBlobUrl);
   LD.toast('Audio loaded — you can now play and dictate.', 'ok');
 }
@@ -1576,73 +1570,14 @@ function loadDictDriveAudio() {
   var id = document.getElementById('dict-drive-id').value.trim();
   if (!id) return;
   App.audioBlobUrl = 'https://drive.google.com/uc?export=download&id=' + id;
+  analyseAudioSilence(App.audioBlobUrl);   // Drive thường chặn CORS → auto-pause dùng ước lượng theo số từ
   var audio = document.getElementById('dict-audio');
   audio.src = App.audioBlobUrl; audio.load();
   document.getElementById('dict-audio-upload-row').style.display = 'none';
   LD.toast('Drive audio loaded.', 'ok');
 }
-// ── Auto-pause per sentence: since there are no real per-sentence timestamps,
-// pause points are ESTIMATED by splitting the audio's total duration proportionally
-// to each sentence's word count. It's an approximation, not exact — Manual mode
-// exists precisely so a student can take full control when the estimate is off. ──
 function setupDictAudioListeners() {
-  var audio = document.getElementById('dict-audio');
-  if (!audio || audio._ldWired) return;
-  audio._ldWired = true;
-  audio.addEventListener('loadedmetadata', computePausePoints);
-  audio.addEventListener('timeupdate', onDictTimeUpdate);
-  if (audio.readyState >= 1) computePausePoints();
-}
-function computePausePoints() {
-  var audio = document.getElementById('dict-audio');
-  var dur = audio && audio.duration;
-  if (!dur || !isFinite(dur)) { App.pausePoints = []; return; }
-  var totalWords = App.correctedSentences.reduce(function (a, s) { return a + wc(s); }, 0) || 1;
-  var cum = 0;
-  App.pausePoints = App.correctedSentences.map(function (s) { cum += wc(s); return dur * (cum / totalWords); });
-}
-function onDictTimeUpdate() {
-  if (!App_autoPauseEnabled.dict) return; // iOS toggle is OFF
-  var audio = document.getElementById('dict-audio');
-  if (!audio || audio.paused) return;
-
-  // Silence-based: pause at detected silence gaps
-  if (App_silencePauses.length) {
-    for (var s = 0; s < App_silencePauses.length; s++) {
-      var pt = App_silencePauses[s];
-      if (audio.currentTime >= pt && audio.currentTime <= pt + 0.15) {
-        if (audio._lastDictPause !== pt) {
-          audio._lastDictPause = pt;
-          audio.pause();
-          var inp = document.getElementById('sb-input-' + App.dictationIdx);
-          if (inp && !inp.disabled) inp.focus();
-        }
-        return;
-      }
-    }
-    return;
-  }
-
-  // Word-count fallback (no silence data yet)
-  var idx = App.dictationIdx;
-  if (!App.pausePoints.length || idx >= App.pausePoints.length) return;
-  if (App.dictationAnswers[idx] && App.dictationAnswers[idx].checked) return;
-  if (App._pausedForCurrentIdx) return;
-  if (audio.currentTime >= App.pausePoints[idx] - 0.05) {
-    audio.pause();
-    App._pausedForCurrentIdx = true;
-    var inp2 = document.getElementById('sb-input-' + idx);
-    if (inp2) inp2.focus();
-  }
-}
-function setDictMode(mode) {
-  App.dictMode = mode;
-  localStorage.setItem('ld_dict_mode', mode);
-  var ab = document.getElementById('btn-mode-auto'), mb = document.getElementById('btn-mode-manual');
-  if (ab) ab.classList.toggle('active', mode === 'auto');
-  if (mb) mb.classList.toggle('active', mode === 'manual');
-  App._pausedForCurrentIdx = false;
-  if (mode === 'auto' && !App.pausePoints.length) computePausePoints();
+  attachAutoPause(document.getElementById('dict-audio'), 'dict');
 }
 function wc(text) {
   // Normalize curly apostrophes so don't counts as 1 word not 2
@@ -1780,11 +1715,10 @@ function checkSentence(i) {
   if (allCorrect) {
     App.dictationAnswers[i].checked = true;
     if (i < App.correctedSentences.length - 1) App.dictationIdx = i + 1;
-    App._pausedForCurrentIdx = false;
     renderDictation();
     var nextInput = document.getElementById('sb-input-' + App.dictationIdx);
     if (nextInput && !nextInput.disabled) nextInput.focus();
-    if (App.dictMode === 'auto') {
+    if (App.autoPause.dict) {
       var audio = document.getElementById('dict-audio');
       if (audio && audio.paused && App.dictationIdx < App.correctedSentences.length) {
         setTimeout(function () { audio.play().catch(function () {}); }, 500);
@@ -1815,10 +1749,10 @@ function jumpToNextUnchecked() {
 }
 function jumpTo(i) {
   App.dictationIdx = i;
-  App._pausedForCurrentIdx = false;
-  if (App.dictMode === 'auto' && App.pausePoints.length) {
-    var audio = document.getElementById('dict-audio');
-    if (audio) audio.currentTime = i > 0 ? App.pausePoints[i - 1] : 0;
+  var audio = document.getElementById('dict-audio');
+  if (App.autoPause.dict && audio && audio.readyState >= 1) {
+    var pts = sentencePausePoints(audio);
+    audio.currentTime = i > 0 && pts[i - 1] ? pts[i - 1].resume : (pts.speechStart || 0);
   }
   renderDictation();
   var inp = document.getElementById('sb-input-' + i);
@@ -1946,8 +1880,6 @@ async function resumeSession(sessionId) {
     _initDictAudio();
     if (localStorage.getItem('ld_sc_hidden') !== '1') { setTimeout(openShortcutModal, 400); }
     setupDictAudioListeners();
-    App.dictSilenceMode = localStorage.getItem('ld_dict_silence_mode') || 'off';
-    setDictMode(App.dictSilenceMode === 'off' ? 'manual' : 'auto');
     renderDictation();
     LD.toast('Resumed your in-progress session.' + (App.audioBlobUrl ? '' : ' Add audio file to listen while typing.'), 'ok', 4000);
     if (window.history && window.history.replaceState) window.history.replaceState({}, '', location.pathname);
@@ -2069,7 +2001,6 @@ function handleScreenAudioFile(screen, e) {
   audio.src = App.audioBlobUrl; audio.load();
   var row = document.getElementById(screen + '-audio-upload-row');
   if (row) row.style.display = 'none';
-  App_silenceAnalysisDone = false; App_silencePauses = [];
   analyseAudioSilence(App.audioBlobUrl);
   LD.toast('Audio loaded.', 'ok');
 }
@@ -2077,6 +2008,7 @@ function loadScreenDriveAudio(screen) {
   var id = document.getElementById(screen + '-drive-id').value.trim();
   if (!id) return;
   App.audioBlobUrl = 'https://drive.google.com/uc?export=download&id=' + id;
+  analyseAudioSilence(App.audioBlobUrl);   // Drive thường chặn CORS → auto-pause dùng ước lượng theo số từ
   var audio = document.getElementById(screen + '-audio');
   audio.src = App.audioBlobUrl; audio.load();
   var row = document.getElementById(screen + '-audio-upload-row');
@@ -2149,8 +2081,6 @@ async function expandSession(sessionId, btn) {
         _initDictAudio();
         if (localStorage.getItem('ld_sc_hidden') !== '1') setTimeout(openShortcutModal, 400);
         setupDictAudioListeners();
-        App.dictSilenceMode = localStorage.getItem('ld_dict_silence_mode') || 'off';
-        setDictMode(App.dictSilenceMode === 'off' ? 'manual' : 'auto');
         renderDictation();
         LD.toast('Resumed dictation from sentence ' + (App.dictationIdx + 1) + '.', 'ok');
       }
@@ -2167,7 +2097,6 @@ async function expandSession(sessionId, btn) {
       App.dictationIdx = 0;
       App.dictationAnswers = App.correctedSentences.map(function () { return { typed: '', checked: false }; });
       showScreen('screen-dictation');
-      setDictMode('manual');
       renderDictation();
       LD.toast('Gap-fill đã xong — tiếp tục Dictation!', 'ok', 3000);
     } else {
@@ -2264,95 +2193,218 @@ function openShortcutModal() {
 function closeShortcutModal() { document.getElementById('sc-overlay').classList.add('hidden'); }
 
 // ═══════════════════════════════════════════════════════════
-// SILENCE-BASED AUTO-PAUSE (Web Audio API)
-// Analyses the uploaded audio file for silence gaps >1s and stores
-// timestamps as candidate pause points. Falls back to word-count
-// estimates when the audio is from Google Drive (CORS-restricted).
+// AUTO-PAUSE: dừng ngay sau khi đọc xong mỗi câu (Gap-fill + Dictation)
+// 1. Đo âm lượng file audio theo từng khung 20 ms (Web Audio API) → tìm các khoảng lặng.
+//    Ngưỡng lặng tính theo chính file (tiếng nền / giọng nói), không cố định −40 dB:
+//    audio IELTS có tiếng nền nên ngưỡng cố định gần như không thấy khoảng lặng nào.
+// 2. Ước lượng chỗ hết mỗi câu theo số từ, rồi bám vào khoảng lặng gần nhất.
+//    Không đo được (vd. audio Google Drive bị chặn CORS) → chỉ dùng ước lượng theo số từ.
+// 3. Khi đang phát, cứ 40 ms kiểm tra "đã ĐI QUA điểm dừng chưa" (lần trước < điểm ≤ bây giờ).
+//    Trước đây kiểm tra "đang nằm trong cửa sổ 0,15 s" bằng timeupdate (~4 lần/giây) nên hay trượt.
 // ═══════════════════════════════════════════════════════════
-var App_silencePauses = [];   // timestamps (seconds) of detected silence midpoints
-var App_autoPauseEnabled = { dict: true, gap: false };
-var App_silenceAnalysisDone = false;
+var AP = { url: '', frames: null, hop: 0.02, pending: null, ptsKey: '', pts: null };
 
-async function analyseAudioSilence(blobUrl) {
-  if (!blobUrl || blobUrl.indexOf('blob:') !== 0) return; // Drive URL: CORS blocks, skip
-  try {
-    var ctx = new (window.AudioContext || window.webkitAudioContext)();
-    var buf = await fetch(blobUrl).then(function(r){ return r.arrayBuffer(); });
-    var decoded = await ctx.decodeAudioData(buf);
-    ctx.close();
-    var data = decoded.getChannelData(0);
-    var sr = decoded.sampleRate;
-    var SILENCE_DB = -40;  // threshold
-    var SILENCE_MIN_S = 0.8; // min gap length to count
-    var threshold = Math.pow(10, SILENCE_DB / 20);
-    var pauses = [];
-    var silStart = null;
-    var blockSize = Math.floor(sr * 0.05); // 50ms blocks
-    for (var i = 0; i < data.length; i += blockSize) {
-      var rms = 0;
-      var end = Math.min(i + blockSize, data.length);
-      for (var j = i; j < end; j++) rms += data[j] * data[j];
-      rms = Math.sqrt(rms / (end - i));
-      var t = i / sr;
-      if (rms < threshold) {
-        if (silStart === null) silStart = t;
-      } else {
-        if (silStart !== null && (t - silStart) >= SILENCE_MIN_S) {
-          pauses.push(silStart + (t - silStart) * 0.3); // 30% into the gap
-        }
-        silStart = null;
+function analyseAudioSilence(url) {
+  if (!url) return Promise.resolve(null);
+  if (AP.url === url && (AP.frames || AP.pending)) return AP.pending || Promise.resolve(AP.frames);
+  AP.url = url; AP.frames = null; AP.pts = null; AP.ptsKey = '';
+  AP.pending = (async function () {
+    try {
+      var buf = await fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); });
+      var AC = window.AudioContext || window.webkitAudioContext;
+      var ctx = new AC();
+      var dec = await new Promise(function (res, rej) { var p = ctx.decodeAudioData(buf, res, rej); if (p && p.then) p.then(res, rej); });
+      if (ctx.close) ctx.close();
+      var chans = [], c;
+      for (c = 0; c < dec.numberOfChannels; c++) chans.push(dec.getChannelData(c));
+      var hop = Math.max(1, Math.floor(dec.sampleRate * AP.hop)), n = Math.ceil(chans[0].length / hop);
+      var frames = new Float32Array(n);
+      for (var f = 0; f < n; f++) {
+        var sum = 0, cnt = 0, end = Math.min((f + 1) * hop, chans[0].length);
+        for (var i = f * hop; i < end; i++) { var v = 0; for (c = 0; c < chans.length; c++) v += chans[c][i]; v /= chans.length; sum += v * v; cnt++; }
+        frames[f] = 10 * Math.log10(sum / Math.max(1, cnt) + 1e-10);   // dB
       }
-    }
-    App_silencePauses = pauses;
-    App_silenceAnalysisDone = true;
-    console.log('[LisDictation] Silence analysis: found ' + pauses.length + ' pause points');
-  } catch(e) {
-    console.warn('[LisDictation] Silence analysis failed:', e.message);
-    App_silencePauses = [];
-    App_silenceAnalysisDone = true;
-  }
+      if (AP.url === url) { AP.frames = frames; AP.pts = null; }
+      return frames;
+    } catch (e) {
+      console.warn('[LisDictation] Audio analysis unavailable (' + e.message + ') — sentence ends estimated from word counts.');
+      return null;
+    } finally { if (AP.url === url) AP.pending = null; updateAutoPauseNotes(); }
+  })();
+  return AP.pending;
 }
 
-// ── Gap-fill silence auto-pause ──────────────────────────────
-function setupGapAutoPause() {
-  var audio = document.getElementById('gapfill-audio');
-  if (!audio) return;
-  // Always remove old listener and re-add so it picks up new audio src
-  if (audio._gapPauseHandler) {
-    audio.removeEventListener('timeupdate', audio._gapPauseHandler);
+// Ngưỡng lặng của riêng file (tiếng nền ↔ giọng nói) → các đoạn có tiếng (chunk) ngăn bởi khoảng lặng ≥ 0,1 s
+// (hội thoại: đổi người nói có khi chỉ nghỉ 0,1 s)
+function audioChunks(frames) {
+  var sorted = Array.prototype.slice.call(frames).sort(function (a, b) { return a - b; });
+  var q = function (p) { return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]; };
+  var floor = q(0.08), speech = q(0.75);
+  var thr = Math.min(floor + Math.max(6, (speech - floor) * 0.3), speech - 4);
+  var hop = AP.hop, minGap = Math.max(1, Math.round(0.1 / hop)), chunks = [], cur = null, quietRun = 0;
+  for (var f = 0; f < frames.length; f++) {
+    if (frames[f] >= thr) {
+      if (cur && quietRun >= minGap) { chunks.push(cur); cur = null; }
+      if (!cur) cur = { s: f * hop, e: (f + 1) * hop };
+      cur.e = (f + 1) * hop; quietRun = 0;
+    } else quietRun++;
   }
-  audio._lastGapPause = -1;
-  audio._gapPauseHandler = function() {
-    if (!App_autoPauseEnabled.gap) return;
-    if (audio.paused) return;
-    var t = audio.currentTime;
-    // Silence-based: pause at detected silence midpoints
-    if (App_silencePauses.length) {
-      for (var i = 0; i < App_silencePauses.length; i++) {
-        var pt = App_silencePauses[i];
-        if (t >= pt && t <= pt + 0.18) {
-          if (Math.abs(audio._lastGapPause - pt) > 0.5) {
-            audio._lastGapPause = pt;
-            audio.pause();
-            var blank = document.querySelector('.gap-blank:not([disabled]):not(.gb-correct)');
-            if (blank) blank.focus();
-          }
-          return;
+  if (cur) chunks.push(cur);
+  // bỏ tiếng động rất ngắn (< 0,1 s) nằm giữa 2 khoảng lặng: tiếng click, hơi thở
+  return chunks.filter(function (c) { return c.e - c.s >= 0.1; });
+}
+
+// Khớp câu ↔ đoạn tiếng (quy hoạch động). Mỗi câu = một dãy chunk liền nhau; độ dài nói (không tính
+// khoảng lặng dài ≥ 2,5 s — lúc thí sinh đọc câu hỏi) phải gần (số từ / tốc độ đọc). Được bỏ qua lời nói
+// không có trong script: ở đầu/cuối ("Part 4. You will hear…", "That is the end…") và lời hướng dẫn
+// giữa bài nằm kẹp giữa 2 khoảng lặng dài ("Before you hear the rest… look at questions 5 to 10").
+// Thử nhiều tốc độ đọc, lấy cách khớp tốt nhất. Ranh giới câu ưu tiên khoảng lặng dài hơn.
+function alignSentences(chunks, words) {
+  var M = chunks.length, N = words.length;
+  if (N < 2 || M < N) return null;
+  // Trọng số đã dò trên 28 bài mô phỏng (1 người nói, kiểu IELTS có hướng dẫn, hội thoại): 98 % điểm dừng đúng khoảng lặng
+  var LONG = 2.5, SKIP = 0.12, SKIP_INSTR = 0.03, SKIP_BLOCK = 0.3, MAX_INSTR = 15, GAPW = 0.8, LONG_BOUNDARY = 0.6, INF = 1e18;
+  var gapAfter = chunks.map(function (c, i) { return i + 1 < M ? chunks[i + 1].s - c.e : 0; });
+  // thời gian nói tích luỹ, không tính khoảng lặng dài
+  var cum = [0], sp = [0], i;
+  for (i = 0; i < M; i++) {
+    cum.push(cum[i] + (chunks[i].e - chunks[i].s) + (i + 1 < M ? Math.min(gapAfter[i], LONG) : 0));
+    sp.push(sp[i] + (chunks[i].e - chunks[i].s));
+  }
+  var spoken = function (a, b) { return cum[b + 1] - cum[a] - (b + 1 < M ? Math.min(gapAfter[b], LONG) : 0); };
+  var speechIn = function (a, b) { return b < a ? 0 : sp[b + 1] - sp[a]; };
+  var longIn = [0]; for (i = 0; i < M; i++) longIn.push(longIn[i] + (i + 1 < M && gapAfter[i] >= LONG ? 1 : 0));
+  var longInside = function (a, b) { return longIn[b] - longIn[a]; };   // khoảng lặng dài nằm GIỮA chunk a..b
+  // bỏ qua phần nói ở đầu: rẻ nếu ngay sau nó là khoảng lặng dài (thời gian đọc câu hỏi)
+  var startCost = []; for (i = 0; i < M; i++) startCost.push(i === 0 ? 0 : (gapAfter[i - 1] >= LONG ? SKIP_INSTR : SKIP) * speechIn(0, i - 1));
+  var best = null;
+  for (var rate = 1.4; rate <= 4.4; rate += 0.1) {                 // từ / giây
+    var dp = [], from = [], prevEnd = [], k, j, s0;
+    for (k = 0; k < N; k++) { dp.push(new Float64Array(M).fill(INF)); from.push(new Int32Array(M).fill(-1)); prevEnd.push(new Int32Array(M).fill(-1)); }
+    for (k = 0; k < N; k++) {
+      // câu k bắt đầu ở chunk s0: câu trước hết ngay ở s0-1, hoặc bỏ qua 1 lời hướng dẫn ngắn (≤ 15 s nói).
+      // Hướng dẫn IELTS luôn là [hướng dẫn] → [lặng dài để đọc câu hỏi] → ["Now listen…"], nên đoạn bỏ qua
+      // phải đứng ngay TRƯỚC 1 khoảng lặng dài hoặc CHỨA 1 khoảng lặng dài. (Chỉ đứng sau thì không:
+      // nếu không, câu thật ngay sau khoảng lặng có thể bị bỏ qua và lời hướng dẫn chiếm chỗ của nó.)
+      var pBest = new Float64Array(M).fill(INF), pArg = new Int32Array(M).fill(-1);
+      for (s0 = k; s0 < M; s0++) {
+        if (k === 0) { pBest[s0] = startCost[s0]; continue; }
+        if (s0 >= 1) { pBest[s0] = dp[k - 1][s0 - 1]; pArg[s0] = s0 - 1; }
+        for (var e0 = s0 - 2; e0 >= k - 1; e0--) {
+          var skipped = speechIn(e0 + 1, s0 - 1);
+          if (skipped > MAX_INSTR) break;
+          if (gapAfter[s0 - 1] < LONG && longInside(e0 + 1, s0 - 1) < 1) continue;
+          var alt = dp[k - 1][e0] + SKIP_BLOCK + SKIP_INSTR * skipped;
+          if (alt < pBest[s0]) { pBest[s0] = alt; pArg[s0] = e0; }
         }
       }
-      return;
+      var E = words[k] / rate;
+      for (j = k; j < M; j++) {
+        for (s0 = j; s0 >= k; s0--) {
+          var D = spoken(s0, j);
+          if (D > E * 2.5 + 4) break;
+          if (pBest[s0] >= INF) continue;
+          // 2 câu liền nhau trong script không cách nhau bằng 1 khoảng lặng dài (trừ khi có lời hướng dẫn bị bỏ qua ở giữa)
+          var c = (D - E) * (D - E) / Math.max(E, 1.5) + 4 * longInside(s0, j)
+                - (k < N - 1 ? GAPW * Math.min(gapAfter[j], 1.0) : 0)
+                + (k > 0 && pArg[s0] === s0 - 1 && s0 > 0 && gapAfter[s0 - 1] >= LONG ? LONG_BOUNDARY : 0);
+          if (pBest[s0] + c < dp[k][j]) { dp[k][j] = pBest[s0] + c; from[k][j] = s0; prevEnd[k][j] = pArg[s0]; }
+        }
+      }
     }
-    // Fallback: pause every ~4 seconds when no silence data (e.g. Drive audio)
-    var interval = 4;
-    var bucket = Math.floor(t / interval) * interval;
-    if (bucket > 0 && Math.abs(audio._lastGapPause - bucket) > 0.5 && t < bucket + 0.18) {
-      audio._lastGapPause = bucket;
-      audio.pause();
-      var b2 = document.querySelector('.gap-blank:not([disabled]):not(.gb-correct)');
-      if (b2) b2.focus();
+    for (j = N - 1; j < M; j++) {
+      var tot = dp[N - 1][j] + SKIP * speechIn(j + 1, M - 1);
+      if (!best || tot < best.cost) {
+        var ends = [], starts = [], jj = j;
+        for (k = N - 1; k >= 0; k--) { ends.unshift(jj); starts.unshift(from[k][jj]); jj = prevEnd[k][jj]; }
+        best = { cost: tot, ends: ends, starts: starts, first: starts[0], rate: rate };
+      }
     }
-  };
-  audio.addEventListener('timeupdate', audio._gapPauseHandler);
+  }
+  return best;
+}
+
+// Điểm dừng sau câu 1..N-1: { pause: dừng lúc này, resume: câu sau bắt đầu lúc này }
+function sentencePausePoints(audio) {
+  var dur = audio && audio.duration, sents = App.correctedSentences || [];
+  var key = AP.url + '|' + (AP.frames ? 'a' : 'e') + '|' + dur + '|' + sents.length + '|' + sents.join(' ').length;
+  if (AP.pts && AP.ptsKey === key) return AP.pts;
+  var pts = [], words = sents.map(function (x) { return Math.max(1, wc(x)); });
+  var chunks = AP.frames && AP.url === App.audioBlobUrl ? audioChunks(AP.frames) : null;
+  var al = chunks ? alignSentences(chunks, words) : null;
+  if (al) {
+    for (var k = 0; k < sents.length - 1; k++) {
+      var a = chunks[al.ends[k]], b = chunks[al.starts[k + 1]], len = (al.ends[k] + 1 < chunks.length ? chunks[al.ends[k] + 1].s : b.s) - a.e;
+      // dừng ngay sau tiếng cuối của câu; câu sau bắt đầu ngay trước tiếng đầu của nó
+      pts.push({ pause: a.e + Math.min(0.2, len * 0.4), resume: Math.max(a.e + Math.min(0.2, len * 0.4), b.s - 0.1) });
+    }
+    pts.speechStart = Math.max(0, chunks[al.first].s - 0.15);
+  } else {
+    // không phân tích được audio → chia thời lượng theo số từ
+    var total = words.reduce(function (x, y) { return x + y; }, 0), cumw = 0;
+    for (k = 0; k < sents.length - 1 && dur > 0; k++) { cumw += words[k]; pts.push({ pause: dur * cumw / total, resume: dur * cumw / total }); }
+    pts.speechStart = 0;
+  }
+  pts.fromAudio = !!al;
+  AP.pts = pts; AP.ptsKey = key;
+  return pts;
+}
+
+// Gắn 1 lần cho mỗi thẻ <audio>; which = 'dict' | 'gap'
+function attachAutoPause(audio, which) {
+  if (!audio) return;
+  syncAutoPauseUI();
+  if (audio._ap) return;
+  var st = audio._ap = { last: 0, timer: null };
+  function tick() {
+    if (audio.paused || audio.seeking) return;
+    var t = audio.currentTime, last = st.last;
+    st.last = t;
+    if (!App.autoPause[which] || !isFinite(audio.duration)) return;
+    if (t <= last || t - last > 1.5) return;          // tua / nhảy → không tính là "đi qua"
+    var pts = sentencePausePoints(audio);
+    for (var k = 0; k < pts.length; k++) {
+      if (pts[k].pause > last && pts[k].pause <= t) {
+        audio.pause();
+        onAutoPaused(which, k);
+        return;
+      }
+    }
+  }
+  audio.addEventListener('play', function () { st.last = audio.currentTime; clearInterval(st.timer); st.timer = setInterval(tick, 40); });
+  ['pause', 'ended', 'emptied'].forEach(function (ev) { audio.addEventListener(ev, function () { clearInterval(st.timer); st.timer = null; }); });
+  audio.addEventListener('seeked', function () { st.last = audio.currentTime; });
+  audio.addEventListener('timeupdate', tick);          // dự phòng khi trình duyệt làm chậm setInterval (tab nền)
+  audio.addEventListener('loadedmetadata', updateAutoPauseNotes);
+}
+function onAutoPaused(which, k) {
+  if (which === 'dict') {
+    var inp = document.getElementById('sb-input-' + App.dictationIdx);
+    if (inp && !inp.disabled) inp.focus();
+  } else {
+    var blank = document.querySelector('.gap-blank:not([disabled]):not(.gb-correct)');
+    if (blank) blank.focus();
+  }
+}
+function setAutoPause(which, on) {
+  App.autoPause[which] = !!on;
+  try { localStorage.setItem('ld_autopause_' + which, on ? '1' : '0'); } catch (e) {}
+  syncAutoPauseUI();
+  LD.toast(on ? 'Auto-pause ON — the audio stops after each sentence.' : 'Auto-pause OFF', 'ok', 1800);
+}
+function syncAutoPauseUI() {
+  ['dict', 'gap'].forEach(function (w) {
+    var el = document.getElementById(w === 'dict' ? 'chk-dict-autopause' : 'chk-gap-autopause');
+    if (el) el.checked = !!App.autoPause[w];
+  });
+  updateAutoPauseNotes();
+}
+// Cho SV biết điểm dừng lấy từ đâu (đo từ audio hay ước lượng)
+function updateAutoPauseNotes() {
+  var msg = !App.audioBlobUrl ? '' : AP.pending ? 'analysing the audio…'
+          : AP.frames && AP.url === App.audioBlobUrl ? 'stops in the pause after each sentence'
+          : 'sentence ends estimated (audio could not be analysed)';
+  ['dict-ap-note', 'gap-ap-note'].forEach(function (id) { var el = document.getElementById(id); if (el) el.textContent = msg; });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2408,27 +2460,6 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') closeShortcutModal();
 });
 
-// ── Toggle silence auto-pause for each screen ───────────────
-function toggleGapAutoPause(checked) {
-  App_autoPauseEnabled.gap = checked;
-  LD.toast(checked ? '⏸ Auto-pause ON' : '▶ Auto-pause OFF', 'ok', 1500);
-}
-function toggleDictAutoPause(checked) {
-  App_autoPauseEnabled.dict = checked;
-  var lbl = document.getElementById('lbl-dict-autopause');
-  if (lbl) lbl.textContent = checked ? 'Auto-pause: ON' : 'Auto-pause';
-  if (checked) {
-    if (App_silencePauses.length) {
-      LD.toast('⏸ Auto-pause: dùng ' + App_silencePauses.length + ' silence points', 'ok', 2000);
-    } else {
-      LD.toast('⏸ Auto-pause: dùng word-count estimate (chưa có silence data)', 'ok', 2500);
-      setDictMode('auto');
-    }
-  } else {
-    setDictMode('manual');
-    LD.toast('▶ Auto-pause OFF', 'ok', 1500);
-  }
-}
 </script>
 </body>
 </html>
