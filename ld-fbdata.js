@@ -518,17 +518,22 @@ const myProgressDocs = t => memo('progress', 20000, async () => docs(await fs.co
 // SV chuyển lớp → ẩn ở lớp cũ; SV bị lưu trữ → ẩn (hidden).
 function syncClassPeers(t) {
   return memo('peersync', 600000, async () => {
-    const [progs, students, oldTopics, oldIdx] = await Promise.all([
+    const [progs, students, oldTopics, oldIdx, classes] = await Promise.all([
       myProgressDocs(t), myStudents(t),
       fs.collection('peerTopics').where('teacherUid', '==', t.uid).get().then(docs),
-      fs.collection('peerIndex').where('teacherUid', '==', t.uid).get().then(docs)
+      fs.collection('peerIndex').where('teacherUid', '==', t.uid).get().then(docs),
+      myClasses(t)
     ]);
+    // Chỉ ghi cho lớp CỦA GV này (rules từ chối lớp khác / mã lớp cũ không còn tồn tại —
+    // 1 lần ghi bị từ chối làm hỏng cả lượt, nên lọc trước)
+    const own = {};
+    classes.forEach(c => { own[c.classId || c._id] = 1; });
     const prog = {}, want = {}, idx = {};
     progs.forEach(pd => { prog[pd._id] = pd; });
     students.filter(s => s.role === 'student').forEach(s => {
-      const pd = prog[s._id], items = (pd && pd.items) || {}, classes = {};
-      Object.keys(items).forEach(id => { const c = items[id].classId || (pd && pd.classId); if (c && isDone(items[id])) classes[c] = 1; });
-      Object.keys(classes).forEach(c => {
+      const pd = prog[s._id], items = (pd && pd.items) || {}, cls = {};
+      Object.keys(items).forEach(id => { const c = items[id].classId || (pd && pd.classId); if (c && own[c] && isDone(items[id])) cls[c] = 1; });
+      Object.keys(cls).forEach(c => {
         const mine = peerTopics(items, c, (pd && pd.classId) || s.classId), hidden = !!s.archived || c !== s.classId;
         Object.keys(mine).forEach(k => {
           const id = c + '_' + k, title = mine[k].title, last = lastOf(mine[k].dates);
@@ -556,18 +561,33 @@ function syncClassPeers(t) {
       Object.keys(idx[c].topics).forEach(k => { if (!idx[c].topics[k].last) delete idx[c].topics[k]; else idx[c].topics[k].title = want[c + '_' + k].title; });
       if (!old || canon(old) !== canon(idx[c])) writes.push(['peerIndex/' + c, idx[c]]);
     });
-    for (let i = 0; i < writes.length; i += 400) {
-      const batch = fs.batch();
-      writes.slice(i, i + 400).forEach(w => batch.set(fs.doc(w[0]), Object.assign({ updatedAt: nowIso() }, w[1])));
-      await batch.commit();
+    // ghi từng lớp riêng: 1 lớp lỗi không chặn các lớp khác; lỗi được báo lên trang GV
+    const byClass = {}, failed = [];
+    writes.forEach(w => { const c = w[1].classId; (byClass[c] || (byClass[c] = [])).push(w); });
+    for (const c of Object.keys(byClass)) {
+      try {
+        for (let i = 0; i < byClass[c].length; i += 400) {
+          const batch = fs.batch();
+          byClass[c].slice(i, i + 400).forEach(w => batch.set(fs.doc(w[0]), Object.assign({ updatedAt: nowIso() }, w[1])));
+          await batch.commit();
+        }
+      } catch (e) { console.error('[ld-fbdata] peer sync ' + c, e); failed.push(c + ' (' + ((e && e.code) || (e && e.message) || e) + ')'); }
     }
+    if (failed.length) throw Object.assign(new Error('Không ghi được Peers cho lớp: ' + failed.join(', ')), { code: /permission/.test(failed.join()) ? 'permission-denied' : '' });
     return writes.length;
   });
 }
 
+// Trang GV gọi khi mở (chạy nền) và khi bấm "Sync Peers" (force). Lỗi được trả về để trang báo cho GV.
+async function syncPeers(p) {
+  const t = await teacher();
+  if (p && p.force) forget('peersync');
+  try { return ok({ written: await syncClassPeers(t) }); }
+  catch (e) { forget('peersync'); throw e; }
+}
+
 async function getClasses() {
   const t = await teacher();
-  syncClassPeers(t).catch(e => { forget('peersync'); console.warn('[ld-fbdata] peer sync', e); });
   const [classes, students] = await Promise.all([myClasses(t), myStudents(t)]);
   const data = classes.map(c => ({
     ClassID: c.classId || c._id, ClassName: c.className || c._id, AcademicYear: c.academicYear || '', Semester: c.semester || '',
@@ -764,7 +784,7 @@ const ACTIONS = {
   'teacher.getRoster': getRoster, 'teacher.archiveStudent': archiveStudent,
   'teacher.updateStudent': p => asTeacher('fb.updateStudent', p),
   'teacher.getFilteredSessions': filteredSessions, 'teacher.getSessionDetail': sessionDetail,
-  'teacher.exportSessions': exportSessions,
+  'teacher.exportSessions': exportSessions, 'teacher.syncPeers': syncPeers,
   'practice.new': newPractice, 'practice.markDone': p => markDone(p, true), 'practice.undoDone': p => markDone(p, false)
 };
 
