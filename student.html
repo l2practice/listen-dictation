@@ -26,6 +26,17 @@
 /* ── setup ── */
 .setup-grid{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
 @media(max-width:960px){.setup-grid{grid-template-columns:1fr}}
+/* ── study: dùng hết chiều ngang màn hình ── */
+.screen.full .wrap{max-width:none;padding-left:24px;padding-right:24px}
+.screen.full .topbar{max-width:none;width:calc(100% - 48px)}
+@media(max-width:640px){.screen.full .wrap{padding:14px 10px 60px}.screen.full .topbar{width:calc(100% - 20px)}}
+.study-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,26%);gap:16px;margin-bottom:16px}
+.study-grid > .card{margin-bottom:0}
+.study-side{position:relative}
+.study-side > .card{position:absolute;inset:0;margin:0;display:flex;flex-direction:column}
+.study-side #colloc-list{flex:1;min-height:0;overflow-y:auto;margin-right:-8px;padding-right:8px}
+.study-side #colloc-list.more{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 40px),transparent)}
+@media(max-width:960px){.study-grid{grid-template-columns:minmax(0,1fr)}.study-side > .card{position:static}.study-side #colloc-list{max-height:420px}}
 .split-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;margin-top:12px}
 .split-item{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-radius:14px;background:var(--ld-surface-2);font-size:13px;line-height:1.5}
 .split-item .sno{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--ld-ink);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:0}
@@ -42,8 +53,8 @@
 .tp-label{font-size:12px;font-weight:600;color:var(--ld-ink-3)}
 .tp-value{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;color:var(--ld-ink);line-height:1.25;margin-top:2px}
 .tp-sub{font-size:12px;color:var(--ld-ink-2)}
-.tp-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px}
-@media(max-width:860px){.tp-grid{grid-template-columns:1fr}}
+.tp-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px}
+@media(max-width:1100px){.tp-grid{grid-template-columns:minmax(0,1fr)}}
 .tp-h{font-size:14px;font-weight:600;margin:0 0 8px;color:var(--ld-ink)}
 .tp-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ld-ink-2);margin-bottom:8px}
 .tp-legend span{display:inline-flex;align-items:center;gap:6px}
@@ -68,8 +79,16 @@
 .tp-line{width:12px;height:3px;border-radius:2px;display:inline-block}
 .tp-table{margin-top:10px;font-size:12.5px}
 .tp-table summary{cursor:pointer;color:var(--ld-ink-2);font-weight:600}
-.tp-table td{font-variant-numeric:tabular-nums}
-.tp-ex{color:var(--ld-ink-3);white-space:normal}
+.tp-tscroll{overflow-x:auto}
+.tp-table th,.tp-table td{padding:8px 5px;cursor:default;vertical-align:top}
+.tp-table thead th{color:var(--ld-ink);text-align:center}
+.tp-table tbody th{font-size:12px;color:var(--ld-ink-2);font-weight:600;white-space:normal;min-width:64px;border-bottom:1px solid var(--ld-surface-2)}
+.tp-table td{font-variant-numeric:tabular-nums;text-align:center}
+.tp-table td b{display:block;color:var(--ld-ink)}
+.tp-table td small{color:var(--ld-ink-3);font-size:11.5px}
+.tp-table tbody tr:hover td{background:none}
+.tp-ex{color:var(--ld-ink-3);font-size:11.5px;line-height:1.45;white-space:normal;word-break:normal;overflow-wrap:normal}
+.tp-note{font-size:12px;color:var(--ld-ink-3);margin:8px 0 0}
 .tp-summary ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .tp-summary li{display:flex;flex-direction:column;gap:2px;font-size:13.5px;line-height:1.55;color:var(--ld-ink-2);padding-left:12px;border-left:3px solid var(--ld-line)}
 .tp-li-h{font-size:12.5px;font-weight:700;color:var(--ld-ink)}
@@ -80,6 +99,9 @@
 .has-c{text-decoration:underline dotted var(--ld-ink-3);text-underline-offset:4px}
 .lv-tag{display:inline-block;min-width:28px;text-align:center;font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 5px;color:#fff}
 .wordbank{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.wb-group + .wb-group{margin-top:18px}
+.wb-gh{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--ld-ink);margin:0 0 8px}
+.wb-gh .muted{font-weight:500;font-size:12px}
 .wb-item{display:flex;flex-direction:column;justify-content:flex-start;width:100%;text-align:left;background:var(--ld-surface-2);border:1.5px solid transparent;border-radius:14px;padding:10px 12px;cursor:pointer;font-family:var(--font-body);color:var(--ld-ink);transition:var(--transition)}
 .wb-item:hover{border-color:var(--ld-ink-3)}
 .wb-head{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:3px}
@@ -357,7 +379,7 @@
 </div>
 
 <!-- ═══════════ STUDY (ReadWise-style: CEFR levels + collocations) ═══════════ -->
-<div id="screen-study" class="screen">
+<div id="screen-study" class="screen full">
   <div class="topbar">
     <span class="ld-logo"><span class="ld-mark"><i data-ic="book"></i></span><span class="ld-logo-name">Study Script<small>LisDictation</small></span></span>
     <div class="topbar-right"><span class="topbar-user tb-hide-sm" id="tb-user-study"></span>
@@ -379,23 +401,22 @@
       </div>
       <div id="tp-body"></div>
     </section>
-    <div class="setup-grid">
-      <div>
-        <div class="card"><div id="study-passage" style="font-size:16px;line-height:2.1"></div>
-          <div class="study-hint muted">Click a word to see its collocations, an example and its meaning. <span class="has-c" style="cursor:default">Dotted</span> words have collocations in the dictionary.</div>
-        </div>
-        <!-- Từ khoá của bài (theo cấp CEFR đang bật) + collocation gợi ý -->
-        <div class="card">
-          <div class="card-title"><span><i data-ic="key"></i>Key Words &amp; Collocations</span><span class="muted" id="wordbank-sub"></span></div>
-          <div id="wordbank" class="wordbank"></div>
-        </div>
+    <!-- script | Phrases & Collocations: cột phải cao đúng bằng script, danh sách dài thì cuộn bên trong -->
+    <div class="study-grid">
+      <div class="card study-main"><div id="study-passage" style="font-size:16px;line-height:2.1"></div>
+        <div class="study-hint muted">Click a word to see its collocations, an example and its meaning. <span class="has-c" style="cursor:default">Dotted</span> words have collocations in the dictionary.</div>
       </div>
-      <div>
+      <div class="study-side">
         <div class="card">
           <div class="card-title"><span><i data-ic="link"></i>Phrases &amp; Collocations</span></div>
           <div id="colloc-list"></div>
         </div>
       </div>
+    </div>
+    <!-- Từ khoá của bài (theo cấp CEFR đang bật), chia nhóm theo cấp, trải hết chiều ngang -->
+    <div class="card">
+      <div class="card-title"><span><i data-ic="key"></i>Key Words &amp; Collocations</span><span class="muted" id="wordbank-sub"></span></div>
+      <div id="wordbank"></div>
     </div>
   </div>
 </div>
@@ -1206,13 +1227,13 @@ function renderTextProfile() {
             '<div class="tp-x">' + lvName(lv) + '</div></div>';
         }).join('') +
       '</div><div class="tp-tip" role="status" aria-live="polite"></div></div>' +
-    '<details class="tp-table"><summary>Data table</summary><table class="ld-table"><thead><tr><th>Level</th><th>Running words</th><th>Different words</th><th>Examples</th></tr></thead><tbody>' +
-      PROFILE_LEVELS.map(function (lv) {
-        return '<tr><td><b>' + lvName(lv) + '</b></td><td>' + P.tokens[lv] + ' · ' + pct(P.tokens[lv], P.counted) + '%</td><td>' + P.types[lv] + ' · ' + pct(P.types[lv], P.typeCount) + '%</td>' +
-          '<td class="tp-ex">' + LD.esc(P.typeList[lv].slice(0, 6).join(', ')) + '</td></tr>';
-      }).join('') +
-      '<tr><td>Not counted</td><td>' + P.notCounted + '</td><td colspan="2" class="tp-ex">names &amp; numbers' + (Object.keys(P.names).length ? ': ' + LD.esc(Object.keys(P.names).slice(0, 6).join(', ')) : '') + '</td></tr>' +
-    '</tbody></table></details></div>';
+    '<details class="tp-table"><summary>Data table</summary><div class="tp-tscroll"><table class="ld-table"><thead><tr><th></th>' +
+      PROFILE_LEVELS.map(function (lv) { return '<th scope="col">' + lvName(lv) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      '<tr><th scope="row">Running words</th>' + PROFILE_LEVELS.map(function (lv) { return '<td><b>' + pct(P.tokens[lv], P.counted) + '%</b><small>' + P.tokens[lv] + '</small></td>'; }).join('') + '</tr>' +
+      '<tr><th scope="row">Different words</th>' + PROFILE_LEVELS.map(function (lv) { return '<td><b>' + pct(P.types[lv], P.typeCount) + '%</b><small>' + P.types[lv] + '</small></td>'; }).join('') + '</tr>' +
+      '<tr><th scope="row">Examples</th>' + PROFILE_LEVELS.map(function (lv) { return '<td class="tp-ex">' + P.typeList[lv].slice(0, 4).map(LD.esc).join('<br>') + '</td>'; }).join('') + '</tr>' +
+    '</tbody></table></div>' +
+    '<p class="tp-note">Not counted: ' + P.notCounted + ' names &amp; numbers' + (Object.keys(P.names).length ? ' (' + LD.esc(Object.keys(P.names).slice(0, 6).join(', ')) + ')' : '') + '</p></details></div>';
 
   // ── Analysis Summary (tiêu đề tiếng Anh, nội dung tiếng Việt) ──
   var hard = P.hard.slice(0, 8);
@@ -1222,7 +1243,8 @@ function renderTextProfile() {
   items.push(['Vocabulary level', lv95 === 'C2+'
     ? 'Bài có nhiều từ ngoài danh sách CEFR: biết hết từ đến C2 vẫn chưa hiểu được 95% số từ. Nên xem trước danh sách từ khó bên dưới.'
     : 'Hồ sơ từ vựng tương ứng <b>' + lv95 + '</b>: biết từ đến ' + lv95 + ' là hiểu khoảng 95% số từ trong bài — nghe được ý chính, cần tra thêm vài từ. ' +
-      (lv98 !== 'C2+' ? 'Biết đến <b>' + lv98 + '</b> thì hiểu khoảng 98% — nghe khá thoải mái.' : 'Muốn hiểu 98% thì cần vốn từ trên C2 (có từ ngoài danh sách).')]);
+      (lv98 === lv95 ? 'Cũng ở mức này là hiểu được khoảng 98% — nghe khá thoải mái.'
+        : lv98 !== 'C2+' ? 'Biết đến <b>' + lv98 + '</b> thì hiểu khoảng 98% — nghe khá thoải mái.' : 'Muốn hiểu 98% thì cần vốn từ trên C2 (có từ ngoài danh sách).')]);
   if (hard.length) items.push(['Words to learn first', 'Có ' + nHard + ' từ từ B2 trở lên' + (nOff ? ' và ' + nOff + ' từ ngoài danh sách' : '') + '. Học trước: ' +
     hard.map(function (x) { return '<button class="tp-word" data-w="' + LD.esc(x.w) + '" onclick="showWordPanel(this.dataset.w,this)">' + LD.esc(x.w) + ' <small>' + lvName(x.lv) + '</small></button>'; }).join(' ')]);
   items.push(['Length', P.words + ' từ trong ' + P.sentences + ' câu, trung bình ' + fmt1(P.wps) + ' từ/câu. Câu dài nhất có ' + P.longest.n + ' từ (câu ' + (P.longest.i + 1) + ')' +
@@ -1275,6 +1297,10 @@ function renderCollocations() {
   el.innerHTML = App.collocations.length
     ? App.collocations.map(function (c) { return '<div class="colloc-card"><div class="colloc-en">' + LD.esc(c.en) + '</div><div class="colloc-vi">' + LD.esc(c.vi) + '</div></div>'; }).join('')
     : '<p style="color:var(--grey-600);font-size:13px">No collocations yet.</p>';
+  // cột phải cao bằng script: danh sách dài hơn thì cuộn, mờ dần ở đáy để báo còn nữa
+  var fade = function () { el.classList.toggle('more', el.scrollTop + el.clientHeight < el.scrollHeight - 4); };
+  el.onscroll = fade;
+  requestAnimationFrame(fade);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1430,7 +1456,6 @@ function inScript(phrase, text) {
   var p = String(phrase || '').toLowerCase().replace(/[\u2018\u2019]/g, "'").trim();
   return !!p && p.indexOf(' ') > 0 && new RegExp('(^|[^a-z])' + p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z])').test(text);
 }
-var LV_RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
 // Từ khoá: từ trong bài có trong từ điển collocation, thuộc các cấp CEFR đang bật, khó trước
 function renderWordBank() {
   var el = document.getElementById('wordbank'), sub = document.getElementById('wordbank-sub');
@@ -1446,19 +1471,25 @@ function renderWordBank() {
     all.push({ key: k, lv: (info && info.level) || '', hits: (e.c || []).filter(function (c) { return inScript(c.e, text); }) });
   });
   var rows = all.filter(function (x) { return x.lv && App.showLevels[x.lv]; })
-    .sort(function (a, b) { return (b.hits.length - a.hits.length) || ((LV_RANK[b.lv] || 0) - (LV_RANK[a.lv] || 0)) || a.key.localeCompare(b.key); });
+    .sort(function (a, b) { return (b.hits.length - a.hits.length) || a.key.localeCompare(b.key); });
   sub.textContent = rows.length + ' / ' + all.length + ' words';
   if (!rows.length) {
     el.innerHTML = '<p class="muted" style="font-size:13px;grid-column:1/-1">' + (all.length ? 'No key words at the ticked CEFR levels — tick B1 or A2 above to see ' + all.length + ' more.' : 'No words of this script are in the collocation dictionary.') + '</p>';
     return;
   }
-  el.innerHTML = rows.map(function (x) {
+  var card = function (x) {
     var e = COLLOC[x.key], show = x.hits.length ? x.hits : (e.c || []).slice(0, 2);
     return '<button class="wb-item" data-w="' + LD.esc(x.key) + '" onclick="showWordPanel(this.dataset.w,this)">' +
-      '<span class="wb-head"><span class="lv-tag lv-' + x.lv + '">' + x.lv + '</span><b>' + LD.esc(x.key) + '</b>' +
+      '<span class="wb-head"><b>' + LD.esc(x.key) + '</b>' +
       (x.hits.length ? '<span class="wb-in">' + x.hits.length + ' in script</span>' : '') + '</span>' +
       show.map(function (c) { return '<span class="wb-c"><span class="wb-e">' + LD.esc(c.e) + '</span> · ' + LD.esc(c.v) + '</span>'; }).join('') +
       '</button>';
+  };
+  // mỗi cấp 1 nhóm (dễ → khó), trong nhóm: từ có collocation xuất hiện trong bài trước, rồi A→Z
+  el.innerHTML = LEVELS.map(function (lv) {
+    var g = rows.filter(function (x) { return x.lv === lv; });
+    return g.length ? '<section class="wb-group"><h3 class="wb-gh"><span class="lv-tag lv-' + lv + '">' + lv + '</span>' + LEVEL_NAME[lv] +
+      '<span class="muted">' + g.length + (g.length > 1 ? ' words' : ' word') + '</span></h3><div class="wordbank">' + g.map(card).join('') + '</div></section>' : '';
   }).join('');
 }
 // Thẻ từ: cấp CEFR, loại từ, nghĩa (AI gloss nếu có), collocation, ví dụ, ghi chú
