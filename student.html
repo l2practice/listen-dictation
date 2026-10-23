@@ -719,7 +719,7 @@
   </div>
 </div>
 
-<script src="ld-common.js?v=7"></script>
+<script src="ld-common.js?v=8"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -2394,7 +2394,7 @@ function renderPeers() {
 
   var body = document.getElementById('peer-body');
   if (!topics.length) {
-    body.innerHTML = '<div class="card peer-empty">' + (Peers.days ? 'Lớp chưa làm xong bài nào ' + (Peers.days === 14 ? 'trong 2 tuần qua' : 'trong 4 tuần qua') + '. Thử chọn <b>All time</b>.' : 'Lớp chưa có bạn nào làm xong bài nào. Hãy là người đầu tiên!') + '</div>';
+    body.innerHTML = '<div class="card peer-empty">' + (Peers.days ? 'Lớp chưa làm xong bài nào ' + (Peers.days === 14 ? 'trong 2 tuần qua' : 'trong 4 tuần qua') + '. Thử chọn <b>All time</b>.' : 'Chưa có dữ liệu Peers của lớp. Dữ liệu có khi các bạn nộp xong bài hoặc khi giảng viên mở trang giáo viên. Nếu bạn làm xong bài đầu tiên thì bạn sẽ là người đầu tiên!') + '</div>';
     return;
   }
   // bảng xếp hạng cả lớp (mở mới tải)

@@ -176,7 +176,8 @@ th[data-sort="desc"]::after{content:" ↓";color:var(--ld-accent)}
         <div id="new-class-result" style="margin-top:12px;font-size:13.5px"></div>
       </div>
       <div class="card">
-        <div class="card-title"><span><i data-ic="users"></i>Class List</span></div>
+        <div class="card-title"><span><i data-ic="users"></i>Class List</span>
+          <button class="btn btn-secondary btn-sm" onclick="syncPeers(true, this)" title="Update the students' Peer Comparison from all finished exercises"><i data-ic="refresh"></i>Sync Peers</button></div>
         <div id="classes-list">Loading…</div>
       </div>
     </div>
@@ -369,7 +370,7 @@ th[data-sort="desc"]::after{content:" ↓";color:var(--ld-accent)}
   </div>
 </div>
 
-<script src="ld-common.js?v=7"></script>
+<script src="ld-common.js?v=8"></script>
 <script>
 var App = { classes: [], students: [], roster: null, editing: null, sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false,
   practice: [] };
@@ -380,7 +381,18 @@ var App = { classes: [], students: [], roster: null, editing: null, sessions: []
   document.getElementById('tb-user').innerHTML = '<span class="tb-av">' + LD.esc((s.user.fullName || '?').trim().split(/\s+/).pop().charAt(0).toUpperCase()) + '</span><span class="tb-name">' + LD.esc(s.user.fullName) + '</span>';
   loadClasses();
   loadNewPractice(); // tab mặc định khi GV đăng nhập
+  syncPeers(false);  // Peer Comparison của SV: đồng bộ nền, chỉ báo khi lỗi
 })();
+
+// Peer Comparison (tab Peers của SV) lấy số liệu từ đây: bù bài cũ, ẩn SV đã lưu trữ/chuyển lớp.
+async function syncPeers(force, btn) {
+  if (btn) { btn.disabled = true; btn.dataset.html = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span> Syncing…'; }
+  var r = await LD.api('teacher.syncPeers', { force: !!force });
+  if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.html; }
+  if (r.success) { if (force) LD.toast('Peers updated' + (r.written ? ' — ' + r.written + ' item(s) written.' : ' — already up to date.'), 'ok'); return; }
+  if (/Unknown action|không có trong bản Firebase/i.test(r.error || '')) return; // bản Google Sheet cũ: không có Peers
+  LD.toast('Peer Comparison chưa cập nhật được: ' + (/quyền/i.test(r.error || '') ? 'hãy Publish file firestore.rules mới trên Firebase rồi bấm Sync Peers.' : r.error), 'err', 8000);
+}
 
 var TABS = ['practice', 'classes', 'sessions'];
 function switchTab(tab) {
