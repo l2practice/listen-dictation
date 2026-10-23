@@ -719,7 +719,7 @@
   </div>
 </div>
 
-<script src="ld-common.js?v=8"></script>
+<script src="ld-common.js?v=9"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -2306,15 +2306,23 @@ async function loadInProgress() { return loadInProgressTop5(); }
 // Tải theo nhu cầu: mở tab chỉ đọc danh sách bài; bấm mở 1 bài mới tải bài đó;
 // bảng xếp hạng cả lớp chỉ tải khi bấm mở. Dữ liệu đã tải giữ lại tới khi bấm Reload.
 // ═══════════════════════════════════════════════════════════
-var Peers = { res: null, days: 28, open: {}, topic: {}, cls: null, more: {} };
+var Peers = { res: null, days: 28, open: {}, topic: {}, cls: null, more: {}, seq: 0 };
+// Gọi Firebase cho Peers, quá 20 giây thì coi như lỗi (mạng yếu) để SV bấm thử lại thay vì chờ mãi
+function peerApi(action, payload) {
+  return Promise.race([
+    LD.api(action, payload || {}).catch(function (e) { return { success: false, error: (e && e.message) || String(e) }; }),
+    new Promise(function (res) { setTimeout(function () { res({ success: false, error: 'Mạng chậm — quá 20 giây chưa tải xong. Bấm ↻ để thử lại.' }); }, 20000); })
+  ]);
+}
 function goPeers() { showScreen('screen-peers'); if (!Peers.res) loadPeers(); }
 async function loadPeers() {
   Peers.res = null; Peers.open = {}; Peers.topic = {}; Peers.cls = null; Peers.more = {};
+  var seq = ++Peers.seq;   // bấm ↻ nhiều lần: chỉ lần gần nhất được vẽ
   var body = document.getElementById('peer-body');
   document.getElementById('peer-kpis').innerHTML = '';
   body.innerHTML = '<div class="card muted"><span class="spinner"></span> Loading your class…</div>';
-  var r;
-  try { r = await LD.api('student.getPeerList', {}); } catch (e) { r = { success: false, error: e.message }; }
+  var r = await peerApi('student.getPeerList');
+  if (seq !== Peers.seq) return;
   if (!r.success) {
     var msg = /không có trong bản Firebase|Unknown action|không hợp lệ/i.test(r.error || '') ? 'Peer Comparison chỉ có trong bản Firebase của app.'
       : /không có quyền/i.test(r.error || '') ? 'Chưa đọc được dữ liệu lớp — giáo viên cần cập nhật Firestore Rules (firestore.rules) trên Firebase.'
@@ -2324,7 +2332,8 @@ async function loadPeers() {
   }
   Peers.res = r;
   document.getElementById('peer-class').textContent = r.className || r.classId || 'My class';
-  renderPeers();
+  try { renderPeers(); }
+  catch (e) { console.error(e); body.innerHTML = '<div class="card peer-empty">Lỗi hiển thị Peers: ' + LD.esc((e && e.message) || String(e)) + '</div>'; }
 }
 function setPeerDays(d) {
   Peers.days = d;
@@ -2362,18 +2371,18 @@ function peerListHtml(rows, n, moreKey) {
 async function togglePeerTopic(k) {
   Peers.open[k] = !Peers.open[k];
   renderPeers();
-  if (!Peers.open[k] || Peers.topic[k]) return;
-  var r;
-  try { r = await LD.api('student.getPeerTopic', { key: k }); } catch (e) { r = { success: false, error: e.message }; }
+  if (!Peers.open[k] || (Peers.topic[k] && !Peers.topic[k].error)) return;   // lỗi lần trước → mở lại là thử lại
+  Peers.topic[k] = null; renderPeers();
+  var r = await peerApi('student.getPeerTopic', { key: k });
   Peers.topic[k] = r.success ? r : { error: r.error || 'Không tải được.' };
   renderPeers();
 }
 async function togglePeerClass() {
   Peers.open.__class = !Peers.open.__class;
   renderPeers();
-  if (!Peers.open.__class || Peers.cls) return;
-  var r;
-  try { r = await LD.api('student.getPeerClass', {}); } catch (e) { r = { success: false, error: e.message }; }
+  if (!Peers.open.__class || (Peers.cls && !Peers.cls.error)) return;
+  Peers.cls = null; renderPeers();
+  var r = await peerApi('student.getPeerClass');
   Peers.cls = r.success ? r : { error: r.error || 'Không tải được.' };
   renderPeers();
 }
