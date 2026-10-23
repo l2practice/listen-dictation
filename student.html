@@ -1240,6 +1240,11 @@ function renderTextProfile() {
   var nHard = P.hard.filter(function (x) { return x.lv !== 'Off'; }).length, nOff = P.types.Off;
   var items = [];
   if (!hasDict) items.push(['Dictionary missing', 'Không tải được từ điển CEFR (cefr-dict.js) nên chưa xếp cấp được từ nào.']);
+  // giải thích 2 cách đếm của biểu đồ bằng chính số liệu của bài (từ lặp nhiều nhất + cột A1)
+  var topW = Object.keys(P.freq).sort(function (a, b) { return P.freq[b] - P.freq[a]; })[0];
+  if (topW) items.push(['Running words vs Different words', '<b>Running words</b> (lượt từ) đếm mọi lần một từ xuất hiện; <b>Different words</b> (từ khác nhau) chỉ đếm mỗi từ 1 lần. ' +
+    'Ví dụ: “' + LD.esc(topW) + '” xuất hiện ' + P.freq[topW] + ' lần = ' + P.freq[topW] + ' running words nhưng chỉ 1 different word. ' +
+    'Vì vậy từ A1 chiếm ' + pct(P.tokens.A1, P.counted) + '% running words nhưng chỉ ' + pct(P.types.A1, P.typeCount) + '% different words: từ cơ bản lặp lại rất nhiều, còn từ khó thường chỉ gặp 1–2 lần.']);
   items.push(['Vocabulary level', lv95 === 'C2+'
     ? 'Bài có nhiều từ ngoài danh sách CEFR: biết hết từ đến C2 vẫn chưa hiểu được 95% số từ. Nên xem trước danh sách từ khó bên dưới.'
     : 'Hồ sơ từ vựng tương ứng <b>' + lv95 + '</b>: biết từ đến ' + lv95 + ' là hiểu khoảng 95% số từ trong bài — nghe được ý chính, cần tra thêm vài từ. ' +
