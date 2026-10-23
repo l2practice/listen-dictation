@@ -34,6 +34,48 @@
 .pct-bar-fill{height:100%;border-radius:999px}
 .lv-A1{background:#0EA5E9}.lv-A2{background:#10B981}.lv-B1{background:#3B82F6}.lv-B2{background:#8B5CF6}.lv-C1{background:#EC4899}.lv-C2{background:#DC2626}
 .study-hint{margin-top:12px;font-size:12px}
+/* ── Text Profile ── */
+.tp{--tp-tok:#D4664F;--tp-typ:#4F6BD8}
+.tp-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+@media(max-width:760px){.tp-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tp-tile{background:var(--ld-surface-2);border-radius:16px;padding:12px 14px}
+.tp-label{font-size:12px;font-weight:600;color:var(--ld-ink-3)}
+.tp-value{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;color:var(--ld-ink);line-height:1.25;margin-top:2px}
+.tp-sub{font-size:12px;color:var(--ld-ink-2)}
+.tp-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px}
+@media(max-width:860px){.tp-grid{grid-template-columns:1fr}}
+.tp-h{font-size:14px;font-weight:600;margin:0 0 8px;color:var(--ld-ink)}
+.tp-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ld-ink-2);margin-bottom:8px}
+.tp-legend span{display:inline-flex;align-items:center;gap:6px}
+.tp-key{width:12px;height:12px;border-radius:3px;display:inline-block}
+.tp-key.tok,.tp-bar.tok,.tp-line.tok{background:var(--tp-tok)}
+.tp-key.typ,.tp-bar.typ,.tp-line.typ{background:var(--tp-typ)}
+.tp-chart{position:relative;display:flex;gap:6px;height:220px;padding-bottom:24px}
+.tp-yaxis{display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:var(--ld-ink-3);font-variant-numeric:tabular-nums;text-align:right;min-width:30px;margin:-6px 0 -6px}
+.tp-plot{position:relative;flex:1;display:flex;align-items:stretch;border-bottom:1px solid var(--ld-line)}
+.tp-grid-line{position:absolute;left:0;right:0;height:1px;background:var(--ld-surface-2)}
+.tp-group{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;outline:none;border-radius:8px;cursor:default}
+.tp-group.hot,.tp-group:focus-visible{background:rgba(21,23,28,.04)}
+.tp-bars{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px}
+.tp-bar{position:relative;width:min(40%,22px);border-radius:4px 4px 0 0;min-height:1px}
+.tp-cap{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:3px;font-size:11px;font-weight:600;color:var(--ld-ink-2);white-space:nowrap}
+.tp-x{position:absolute;bottom:-22px;font-size:12px;font-weight:600;color:var(--ld-ink-2);white-space:nowrap}
+.tp-tip{position:absolute;top:0;width:180px;pointer-events:none;opacity:0;transition:opacity .12s;background:var(--ld-surface);border:1px solid var(--ld-line);border-radius:12px;box-shadow:var(--shadow-md);padding:8px 10px;font-size:12px;z-index:3}
+.tp-tip.on{opacity:1}
+.tp-tip-h{font-weight:600;color:var(--ld-ink-2);margin-bottom:4px}
+.tp-tip-row{display:flex;align-items:center;gap:6px;color:var(--ld-ink-2)}
+.tp-tip-row b{color:var(--ld-ink);min-width:34px}
+.tp-line{width:12px;height:3px;border-radius:2px;display:inline-block}
+.tp-table{margin-top:10px;font-size:12.5px}
+.tp-table summary{cursor:pointer;color:var(--ld-ink-2);font-weight:600}
+.tp-table td{font-variant-numeric:tabular-nums}
+.tp-ex{color:var(--ld-ink-3);white-space:normal}
+.tp-summary ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.tp-summary li{display:flex;flex-direction:column;gap:2px;font-size:13.5px;line-height:1.55;color:var(--ld-ink-2);padding-left:12px;border-left:3px solid var(--ld-line)}
+.tp-li-h{font-size:12.5px;font-weight:700;color:var(--ld-ink)}
+.tp-word{font-family:var(--font-body);font-size:12.5px;font-weight:600;border:none;background:var(--ld-surface-2);color:var(--ld-ink);border-radius:100px;padding:2px 10px;margin:2px 2px 0 0;cursor:pointer}
+.tp-word small{color:var(--ld-ink-3);font-weight:600}
+.tp-word:hover{background:var(--ld-slate-lt)}
 .study-word.has-c{text-decoration:underline dotted var(--ld-ink-3);text-underline-offset:4px}
 .has-c{text-decoration:underline dotted var(--ld-ink-3);text-underline-offset:4px}
 .lv-tag{display:inline-block;min-width:28px;text-align:center;font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 5px;color:#fff}
@@ -330,6 +372,13 @@
       <button class="btn btn-secondary btn-sm" id="btn-pos-toggle" onclick="togglePosColor()"><i data-ic="palette"></i>Color by part of speech</button>
       <button class="btn btn-secondary btn-sm" id="btn-listen-toggle" onclick="toggleListenMode()"><i data-ic="volume"></i>Listen</button>
     </div>
+    <!-- Text Profile: hồ sơ CEFR của script (cefr-dict.js), chỉ số đọc/nghe, tóm tắt — tính tại máy, 0 lần gọi AI -->
+    <section class="card tp" id="text-profile" aria-labelledby="tp-title">
+      <div class="card-title"><span><i data-ic="chart"></i><span id="tp-title">Text Profile</span></span>
+        <button class="btn btn-secondary btn-sm" id="tp-toggle" onclick="toggleTextProfile()" aria-expanded="true" aria-controls="tp-body">Hide</button>
+      </div>
+      <div id="tp-body"></div>
+    </section>
     <div class="setup-grid">
       <div>
         <div class="card"><div id="study-passage" style="font-size:16px;line-height:2.1"></div>
@@ -345,10 +394,6 @@
         <div class="card">
           <div class="card-title"><span><i data-ic="link"></i>Phrases &amp; Collocations</span></div>
           <div id="colloc-list"></div>
-        </div>
-        <div class="card">
-          <div class="card-title"><span><i data-ic="chart"></i>CEFR Distribution</span><span class="muted">rule-based, 0 AI calls</span></div>
-          <div id="cefr-dist"></div>
         </div>
       </div>
     </div>
@@ -937,7 +982,7 @@ async function runAnalyzeScript() {
   try {
     // First rule-based pass (0 AI) to find which words are hard (B2+) — only send those
     // to the AI for translation instead of the whole passage (same trick ReadWise uses).
-    var preCefr = computeCEFR(App.sentences.join(' '));
+    var preCefr = computeCEFR(App.sentences);
     var hardWords = [];
     ['B2', 'C1', 'C2'].forEach(function (lv) { (preCefr.byLevel[lv] || []).forEach(function (w) { if (hardWords.indexOf(w) < 0) hardWords.push(w); }); });
 
@@ -953,7 +998,7 @@ async function runAnalyzeScript() {
     App.collocations = (res.collocations || []).map(function (c) { return { en: c[0] || '', vi: c[1] || '' }; }).filter(function (c) { return c.en; });
     App.gloss = {};
     (res.gloss || []).forEach(function (g) { if (g && g[0]) App.gloss[String(g[0]).toLowerCase()] = { vi: g[1] || '', ipa: g[2] || '' }; });
-    App.cefr = computeCEFR(App.correctedSentences.join(' ')); // final recompute on the corrected script
+    App.cefr = computeCEFR(App.correctedSentences); // final recompute on the corrected script
     document.getElementById('analyze-status').innerHTML = '✓ Spelling fixed + found ' + App.collocations.length + ' collocations + translated ' + Object.keys(App.gloss).length + ' difficult words.';
     document.getElementById('btn-start-session').disabled = false;
     document.getElementById('btn-start-session').innerHTML = LD.label('play', 'Start Practice Session', true);
@@ -977,29 +1022,253 @@ function safeCefrOf(word) {
   return null;
 }
 function computeCEFR(text) {
-  var words = text.match(/\b[A-Za-z][A-Za-z'-]*\b/g) || [];
-  var counts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0, Unknown: 0 };
+  // giữ nguyên dạng dữ liệu đã lưu (CEFRJSON): { total, counts, byLevel }; tên riêng/số → Unknown
+  var p = textProfile(splitForProfile(text));
+  var counts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0, Unknown: p.notCounted + p.tokens.Off };
   var byLevel = { A1: [], A2: [], B1: [], B2: [], C1: [], C2: [] };
-  words.forEach(function (w) {
-    var info = safeCefrOf(w.toLowerCase());
-    var lv = info && info.level;
-    if (lv && counts[lv] != null) { counts[lv]++; if (byLevel[lv].indexOf(w.toLowerCase()) < 0) byLevel[lv].push(w.toLowerCase()); }
-    else counts.Unknown++;
-  });
-  return { total: words.length, counts: counts, byLevel: byLevel };
+  LEVELS.forEach(function (lv) { counts[lv] = p.tokens[lv]; byLevel[lv] = p.typeList[lv].slice(); });
+  return { total: p.words, counts: counts, byLevel: byLevel };
 }
-function renderCefrDist() {
-  var el = document.getElementById('cefr-dist');
-  if (!App.cefr) { el.innerHTML = '<p style="color:var(--grey-600);font-size:13px">No data yet.</p>'; return; }
-  var tot = App.cefr.total || 1;
-  var html = LEVELS.map(function (lv) {
-    var c = App.cefr.counts[lv] || 0, pct = Math.round(c / tot * 100);
-    return '<div class="pct-bar-row"><span class="badge" style="min-width:38px;justify-content:center;background:var(--ld-surface-2)">' + lv + '</span>' +
-      '<div class="pct-bar-outer"><div class="pct-bar-fill lv-' + lv + '" style="width:' + pct + '%"></div></div>' +
-      '<span style="font-size:12px;font-weight:700;color:var(--ld-ink-2);min-width:56px;text-align:right">' + c + ' · ' + pct + '%</span></div>';
-  }).join('');
-  if (App.cefr.counts.Unknown) html += '<div style="font-size:11px;color:var(--grey-400);margin-top:6px">Unknown (outside the wordlist, or cefr-dict.js is missing): ' + App.cefr.counts.Unknown + '</div>';
-  el.innerHTML = html;
+function splitForProfile(text) {
+  return (Array.isArray(text) ? text : (String(text || '').match(/[^.!?]+[.!?]*/g) || [])).map(function (x) { return x.trim(); }).filter(Boolean);
+}
+
+// ═══════════════════════════════════════════════════════════
+// TEXT PROFILE — hồ sơ từ vựng CEFR (cefr-dict.js), độ dễ đọc, tốc độ nói, tóm tắt
+// ═══════════════════════════════════════════════════════════
+var PROFILE_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Off'];
+var LEVEL_NAME = { A1: 'Beginner', A2: 'Elementary', B1: 'Intermediate', B2: 'Upper-intermediate', C1: 'Advanced', C2: 'Proficiency' };
+var CONTRACTIONS = { "don't": 'do', "doesn't": 'does', "didn't": 'did', "can't": 'can', "cannot": 'can', "won't": 'will', "isn't": 'is', "aren't": 'are',
+  "wasn't": 'was', "weren't": 'were', "haven't": 'have', "hasn't": 'has', "hadn't": 'had', "couldn't": 'could', "wouldn't": 'would',
+  "shouldn't": 'should', "mustn't": 'must', "needn't": 'need', "let's": 'let', "shan't": 'shall' };
+// từ trong bài → khoá tra từ điển: bỏ 's sở hữu, tách từ rút gọn (don't → do, they're → they)
+function profileKey(w) {
+  var l = String(w).toLowerCase().replace(/[‘’]/g, "'");
+  if (CONTRACTIONS[l]) return CONTRACTIONS[l];
+  if (/'/.test(l)) l = l.replace(/'(s|re|ve|ll|d|m)$/, '').replace(/s'$/, 's').replace(/'$/, '');
+  return l;
+}
+// Tên riêng: viết hoa ở giữa câu (trừ "I"), không lần nào viết thường, VÀ (không có trong từ điển, hoặc viết hoa
+// ≥ 2 lần, hoặc đứng cạnh 1 từ viết hoa khác: "Mount Everest", "Seven Summits"). Không tính, kể cả khi đứng đầu câu
+// (nếu không, "Everest" đầu câu bị tra thành "ever" A1). "However" sau dấu ";" vẫn được tính là từ.
+function findNames(sentences) {
+  var capMid = {}, lower = {};
+  sentences.forEach(function (sent) {
+    var ws = sent.match(/[A-Za-z][A-Za-z'’-]*/g) || [];
+    ws.forEach(function (w, i) {
+      var k = profileKey(w);
+      if (/^[A-Z]/.test(w)) {
+        if (i > 0 && k !== 'i') {
+          var c = capMid[k] || (capMid[k] = { n: 0, pair: false });
+          c.n++;
+          if ((/^[A-Z]/.test(ws[i - 1] || '') && profileKey(ws[i - 1]) !== 'i') || /^[A-Z]/.test(ws[i + 1] || '')) c.pair = true;
+        }
+      } else lower[k] = 1;
+    });
+  });
+  var names = {};
+  Object.keys(capMid).forEach(function (k) {
+    var c = capMid[k];
+    if (!lower[k] && (!safeCefrOf(k) || c.n >= 2 || c.pair)) names[k] = 1;
+  });
+  return names;
+}
+// Cấp CEFR của 1 từ: lấy cấp DỄ hơn giữa dạng đang có và từ gốc khi có đuôi -s/-es/-ies/-ed/-ing
+// ("going" có mục riêng B2 — danh từ — nhưng ở đây là "go" A1)
+var LV_ORDER = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+function cefrInfo(k) {
+  var best = safeCefrOf(k), tries = [];
+  if (k.length > 3) {
+    if (/ies$|ied$/.test(k)) tries.push(k.slice(0, -3) + 'y');
+    if (/(s|x|z|ch|sh)es$/.test(k)) tries.push(k.slice(0, -2));
+    if (/s$/.test(k) && !/ss$/.test(k)) tries.push(k.slice(0, -1));
+    if (/ed$/.test(k)) tries.push(k.slice(0, -2), k.slice(0, -1));
+    if (/ing$/.test(k)) tries.push(k.slice(0, -3), k.slice(0, -3) + 'e');
+    var m = k.match(/^(.*?)([bcdfgklmnprtvz])\2(ed|ing)$/); if (m) tries.push(m[1] + m[2]);
+  }
+  tries.forEach(function (t) {
+    var i = safeCefrOf(t);
+    if (i && i.level && (!best || !best.level || LV_ORDER[i.level] < LV_ORDER[best.level])) best = i;
+  });
+  return best;
+}
+function syllables(w) {
+  w = String(w).toLowerCase().replace(/[^a-z]/g, '');
+  if (w.length <= 3) return 1;
+  w = w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '').replace(/^y/, '');
+  var m = w.match(/[aeiouy]{1,2}/g);
+  return Math.max(1, m ? m.length : 1);
+}
+function textProfile(sentences) {
+  var names = findNames(sentences);
+  var P = { sentences: sentences.length, words: 0, counted: 0, notCounted: 0, syll: 0, names: {}, longest: { n: 0, i: -1 },
+            tokens: {}, types: {}, typeList: {}, freq: {} };
+  PROFILE_LEVELS.forEach(function (lv) { P.tokens[lv] = 0; P.types[lv] = 0; P.typeList[lv] = []; });
+  var seen = {};
+  sentences.forEach(function (sent, si) {
+    var ws = sent.match(/[A-Za-z][A-Za-z'’-]*|\d[\d,.]*/g) || [];
+    if (ws.length > P.longest.n) P.longest = { n: ws.length, i: si };
+    ws.forEach(function (w) {
+      P.words++; P.syll += /^\d/.test(w) ? 2 : syllables(w);
+      var k = profileKey(w);
+      if (/^\d/.test(w) || names[k]) { P.notCounted++; if (names[k]) P.names[w] = 1; return; }
+      var info = cefrInfo(k), lv = info && info.level && P.tokens[info.level] != null ? info.level : 'Off';
+      P.counted++; P.tokens[lv]++;
+      P.freq[k] = (P.freq[k] || 0) + 1;
+      if (!seen[k]) { seen[k] = lv; P.types[lv]++; P.typeList[lv].push(k); }
+    });
+  });
+  P.typeCount = Object.keys(seen).length;
+  // mức từ vựng: cấp thấp nhất mà từ A1→cấp đó phủ ≥ 95 % / 98 % số lượt từ (từ ngoài danh sách = chưa phủ)
+  var cum = 0;
+  P.level95 = P.level98 = 'C2+';
+  P.coverage = {};
+  LEVELS.forEach(function (lv) {
+    cum += P.tokens[lv];
+    var c = P.counted ? cum / P.counted : 0;
+    P.coverage[lv] = c;
+    if (P.level95 === 'C2+' && c >= 0.95) P.level95 = lv;
+    if (P.level98 === 'C2+' && c >= 0.98) P.level98 = lv;
+  });
+  var wps = P.words / Math.max(1, P.sentences), spw = P.syll / Math.max(1, P.words);
+  P.wps = wps;
+  P.fre = 206.835 - 1.015 * wps - 84.6 * spw;
+  P.fkgl = Math.max(0, 0.39 * wps + 11.8 * spw - 15.59);
+  // từ nên học trước: B2 trở lên + ngoài danh sách, khó trước, hay gặp trước
+  var rank = { C2: 6, C1: 5, B2: 4, Off: 3 };
+  P.hard = Object.keys(seen).filter(function (k) { return rank[seen[k]]; })
+    .sort(function (a, b) { return (rank[seen[b]] - rank[seen[a]]) || (P.freq[b] - P.freq[a]) || a.localeCompare(b); })
+    .map(function (k) { return { w: k, lv: seen[k], n: P.freq[k] }; });
+  return P;
+}
+function freLabelVi(x) {
+  return x >= 90 ? 'rất dễ' : x >= 80 ? 'dễ' : x >= 70 ? 'khá dễ' : x >= 60 ? 'trung bình' : x >= 50 ? 'khá khó' : x >= 30 ? 'khó' : 'rất khó';
+}
+function freLabel(x) {
+  return x >= 90 ? 'Very easy' : x >= 80 ? 'Easy' : x >= 70 ? 'Fairly easy' : x >= 60 ? 'Standard' : x >= 50 ? 'Fairly difficult' : x >= 30 ? 'Difficult' : 'Very difficult';
+}
+var fmt1 = function (x) { return (Math.round(x * 10) / 10).toLocaleString('vi-VN'); };
+var pct = function (n, d) { return d ? Math.round(n / d * 100) : 0; };
+
+// Thời gian nói thật (không tính khoảng lặng dài để đọc câu hỏi), lấy từ phân tích audio nếu có
+function speakingSeconds() {
+  if (!AP.frames || AP.url !== App.audioBlobUrl) return 0;
+  var ch = audioChunks(AP.frames), t = 0;
+  for (var i = 0; i < ch.length; i++) { t += ch[i].e - ch[i].s; if (i + 1 < ch.length) { var g = ch[i + 1].s - ch[i].e; if (g < 2.5) t += g; } }
+  return t;
+}
+
+function toggleTextProfile(force) {
+  var open = force != null ? force : document.getElementById('tp-body').classList.contains('hidden');
+  document.getElementById('tp-body').classList.toggle('hidden', !open);
+  var b = document.getElementById('tp-toggle'); b.textContent = open ? 'Hide' : 'Show'; b.setAttribute('aria-expanded', open);
+  try { localStorage.setItem('ld_profile_open', open ? '1' : '0'); } catch (e) {}
+}
+
+function renderTextProfile() {
+  var body = document.getElementById('tp-body');
+  if (!body) return;
+  var P = textProfile(App.correctedSentences || []);
+  App.profile = P;
+  if (!P.words) { body.innerHTML = '<p class="muted">No script yet.</p>'; return; }
+  var sec = speakingSeconds(), wpm = sec > 20 ? Math.round(P.words / (sec / 60)) : 0;
+  var hasDict = typeof cefrOf === 'function';
+  var lv95 = P.level95, lv98 = P.level98;
+
+  var tile = function (label, value, sub, title) {
+    return '<div class="tp-tile"' + (title ? ' title="' + LD.esc(title) + '"' : '') + '><div class="tp-label">' + label + '</div>' +
+      '<div class="tp-value">' + value + '</div><div class="tp-sub">' + sub + '</div></div>';
+  };
+  var html = '<div class="tp-kpis">' +
+    tile('Words', P.words.toLocaleString('en'), P.sentences + ' sentences') +
+    tile('Vocabulary level (95%)', lv95, lv95 === 'C2+' ? 'Beyond C2 list' : LEVEL_NAME[lv95], 'Knowing words up to this level covers 95% of the running words') +
+    tile('Readability', 'Grade ' + fmt1(P.fkgl), 'Flesch ' + Math.round(P.fre) + ' · ' + freLabel(P.fre), 'Flesch–Kincaid grade level and Flesch Reading Ease (US school grades)') +
+    (wpm ? tile('Speech rate', wpm + ' wpm', wpm < 130 ? 'Slow' : wpm <= 170 ? 'Normal' : 'Fast', 'Words per minute of actual speaking time in the audio')
+         : tile('Listening time', '≈ ' + fmt1(P.words / 150) + ' min', 'at 150 words/min', 'Estimate: load the audio to measure the real speech rate')) +
+    '</div>';
+
+  // ── chart: 2 series (running words / different words) × CEFR levels ──
+  var maxPct = 0;
+  PROFILE_LEVELS.forEach(function (lv) { maxPct = Math.max(maxPct, pct(P.tokens[lv], P.counted), pct(P.types[lv], P.typeCount)); });
+  var top = Math.max(20, Math.ceil(maxPct / 20) * 20), ticks = [0, top / 2, top];
+  var lvName = function (lv) { return lv === 'Off' ? 'Off-list' : lv; };
+  html += '<div class="tp-grid"><div class="tp-chart-wrap">' +
+    '<h3 class="tp-h">Vocabulary Profile (CEFR)</h3>' +
+    '<div class="tp-legend"><span><i class="tp-key tok"></i>Running words (tokens)</span><span><i class="tp-key typ"></i>Different words (types)</span></div>' +
+    '<div class="tp-chart" role="img" aria-label="Share of running words and different words at each CEFR level; values in the data table below">' +
+      '<div class="tp-yaxis">' + ticks.slice().reverse().map(function (t) { return '<span>' + t + '%</span>'; }).join('') + '</div>' +
+      '<div class="tp-plot">' + ticks.map(function (t) { return '<i class="tp-grid-line" style="bottom:' + (t / top * 100) + '%"></i>'; }).join('') +
+        PROFILE_LEVELS.map(function (lv) {
+          var a = pct(P.tokens[lv], P.counted), b = pct(P.types[lv], P.typeCount);
+          return '<div class="tp-group" tabindex="0" data-lv="' + lv + '">' +
+            '<div class="tp-bars"><div class="tp-bar tok" style="height:' + (a / top * 100) + '%"><span class="tp-cap">' + a + '%</span></div>' +
+            '<div class="tp-bar typ" style="height:' + (b / top * 100) + '%"></div></div>' +
+            '<div class="tp-x">' + lvName(lv) + '</div></div>';
+        }).join('') +
+      '</div><div class="tp-tip" role="status" aria-live="polite"></div></div>' +
+    '<details class="tp-table"><summary>Data table</summary><table class="ld-table"><thead><tr><th>Level</th><th>Running words</th><th>Different words</th><th>Examples</th></tr></thead><tbody>' +
+      PROFILE_LEVELS.map(function (lv) {
+        return '<tr><td><b>' + lvName(lv) + '</b></td><td>' + P.tokens[lv] + ' · ' + pct(P.tokens[lv], P.counted) + '%</td><td>' + P.types[lv] + ' · ' + pct(P.types[lv], P.typeCount) + '%</td>' +
+          '<td class="tp-ex">' + LD.esc(P.typeList[lv].slice(0, 6).join(', ')) + '</td></tr>';
+      }).join('') +
+      '<tr><td>Not counted</td><td>' + P.notCounted + '</td><td colspan="2" class="tp-ex">names &amp; numbers' + (Object.keys(P.names).length ? ': ' + LD.esc(Object.keys(P.names).slice(0, 6).join(', ')) : '') + '</td></tr>' +
+    '</tbody></table></details></div>';
+
+  // ── Analysis Summary (tiêu đề tiếng Anh, nội dung tiếng Việt) ──
+  var hard = P.hard.slice(0, 8);
+  var nHard = P.hard.filter(function (x) { return x.lv !== 'Off'; }).length, nOff = P.types.Off;
+  var items = [];
+  if (!hasDict) items.push(['Dictionary missing', 'Không tải được từ điển CEFR (cefr-dict.js) nên chưa xếp cấp được từ nào.']);
+  items.push(['Vocabulary level', lv95 === 'C2+'
+    ? 'Bài có nhiều từ ngoài danh sách CEFR: biết hết từ đến C2 vẫn chưa hiểu được 95% số từ. Nên xem trước danh sách từ khó bên dưới.'
+    : 'Hồ sơ từ vựng tương ứng <b>' + lv95 + '</b>: biết từ đến ' + lv95 + ' là hiểu khoảng 95% số từ trong bài — nghe được ý chính, cần tra thêm vài từ. ' +
+      (lv98 !== 'C2+' ? 'Biết đến <b>' + lv98 + '</b> thì hiểu khoảng 98% — nghe khá thoải mái.' : 'Muốn hiểu 98% thì cần vốn từ trên C2 (có từ ngoài danh sách).')]);
+  if (hard.length) items.push(['Words to learn first', 'Có ' + nHard + ' từ từ B2 trở lên' + (nOff ? ' và ' + nOff + ' từ ngoài danh sách' : '') + '. Học trước: ' +
+    hard.map(function (x) { return '<button class="tp-word" data-w="' + LD.esc(x.w) + '" onclick="showWordPanel(this.dataset.w,this)">' + LD.esc(x.w) + ' <small>' + lvName(x.lv) + '</small></button>'; }).join(' ')]);
+  items.push(['Length', P.words + ' từ trong ' + P.sentences + ' câu, trung bình ' + fmt1(P.wps) + ' từ/câu. Câu dài nhất có ' + P.longest.n + ' từ (câu ' + (P.longest.i + 1) + ')' +
+    (P.longest.n > 30 ? ' — câu dài, khi chép chính tả nên nghe lại từng cụm.' : '.')]);
+  items.push([wpm ? 'Speech rate' : 'Listening time', wpm
+    ? 'Tốc độ nói khoảng <b>' + wpm + ' từ/phút</b> (' + (wpm < 130 ? 'chậm' : wpm <= 170 ? 'bình thường — IELTS thường 140–170' : 'nhanh hơn mức thường gặp trong IELTS') + '), không tính khoảng lặng để đọc câu hỏi.'
+    : 'Ước tính khoảng ' + fmt1(P.words / 150) + ' phút nghe ở tốc độ 150 từ/phút. Tải file audio lên để đo tốc độ nói thật.']);
+  items.push(['Readability', 'Flesch–Kincaid: lớp ' + fmt1(P.fkgl) + ' (hệ trường học Mỹ); Flesch Reading Ease ' + Math.round(P.fre) + ' (' + freLabelVi(P.fre) + '). ' +
+    'Các chỉ số này chỉ dựa trên độ dài câu và độ dài từ, nên xem cùng hồ sơ từ vựng.']);
+  items.push(['Lexical diversity', P.typeCount + ' từ khác nhau trên ' + P.counted + ' lượt từ được tính (tỉ lệ ' + fmt1(P.typeCount / Math.max(1, P.counted)) + ').' +
+    (P.notCounted ? ' Không tính ' + P.notCounted + ' tên riêng và con số.' : '')]);
+  html += '<div class="tp-summary"><h3 class="tp-h">Analysis Summary</h3><ul>' +
+    items.map(function (it) { return '<li><b class="tp-li-h">' + it[0] + '</b><span>' + it[1] + '</span></li>'; }).join('') + '</ul></div></div>';
+  body.innerHTML = html;
+  wireProfileTips(body, P, lvName);
+  var open = true; try { open = localStorage.getItem('ld_profile_open') !== '0'; } catch (e) {}
+  toggleTextProfile(open);
+  // audio phân tích xong sau → cập nhật tốc độ nói
+  if (!wpm && App.audioBlobUrl && AP.pending) AP.pending.then(function () { if (document.getElementById('screen-study').classList.contains('active')) renderTextProfile(); });
+}
+// Hover / focus vào 1 cột cấp độ → giá trị cả 2 series (giá trị trước, tên sau)
+function wireProfileTips(root, P, lvName) {
+  var tip = root.querySelector('.tp-tip'), chart = root.querySelector('.tp-chart');
+  var show = function (g) {
+    var lv = g.dataset.lv;
+    tip.innerHTML = '';
+    var h = document.createElement('div'); h.className = 'tp-tip-h'; h.textContent = lvName(lv) + (LEVEL_NAME[lv] ? ' · ' + LEVEL_NAME[lv] : '');
+    tip.appendChild(h);
+    [['tok', pct(P.tokens[lv], P.counted) + '%', P.tokens[lv] + ' running words'], ['typ', pct(P.types[lv], P.typeCount) + '%', P.types[lv] + ' different words']].forEach(function (r) {
+      var row = document.createElement('div'); row.className = 'tp-tip-row';
+      var k = document.createElement('i'); k.className = 'tp-line ' + r[0];
+      var v = document.createElement('b'); v.textContent = r[1];
+      var t = document.createElement('span'); t.textContent = r[2];
+      row.appendChild(k); row.appendChild(v); row.appendChild(t); tip.appendChild(row);
+    });
+    var gr = g.getBoundingClientRect(), cr = chart.getBoundingClientRect();
+    tip.style.left = Math.min(Math.max(0, gr.left - cr.left + gr.width / 2 - 90), cr.width - 180) + 'px';
+    tip.classList.add('on'); g.classList.add('hot');
+  };
+  var hide = function (g) { tip.classList.remove('on'); if (g) g.classList.remove('hot'); };
+  root.querySelectorAll('.tp-group').forEach(function (g) {
+    g.addEventListener('pointerenter', function () { show(g); });
+    g.addEventListener('pointerleave', function () { hide(g); });
+    g.addEventListener('focus', function () { show(g); });
+    g.addEventListener('blur', function () { hide(g); });
+  });
 }
 function renderCollocations() {
   var el = document.getElementById('colloc-list');
@@ -1069,7 +1338,7 @@ function dupForceCreate() {
   _doStartSession(document.getElementById('btn-start-session'));
 }
 function goStudy() {
-  renderLevelChips(); renderStudyPassage(); renderCefrDist(); renderCollocations(); renderWordBank();
+  renderLevelChips(); renderStudyPassage(); renderTextProfile(); renderCollocations(); renderWordBank();
   showScreen('screen-study');
   // Từ điển collocation (~1.3 MB, tải 1 lần) → vẽ lại khi có
   loadCollocations().then(function () { renderStudyPassage(); renderWordBank(); });
@@ -1077,12 +1346,13 @@ function goStudy() {
 
 // ── ReadWise-style leveled reading ──
 function tokenizeForStudy(text) {
-  var out = [];
+  var out = [], names = findNames(App.correctedSentences || []);
   var re = /([A-Za-z][A-Za-z'-]*)|(\n\n+)|([^A-Za-z]+)/g;
   var m;
   while ((m = re.exec(text)) !== null) {
     if (m[1]) {
-      var info = safeCefrOf(m[1].toLowerCase());
+      var key = profileKey(m[1]);
+      var info = names[key] ? null : cefrInfo(key);
       out.push({ t: 'w', w: m[1], lv: info && info.level, pos: info && info.pos });
     } else if (m[2]) out.push({ t: 'br' });
     else out.push({ t: 's', w: m[3] });
@@ -1229,7 +1499,7 @@ function wordPop() {
     document.body.appendChild(pop);
     // Đóng khi bấm ra ngoài (trừ khi bấm sang từ khác — từ đó tự mở thẻ mới) hoặc nhấn Esc
     document.addEventListener('mousedown', function (ev) {
-      if (pop.classList.contains('open') && !pop.contains(ev.target) && !ev.target.closest('.study-word,.wb-item')) closeWordPanel();
+      if (pop.classList.contains('open') && !pop.contains(ev.target) && !ev.target.closest('.study-word,.wb-item,.tp-word')) closeWordPanel();
     });
     document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && pop.classList.contains('open')) closeWordPanel(); });
   }
