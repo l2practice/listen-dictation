@@ -48,7 +48,8 @@ Muốn quay lại bản Sheet: đổi về `enabled: false`.
 | `progress/{uid}` | **1 tài liệu cho mỗi SV**: dòng điểm của mọi bài (`items`). History, tab Sessions và New Practice chỉ đọc tài liệu này. |
 | `details/{sessionId}` | Script và bài làm của 1 bài. Bài xong đủ 3 phần thì được **giữ vĩnh viễn** (bản tổng kết, xem ở `review.html`) và bị khoá, không sửa hay xoá được. |
 | `reviews/{id}` | Dấu Done của GV |
-| `peerStats/{classId}_{uid}` | Peer Comparison: số lần SV làm xong từng bài trong lớp, kèm ngày làm. **Không có điểm**, vì bạn cùng lớp đọc được. |
+| `peerIndex/{classId}` | Peer Comparison: danh sách bài lớp đã làm (tên bài, ngày gần nhất). |
+| `peerTopics/{classId}_{bài}` | Peer Comparison: ai đã làm xong 1 bài, mỗi bạn mấy lần, ngày làm. **Không có điểm**, vì bạn cùng lớp đọc được. |
 
 - **Dọn dữ liệu nháp:** khi xong đủ 3 phần, app bỏ script thô và danh sách từ A1–B1. Bài chỉ mới dán script, chưa làm phần nào, sẽ tự xoá sau 7 ngày.
 - **Mật khẩu:** Firebase lưu ở dạng mã hoá, không đọc lại được. Khi SV bấm "Quên mật khẩu", Apps Script đặt mật khẩu mới và gửi qua email.
@@ -70,5 +71,10 @@ SV xem các bạn cùng lớp đã **làm xong** mỗi bài bao nhiêu lần (đ
 
 **Cần làm 1 lần:** Firebase console ▸ Firestore Database ▸ **Rules** ▸ dán đè toàn bộ `firestore.rules` ▸ **Publish**. Chưa publish thì tab Peers báo "giáo viên cần cập nhật Firestore Rules". Việc nộp bài vẫn chạy bình thường. Không cần deploy lại Apps Script.
 
+- **Tải theo nhu cầu để tránh quá tải:**
+  - Mở tab Peers chỉ đọc 1 tài liệu (danh sách tên bài).
+  - Bấm mở 1 bài mới đọc số liệu của bài đó, mỗi bài 1 tài liệu.
+  - Class Leaderboard chỉ tải khi SV bấm mở.
+  - Dữ liệu đã tải được giữ lại cho tới khi SV bấm nút tải lại.
 - **Số liệu được cập nhật** khi SV nộp xong bài và khi SV mở tab Peers. GV mở trang GV thì app đồng bộ lại cả lớp, tối đa 1 lần mỗi 10 phút. Lần đồng bộ này cũng tính các bài đã làm trước khi có tính năng.
 - **SV bị lưu trữ hoặc đã chuyển lớp** không hiện trong Peers của lớp cũ.

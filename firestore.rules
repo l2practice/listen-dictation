@@ -64,21 +64,44 @@ service cloud.firestore {
                     && resource.data.get('compact', false) != true;
     }
 
-    // Peer Comparison: số lần làm xong từng bài của 1 SV trong 1 lớp — KHÔNG có điểm.
-    // Bạn cùng lớp đọc được. SV chỉ ghi dòng của chính mình, ở lớp hiện tại, đúng tên mình;
-    // GV ghi được dòng của SV lớp mình (đồng bộ bù bài cũ, đánh dấu SV lưu trữ/chuyển lớp).
-    match /peerStats/{id} {
-      allow read: if (signedIn() && resource.data.classId == profile().classId) || owns(resource.data);
-      allow create, update: if (signedIn()
-                                && id == request.resource.data.classId + '_' + request.auth.uid
-                                && request.resource.data.uid == request.auth.uid
-                                && request.resource.data.classId == profile().classId
-                                && request.resource.data.teacherUid == profile().teacherUid
-                                && request.resource.data.name == profile().fullName)
-                            || (isTeacher()
-                                && request.resource.data.teacherUid == request.auth.uid
-                                && id == request.resource.data.classId + '_' + request.resource.data.uid
-                                && (resource == null || resource.data.teacherUid == request.auth.uid));
+    // ── Peer Comparison: số lần làm xong từng bài — KHÔNG có điểm. Bạn cùng lớp đọc được. ──
+    function myCls() { return profile().get('classId', ''); }
+    function teachesClass(cid) {
+      return isTeacher() && get(/databases/$(db)/documents/classes/$(cid)).data.teacherUid == request.auth.uid;
+    }
+    // Danh sách bài của lớp: { topics: { key: { title, last } } }. SV chỉ thêm/sửa, không xoá bài nào.
+    match /peerIndex/{cid} {
+      allow get: if signedIn() && myCls() == cid;
+      allow list: if owns(resource.data);
+      allow create: if (signedIn() && myCls() == cid
+                        && request.resource.data.classId == cid
+                        && request.resource.data.teacherUid == profile().teacherUid)
+                    || (teachesClass(cid) && request.resource.data.teacherUid == request.auth.uid);
+      allow update: if (signedIn() && myCls() == cid && unchanged('classId') && unchanged('teacherUid')
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['topics', 'updatedAt'])
+                        && request.resource.data.topics.diff(resource.data.topics).removedKeys().size() == 0)
+                    || (teachesClass(cid) && request.resource.data.teacherUid == request.auth.uid);
+      allow delete: if false;
+    }
+    // 1 bài của 1 lớp: { students: { uid: { name, dates[], hidden } } }.
+    // SV chỉ ghi phần CỦA MÌNH, ở lớp hiện tại, đúng tên mình; GV ghi được cả bài của lớp mình.
+    match /peerTopics/{id} {
+      allow get: if signedIn() && id.matches(myCls() + '_.+');
+      allow list: if (signedIn() && resource.data.classId == myCls()) || owns(resource.data);
+      allow create: if (signedIn() && id.matches(myCls() + '_.+')
+                        && request.resource.data.classId == myCls()
+                        && request.resource.data.teacherUid == profile().teacherUid
+                        && request.resource.data.students.keys().hasOnly([request.auth.uid])
+                        && request.resource.data.students[request.auth.uid].name == profile().fullName)
+                    || (teachesClass(request.resource.data.classId)
+                        && request.resource.data.teacherUid == request.auth.uid
+                        && id.matches(request.resource.data.classId + '_.+'));
+      allow update: if (signedIn() && resource.data.classId == myCls() && unchanged('classId') && unchanged('teacherUid')
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['students', 'updatedAt'])
+                        && request.resource.data.students.diff(resource.data.students).affectedKeys().hasOnly([request.auth.uid])
+                        && request.resource.data.students[request.auth.uid].name == profile().fullName)
+                    || (teachesClass(resource.data.classId) && unchanged('classId')
+                        && request.resource.data.teacherUid == request.auth.uid);
       allow delete: if false;
     }
 
