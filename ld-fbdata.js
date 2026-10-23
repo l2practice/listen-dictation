@@ -446,6 +446,7 @@ async function syncMyPeers(u, prog, idx) {
   const memoKey = 'ld_peer_' + u.uid + '_' + u.classId;
   let sent = {}; try { sent = JSON.parse(localStorage.getItem(memoKey) || '{}') || {}; } catch (e) {}
   if (!idx) { const d = await idxRef(u.classId).get(); idx = (d.exists && d.data().topics) || {}; }
+  idx = Object.assign({}, idx);
   // bài chưa có trong index cũng ghi lại (vd. GV vừa đồng bộ lại, hoặc lần đầu)
   const todo = Object.keys(mine).filter(k => sent[k] !== canon(mine[k].dates) || !idx[k]);
   if (!todo.length) return idx;
@@ -477,9 +478,16 @@ async function peerList() {
   const u = await me();
   if (!u.classId) return fail('Bạn chưa thuộc lớp nào.');
   const [prog, d, cname] = await Promise.all([myProgress(), idxRef(u.classId).get(), className(u.classId)]);
-  let idx = (d.exists && d.data().topics) || {};
-  try { idx = await syncMyPeers(u, prog, idx); } catch (e) { console.warn('[ld-fbdata] peers', e); }
+  const idx = Object.assign({}, (d.exists && d.data().topics) || {});
   const mine = peerTopics(prog && prog.items, u.classId, (prog && prog.classId) || u.classId);
+  // Ghi phần của mình chạy NỀN (không bắt SV chờ máy chủ xác nhận, nhất là trên 4G);
+  // danh sách hiện ngay, gồm cả bài của mình chưa có trong index
+  syncMyPeers(u, prog, idx).catch(e => console.warn('[ld-fbdata] peers', e));
+  Object.keys(mine).forEach(k => {
+    const last = lastOf(mine[k].dates);
+    if (!idx[k]) idx[k] = { title: mine[k].title, last };
+    else if (last > (idx[k].last || '')) idx[k] = Object.assign({}, idx[k], { last });
+  });
   return ok({
     classId: u.classId, className: cname,
     topics: Object.keys(idx).map(k => ({ key: k, title: idx[k].title || k, last: idx[k].last || '' })),
