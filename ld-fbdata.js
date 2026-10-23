@@ -23,9 +23,12 @@
                          only when that session is opened. Kept for good once
                          finished (compact); only draft data is dropped.
     reviews/{id}         New Practice "Done" marks of a teacher.
-    peerStats/{classId}_{uid}  Peer Comparison: how many times a student
-                         finished each exercise in that class — counts and
-                         dates only, NO scores (classmates can read it).
+    peerIndex/{classId}  Peer Comparison, list of exercises the class has
+                         finished: topics { key: { title, last } } — 1 read.
+    peerTopics/{classId}_{key}  one exercise of one class: students
+                         { uid: { name, dates[], hidden } } — read only when
+                         a student opens that exercise. Counts and dates
+                         only, NO scores (classmates can read them).
 ───────────────────────────────────────────────────────────────*/
 (function () {
 'use strict';
@@ -307,7 +310,7 @@ async function finishDictation(p) {
     dictInProgress: false
   }));
   await batch.commit();
-  syncMyPeerStats(u).catch(e => console.warn('[ld-fbdata] peerStats', e));
+  syncAfterFinish(u);
   return ok({ totalScore: total });
 }
 // Bản tổng kết xem ngay trong app (review.html) — không còn Google Doc
@@ -401,73 +404,107 @@ async function deleteSession(p) {
 }
 
 // ════════════════════════════════════════════
-// PEERS: peerStats/{classId}_{uid}
-// Tính lại từ progress (không cộng dồn) nên ghi lại bao nhiêu lần cũng đúng:
-// SV ghi dòng của mình khi nộp bài / mở Peers; GV đồng bộ cả lớp khi mở trang GV
-// (bù cho bài làm trước khi có tính năng này và cho SV lâu không vào app).
+// PEERS — tải theo nhu cầu để không đọc nhiều:
+//   mở tab Peers  → 1 tài liệu peerIndex/{lớp} (chỉ tên bài + ngày gần nhất)
+//   mở 1 bài      → 1 tài liệu peerTopics/{lớp}_{bài}
+//   mở bảng xếp hạng cả lớp → mọi bài của lớp (chỉ khi SV bấm mở)
+// Phần của mỗi SV được tính lại từ progress (không cộng dồn) nên ghi lại bao nhiêu lần cũng đúng.
+// SV ghi phần của mình khi nộp bài / mở Peers; GV đồng bộ cả lớp khi mở trang GV
+// (bù bài cũ, ẩn SV đã lưu trữ hoặc chuyển lớp).
 // ════════════════════════════════════════════
 const PEER_MAX_DATES = 60;           // giữ tối đa 60 lần gần nhất mỗi bài
 const peerKey = title => btpKey(title).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled';
 const isDone = r => has(r.quizScore) && has(r.gapFillScore) && has(r.dictationAccuracy);
-// Bài xong đủ 3 phần, làm khi đang ở lớp classId → { key: { title, dates[] } }
+const idxRef = c => fs.doc('peerIndex/' + c);
+const topicRef = (c, k) => fs.doc('peerTopics/' + c + '_' + k);
+// Bài xong đủ 3 phần, làm khi đang ở lớp classId → { key: { title, dates[], best } }
 function peerTopics(items, classId, headClassId) {
   const topics = {};
   Object.keys(items || {}).forEach(id => {
     const r = items[id];
     if ((r.classId || headClassId) !== classId || !isDone(r)) return;
     const title = str(r.bookTestPart) || 'Untitled', k = peerKey(title);
-    (topics[k] || (topics[k] = { title, dates: [] })).dates.push(r.endTime || r.startTime || '');
+    const t = topics[k] || (topics[k] = { title, dates: [], best: null });
+    t.dates.push(r.endTime || r.startTime || '');
+    if (has(r.totalScore)) t.best = Math.max(t.best == null ? -1 : t.best, Number(r.totalScore) || 0);
   });
   Object.keys(topics).forEach(k => { topics[k].dates = topics[k].dates.sort().slice(-PEER_MAX_DATES); });
   return topics;
 }
-function peerDoc(user, uid, classId, prog, flags) {
-  const topics = peerTopics(prog && prog.items, classId, (prog && prog.classId) || user.classId);
-  let total = 0;
-  Object.keys(topics).forEach(k => { total += topics[k].dates.length; });
-  return Object.assign({ classId, uid, teacherUid: user.teacherUid || '', name: user.fullName || '',
-                         archived: false, moved: false, total, topics }, flags || {});
-}
+const lastOf = dates => dates.length ? dates[dates.length - 1] : '';
 // So sánh bỏ qua thứ tự khoá và updatedAt → chỉ ghi khi thật sự đổi
 function canon(v) {
   if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
   if (v && typeof v === 'object') return '{' + Object.keys(v).filter(k => k !== 'updatedAt' && k !== '_id').sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}';
   return JSON.stringify(v === undefined ? null : v);
 }
-const peerRef = (classId, uid) => fs.doc('peerStats/' + classId + '_' + uid);
-// Không bao giờ làm hỏng việc nộp bài: lỗi (vd. chưa publish rules mới) chỉ ghi ra console
-async function syncMyPeerStats(u) {
-  if (!u.classId) return null;
-  const d = peerDoc(u, u.uid, u.classId, await myProgress());
-  await peerRef(u.classId, u.uid).set(Object.assign({ updatedAt: nowIso() }, d));
-  return d;
+// Ghi phần của SV vào các bài đã đổi so với lần ghi trước TRÊN MÁY NÀY (localStorage) → thường 0 lần ghi.
+// idx: peerIndex đã đọc (tránh đọc lại). Trả về topics của index sau khi ghi.
+async function syncMyPeers(u, prog, idx) {
+  if (!u.classId) return idx || {};
+  const mine = peerTopics(prog && prog.items, u.classId, (prog && prog.classId) || u.classId);
+  const memoKey = 'ld_peer_' + u.uid + '_' + u.classId;
+  let sent = {}; try { sent = JSON.parse(localStorage.getItem(memoKey) || '{}') || {}; } catch (e) {}
+  if (!idx) { const d = await idxRef(u.classId).get(); idx = (d.exists && d.data().topics) || {}; }
+  // bài chưa có trong index cũng ghi lại (vd. GV vừa đồng bộ lại, hoặc lần đầu)
+  const todo = Object.keys(mine).filter(k => sent[k] !== canon(mine[k].dates) || !idx[k]);
+  if (!todo.length) return idx;
+  // Tên bài chỉ đặt khi tạo bài (SV không đổi được tên bài đã có). Bài chưa có trong index thì
+  // kiểm tra xem tài liệu bài đã có chưa (hiếm: chỉ khi index thiếu bài đó).
+  const exists = {};
+  await Promise.all(todo.filter(k => !idx[k]).map(k => topicRef(u.classId, k).get().then(d => { exists[k] = d.exists ? d.data().title || '' : null; })));
+  const now = nowIso(), batch = fs.batch(), patch = {};
+  todo.forEach(k => {
+    const t = mine[k], last = lastOf(t.dates), cur = idx[k];
+    const isNew = !cur && exists[k] == null;
+    batch.set(topicRef(u.classId, k), Object.assign({ classId: u.classId, teacherUid: u.teacherUid || '',
+      students: { [u.uid]: { name: u.fullName || '', dates: t.dates, hidden: false } }, updatedAt: now },
+      isNew ? { key: k, title: t.title } : {}), { merge: true });
+    patch[k] = { title: (cur && cur.title) || exists[k] || t.title, last: cur && cur.last > last ? cur.last : last };
+  });
+  batch.set(idxRef(u.classId), { classId: u.classId, teacherUid: u.teacherUid || '', topics: patch, updatedAt: now }, { merge: true });
+  await batch.commit();
+  todo.forEach(k => { sent[k] = canon(mine[k].dates); });
+  try { localStorage.setItem(memoKey, JSON.stringify(sent)); } catch (e) {}
+  return Object.assign({}, idx, patch);
 }
-async function peerComparison() {
+// Không bao giờ làm hỏng việc nộp bài: lỗi (vd. chưa publish rules mới) chỉ ghi ra console
+async function syncAfterFinish(u) {
+  try { await syncMyPeers(u, await myProgress()); } catch (e) { console.warn('[ld-fbdata] peers', e); }
+}
+// Danh sách bài của lớp (1 lần đọc) + số lần / điểm cao nhất CỦA MÌNH (từ progress của mình)
+async function peerList() {
   const u = await me();
   if (!u.classId) return fail('Bạn chưa thuộc lớp nào.');
-  const [prog, list, cname] = await Promise.all([
-    myProgress(), fs.collection('peerStats').where('classId', '==', u.classId).get().then(docs), className(u.classId)
-  ]);
-  // dòng của mình luôn tính lại từ progress (bù bài cũ), ghi khi khác bản đã lưu
-  const mine = peerDoc(u, u.uid, u.classId, prog), old = list.find(x => x.uid === u.uid);
-  if (!old || canon(old) !== canon(mine)) {
-    try { await peerRef(u.classId, u.uid).set(Object.assign({ updatedAt: nowIso() }, mine)); }
-    catch (e) { console.warn('[ld-fbdata] peerStats', e); }
-  }
-  const rows = list.filter(x => x.uid !== u.uid).concat([mine]).filter(x => !x.archived && !x.moved);
-  // điểm cao nhất CỦA MÌNH mỗi bài (điểm chỉ lấy từ progress của chính mình)
-  const myBest = {}, items = (prog && prog.items) || {};
-  Object.keys(items).forEach(id => {
-    const r = items[id];
-    if ((r.classId || (prog && prog.classId)) !== u.classId || !isDone(r) || !has(r.totalScore)) return;
-    const k = peerKey(str(r.bookTestPart) || 'Untitled');
-    myBest[k] = Math.max(myBest[k] == null ? -1 : myBest[k], Number(r.totalScore) || 0);
-  });
+  const [prog, d, cname] = await Promise.all([myProgress(), idxRef(u.classId).get(), className(u.classId)]);
+  let idx = (d.exists && d.data().topics) || {};
+  try { idx = await syncMyPeers(u, prog, idx); } catch (e) { console.warn('[ld-fbdata] peers', e); }
+  const mine = peerTopics(prog && prog.items, u.classId, (prog && prog.classId) || u.classId);
   return ok({
     classId: u.classId, className: cname,
-    data: rows.map(x => ({ uid: x.uid, name: x.name || '', isMe: x.uid === u.uid, topics: x.topics || {} })),
-    myBest
+    topics: Object.keys(idx).map(k => ({ key: k, title: idx[k].title || k, last: idx[k].last || '' })),
+    mine: Object.keys(mine).reduce((o, k) => { o[k] = { dates: mine[k].dates, best: mine[k].best }; return o; }, {})
   });
+}
+const peerRows = (students, uid) => Object.keys(students || {}).filter(id => !students[id].hidden)
+  .map(id => ({ name: students[id].name || '', isMe: id === uid, dates: students[id].dates || [] }));
+// 1 bài: ai đã làm, mỗi bạn mấy lần (không có điểm)
+async function peerTopic(p) {
+  const u = await me();
+  const d = await topicRef(u.classId, str(p.key)).get();
+  if (!d.exists) return ok({ rows: [] });
+  return ok({ title: d.data().title, rows: peerRows(d.data().students, u.uid) });
+}
+// Bảng xếp hạng cả lớp: đọc mọi bài của lớp — chỉ khi SV bấm mở
+async function peerClass() {
+  const u = await me();
+  const list = docs(await fs.collection('peerTopics').where('classId', '==', u.classId).get());
+  const by = {};
+  list.forEach(t => peerRows(t.students, u.uid).forEach(r => {
+    const k = (r.isMe ? '1' : '0') + r.name, x = by[k] || (by[k] = { name: r.name, isMe: r.isMe, dates: [] });
+    x.dates = x.dates.concat(r.dates);
+  }));
+  return ok({ rows: Object.keys(by).map(k => by[k]) });
 }
 
 // ════════════════════════════════════════════
@@ -477,29 +514,51 @@ const myClasses  = t => memo('classes', 60000, async () => docs(await fs.collect
 const myStudents = t => memo('students', 60000, async () => docs(await fs.collection('users').where('teacherUid', '==', t.uid).get()));
 const myProgressDocs = t => memo('progress', 20000, async () => docs(await fs.collection('progress').where('teacherUid', '==', t.uid).get()));
 
-// Đồng bộ peerStats cho mọi SV của GV (tối đa 1 lần / 10 phút, chạy nền, chỉ ghi dòng đổi).
-// SV chuyển lớp → dòng ở lớp cũ đánh dấu moved; SV bị lưu trữ → archived (ẩn khỏi Peers).
+// Đồng bộ Peers cho mọi SV của GV (tối đa 1 lần / 10 phút, chạy nền, chỉ ghi tài liệu đổi).
+// SV chuyển lớp → ẩn ở lớp cũ; SV bị lưu trữ → ẩn (hidden).
 function syncClassPeers(t) {
   return memo('peersync', 600000, async () => {
-    const [progs, students, existing] = await Promise.all([
-      myProgressDocs(t), myStudents(t), fs.collection('peerStats').where('teacherUid', '==', t.uid).get().then(docs)
+    const [progs, students, oldTopics, oldIdx] = await Promise.all([
+      myProgressDocs(t), myStudents(t),
+      fs.collection('peerTopics').where('teacherUid', '==', t.uid).get().then(docs),
+      fs.collection('peerIndex').where('teacherUid', '==', t.uid).get().then(docs)
     ]);
-    const prog = {}, have = {};
+    const prog = {}, want = {}, idx = {};
     progs.forEach(pd => { prog[pd._id] = pd; });
-    existing.forEach(d => { have[d._id] = d; });
-    const writes = [];
     students.filter(s => s.role === 'student').forEach(s => {
       const pd = prog[s._id], items = (pd && pd.items) || {}, classes = {};
-      if (s.classId) classes[s.classId] = 1;
       Object.keys(items).forEach(id => { const c = items[id].classId || (pd && pd.classId); if (c && isDone(items[id])) classes[c] = 1; });
       Object.keys(classes).forEach(c => {
-        const d = peerDoc(Object.assign({}, s, { teacherUid: t.uid }), s._id, c, pd, { archived: !!s.archived, moved: c !== s.classId });
-        if (!have[c + '_' + s._id] || canon(have[c + '_' + s._id]) !== canon(d)) writes.push(d);
+        const mine = peerTopics(items, c, (pd && pd.classId) || s.classId), hidden = !!s.archived || c !== s.classId;
+        Object.keys(mine).forEach(k => {
+          const id = c + '_' + k, title = mine[k].title, last = lastOf(mine[k].dates);
+          const doc = want[id] || (want[id] = { classId: c, teacherUid: t.uid, key: k, title, students: {} });
+          doc.students[s._id] = { name: s.fullName || '', dates: mine[k].dates, hidden };
+          const ix = (idx[c] || (idx[c] = { classId: c, teacherUid: t.uid, topics: {} })).topics;
+          if (!ix[k]) ix[k] = { title, last: '' };
+          if (!hidden && last > ix[k].last) ix[k].last = last;
+        });
       });
+    });
+    const have = {};
+    oldTopics.forEach(d => { have['peerTopics/' + d._id] = d; });
+    oldIdx.forEach(d => { have['peerIndex/' + d._id] = d; });
+    const writes = [];
+    Object.keys(want).forEach(id => {
+      // giữ tên bài đã có (SV đầu tiên đặt) để tên không nhảy qua lại
+      const old = have['peerTopics/' + id];
+      if (old && old.title) want[id].title = old.title;
+      if (!old || canon(old) !== canon(want[id])) writes.push(['peerTopics/' + id, want[id]]);
+    });
+    Object.keys(idx).forEach(c => {
+      const old = have['peerIndex/' + c];
+      // bài chỉ có SV đã ẩn (lưu trữ / chuyển lớp) thì không hiện trong danh sách
+      Object.keys(idx[c].topics).forEach(k => { if (!idx[c].topics[k].last) delete idx[c].topics[k]; else idx[c].topics[k].title = want[c + '_' + k].title; });
+      if (!old || canon(old) !== canon(idx[c])) writes.push(['peerIndex/' + c, idx[c]]);
     });
     for (let i = 0; i < writes.length; i += 400) {
       const batch = fs.batch();
-      writes.slice(i, i + 400).forEach(d => batch.set(peerRef(d.classId, d.uid), Object.assign({ updatedAt: nowIso() }, d)));
+      writes.slice(i, i + 400).forEach(w => batch.set(fs.doc(w[0]), Object.assign({ updatedAt: nowIso() }, w[1])));
       await batch.commit();
     }
     return writes.length;
@@ -699,7 +758,7 @@ const ACTIONS = {
   'session.saveGapFill': saveGapFill, 'session.saveDictationProgress': saveDictationProgress,
   'session.finishDictation': finishDictation, 'session.exportReport': exportReport,
   'student.getHistorySummary': historySummary, 'student.getInProgressTop5': inProgressTop5,
-  'student.getInProgress': inProgressTop5, 'student.getPeerComparison': peerComparison, 'student.resumeSession': resumeSession, 'student.deleteSession': deleteSession,
+  'student.getInProgress': inProgressTop5, 'student.getPeerList': peerList, 'student.getPeerTopic': peerTopic, 'student.getPeerClass': peerClass, 'student.resumeSession': resumeSession, 'student.deleteSession': deleteSession,
   'teacher.getClasses': getClasses, 'teacher.createClass': createClass, 'teacher.setClassStatus': setClassStatus,
   'teacher.archiveClass': p => asTeacher('fb.archiveClass', p), 'teacher.restoreClass': p => asTeacher('fb.restoreClass', p),
   'teacher.getRoster': getRoster, 'teacher.archiveStudent': archiveStudent,
