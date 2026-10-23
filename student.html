@@ -1227,7 +1227,7 @@ function renderTextProfile() {
             '<div class="tp-x">' + lvName(lv) + '</div></div>';
         }).join('') +
       '</div><div class="tp-tip" role="status" aria-live="polite"></div></div>' +
-    '<details class="tp-table"><summary>Data table</summary><div class="tp-tscroll"><table class="ld-table"><thead><tr><th></th>' +
+    '<details class="tp-table" open><summary>Data table</summary><div class="tp-tscroll"><table class="ld-table"><thead><tr><th></th>' +
       PROFILE_LEVELS.map(function (lv) { return '<th scope="col">' + lvName(lv) + '</th>'; }).join('') + '</tr></thead><tbody>' +
       '<tr><th scope="row">Running words</th>' + PROFILE_LEVELS.map(function (lv) { return '<td><b>' + pct(P.tokens[lv], P.counted) + '%</b><small>' + P.tokens[lv] + '</small></td>'; }).join('') + '</tr>' +
       '<tr><th scope="row">Different words</th>' + PROFILE_LEVELS.map(function (lv) { return '<td><b>' + pct(P.types[lv], P.typeCount) + '%</b><small>' + P.types[lv] + '</small></td>'; }).join('') + '</tr>' +
