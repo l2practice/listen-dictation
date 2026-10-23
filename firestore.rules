@@ -64,6 +64,24 @@ service cloud.firestore {
                     && resource.data.get('compact', false) != true;
     }
 
+    // Peer Comparison: số lần làm xong từng bài của 1 SV trong 1 lớp — KHÔNG có điểm.
+    // Bạn cùng lớp đọc được. SV chỉ ghi dòng của chính mình, ở lớp hiện tại, đúng tên mình;
+    // GV ghi được dòng của SV lớp mình (đồng bộ bù bài cũ, đánh dấu SV lưu trữ/chuyển lớp).
+    match /peerStats/{id} {
+      allow read: if (signedIn() && resource.data.classId == profile().classId) || owns(resource.data);
+      allow create, update: if (signedIn()
+                                && id == request.resource.data.classId + '_' + request.auth.uid
+                                && request.resource.data.uid == request.auth.uid
+                                && request.resource.data.classId == profile().classId
+                                && request.resource.data.teacherUid == profile().teacherUid
+                                && request.resource.data.name == profile().fullName)
+                            || (isTeacher()
+                                && request.resource.data.teacherUid == request.auth.uid
+                                && id == request.resource.data.classId + '_' + request.resource.data.uid
+                                && (resource == null || resource.data.teacherUid == request.auth.uid));
+      allow delete: if false;
+    }
+
     // Dấu "Done" của GV ở tab New Practice
     match /reviews/{id} {
       // get cả khi chưa có tài liệu (lần đầu tick Done); list chỉ của chính mình

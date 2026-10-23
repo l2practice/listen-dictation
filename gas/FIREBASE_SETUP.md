@@ -48,6 +48,7 @@ Muốn quay lại bản Sheet: đổi về `enabled: false`.
 | `progress/{uid}` | **1 tài liệu cho mỗi SV**: dòng điểm của mọi bài (`items`). History, tab Sessions và New Practice chỉ đọc tài liệu này. |
 | `details/{sessionId}` | Script và bài làm của 1 bài. Bài xong đủ 3 phần thì được **giữ vĩnh viễn** (bản tổng kết, xem ở `review.html`) và bị khoá, không sửa hay xoá được. |
 | `reviews/{id}` | Dấu Done của GV |
+| `peerStats/{classId}_{uid}` | Peer Comparison: số lần SV làm xong từng bài trong lớp, kèm ngày làm. **Không có điểm**, vì bạn cùng lớp đọc được. |
 
 - **Dọn dữ liệu nháp:** khi xong đủ 3 phần, app bỏ script thô và danh sách từ A1–B1. Bài chỉ mới dán script, chưa làm phần nào, sẽ tự xoá sau 7 ngày.
 - **Mật khẩu:** Firebase lưu ở dạng mã hoá, không đọc lại được. Khi SV bấm "Quên mật khẩu", Apps Script đặt mật khẩu mới và gửi qua email.
@@ -63,3 +64,11 @@ Chưa deploy thì các nút Edit / Archive class / Restore class báo lỗi. Lư
 - **Chuyển lớp:** bài đã làm vẫn nằm ở lớp cũ trong tab Sessions; bài mới thuộc lớp mới.
 - **Lưu trữ lớp:** mọi SV đang học trong lớp được lưu trữ cùng và không đăng nhập được. **Khôi phục lớp** chỉ mở lại những SV bị lưu trữ cùng lớp; SV đã lưu trữ riêng trước đó vẫn ở Student Archive.
 - Các chức năng này chỉ có ở bản Firebase (không có ở bản Google Sheet cũ).
+
+## Peer Comparison (tab Peers của SV)
+SV xem các bạn cùng lớp đã **làm xong** mỗi bài bao nhiêu lần (đủ Quiz, Gap-fill và Dictation). Trang này chỉ hiện số lần làm, không hiện điểm của bạn khác; điểm cao nhất chỉ hiện cho chính SV đó.
+
+**Cần làm 1 lần:** Firebase console ▸ Firestore Database ▸ **Rules** ▸ dán đè toàn bộ `firestore.rules` ▸ **Publish**. Chưa publish thì tab Peers báo "giáo viên cần cập nhật Firestore Rules". Việc nộp bài vẫn chạy bình thường. Không cần deploy lại Apps Script.
+
+- **Số liệu được cập nhật** khi SV nộp xong bài và khi SV mở tab Peers. GV mở trang GV thì app đồng bộ lại cả lớp, tối đa 1 lần mỗi 10 phút. Lần đồng bộ này cũng tính các bài đã làm trước khi có tính năng.
+- **SV bị lưu trữ hoặc đã chuyển lớp** không hiện trong Peers của lớp cũ.

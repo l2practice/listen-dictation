@@ -26,6 +26,46 @@
 /* ── setup ── */
 .setup-grid{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
 @media(max-width:960px){.setup-grid{grid-template-columns:1fr}}
+/* ── setup: 2 ô bên phải (History, Peers) ── */
+.hero-side{display:flex;flex-direction:column;gap:16px}
+.hero-side .tile{flex:1;min-height:0;padding-bottom:64px}
+.tile-plain{background:var(--ld-surface);color:var(--ld-ink)}
+.tile-plain .tile-sub{color:var(--ld-ink-2);opacity:1}
+/* ── peers ── */
+.peer-note{font-size:13px;margin:-4px 0 14px}
+.peer-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media(max-width:760px){.peer-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.peer-kpi{background:var(--ld-surface-2);border-radius:16px;padding:12px 14px}
+.peer-kpi .k-l{font-size:12px;font-weight:600;color:var(--ld-ink-3)}
+.peer-kpi .k-v{font-size:1.5rem;font-weight:600;letter-spacing:-.02em;color:var(--ld-ink);line-height:1.25;margin-top:2px;font-variant-numeric:tabular-nums}
+.peer-kpi .k-s{font-size:12px;color:var(--ld-ink-2)}
+.peer-grid{display:grid;grid-template-columns:minmax(280px,380px) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.peer-grid{grid-template-columns:minmax(0,1fr)}}
+.peer-exs{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+.peer-exs .card{margin:0}
+.peer-h{font-size:14px;font-weight:600;margin:0 0 10px;color:var(--ld-ink);display:flex;align-items:center;gap:8px}
+.peer-h .muted{font-weight:500;font-size:12px;margin-left:auto}
+.peer-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.peer-row{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:12px;font-size:13.5px}
+.peer-row.me{background:var(--ld-accent-lt);font-weight:600}
+.peer-gap{font-size:12px;color:var(--ld-ink-3);padding:0 8px 0 46px;line-height:1}
+.peer-rank{width:28px;height:28px;border-radius:50%;background:var(--ld-surface-2);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ld-ink-2);flex-shrink:0;font-variant-numeric:tabular-nums}
+.peer-rank.r1{background:var(--ld-warn-lt);color:#8A5A00}
+.peer-rank.r2{background:var(--ld-slate-lt);color:var(--ld-ink)}
+.peer-rank.r3{background:var(--ld-accent-lt);color:var(--ld-accent-dk)}
+.peer-row.me .peer-rank{background:var(--ld-accent);color:#fff}
+.peer-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.peer-you{font-size:10px;font-weight:700;background:var(--ld-accent);color:#fff;border-radius:100px;padding:1px 7px;margin-left:6px;vertical-align:1px}
+.peer-n{font-weight:700;color:var(--ld-ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.peer-last{font-size:11.5px;color:var(--ld-ink-3);white-space:nowrap;min-width:44px;text-align:right}
+.peer-more{margin-top:8px;width:100%}
+.peer-ex-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.peer-ex-t{font-weight:600;font-size:15px;line-height:1.35;color:var(--ld-ink)}
+.peer-ex-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.peer-ex-stats div{background:var(--ld-surface-2);border-radius:12px;padding:8px;text-align:center}
+.peer-ex-stats b{display:block;font-size:1.2rem;font-weight:600;color:var(--ld-ink);font-variant-numeric:tabular-nums}
+.peer-ex-stats span{font-size:11px;color:var(--ld-ink-3);font-weight:600}
+.peer-empty{text-align:center;padding:28px 12px;color:var(--ld-ink-2);font-size:13.5px}
 /* ── study: dùng hết chiều ngang màn hình ── */
 .screen.full .wrap{max-width:none;padding-left:24px;padding-right:24px}
 .screen.full .topbar{max-width:none;width:calc(100% - 48px)}
@@ -274,6 +314,7 @@
       <span class="topbar-user" id="tb-user-setup"></span>
       <span class="topbar-class tb-hide-sm" id="tb-class-setup"></span>
       <button class="topbar-btn" onclick="goHistory()"><i data-ic="progress"></i><span class="tb-hide-sm">History</span></button>
+      <button class="topbar-btn" onclick="goPeers()"><i data-ic="users"></i><span class="tb-hide-sm">Peers</span></button>
       <button class="topbar-btn" onclick="showScreen('screen-settings')"><i data-ic="settings"></i><span>Settings</span></button>
       <button class="topbar-btn round" onclick="LD.session.logout()" title="Log out"><i data-ic="logout"></i></button>
     </div>
@@ -291,10 +332,17 @@
           <span class="chip"><i data-ic="pen"></i>Dictation</span>
         </div>
       </div>
-      <div class="tile tile-accent" onclick="goHistory()">
-        <div class="tile-title"><i data-ic="progress" class="ic-lg"></i>My History</div>
-        <div class="tile-sub" id="setup-inprogress-hint"></div>
-        <button class="round-go" aria-label="Open history"><i data-ic="arrowUpRight"></i></button>
+      <div class="hero-side">
+        <div class="tile tile-accent" onclick="goHistory()">
+          <div class="tile-title"><i data-ic="progress" class="ic-lg"></i>My History</div>
+          <div class="tile-sub" id="setup-inprogress-hint"></div>
+          <button class="round-go" aria-label="Open history"><i data-ic="arrowUpRight"></i></button>
+        </div>
+        <div class="tile tile-plain" onclick="goPeers()">
+          <div class="tile-title"><i data-ic="users" class="ic-lg"></i>Peer Comparison</div>
+          <div class="tile-sub">Xem bạn cùng lớp đã làm bao nhiêu lần</div>
+          <button class="round-go" aria-label="Open peer comparison"><i data-ic="arrowUpRight"></i></button>
+        </div>
       </div>
     </div>
 
@@ -563,11 +611,37 @@
   </div>
 </div>
 
+<!-- ═══════════ PEERS ═══════════ -->
+<!-- Bạn cùng lớp đã làm xong mỗi bài bao nhiêu lần (peerStats — chỉ số lần, không có điểm) -->
+<div id="screen-peers" class="screen">
+  <div class="topbar">
+    <span class="ld-logo"><span class="ld-mark"><i data-ic="users"></i></span><span class="ld-logo-name">Peer Comparison<small>LisDictation</small></span></span>
+    <div class="topbar-right"><button class="topbar-btn" onclick="goHistory()"><i data-ic="progress"></i><span class="tb-hide-sm">History</span></button><button class="topbar-btn" onclick="showScreen('screen-setup')"><i data-ic="arrowLeft"></i>New Session</button></div>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <div class="hist-toolbar">
+        <span class="card-title" style="margin:0"><span><i data-ic="users"></i><span id="peer-class">My class</span></span></span>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm hist-range" id="pr-14" onclick="setPeerDays(14)">2 weeks</button>
+          <button class="btn btn-secondary btn-sm hist-range active" id="pr-28" onclick="setPeerDays(28)">4 weeks</button>
+          <button class="btn btn-secondary btn-sm hist-range" id="pr-0" onclick="setPeerDays(0)">All time</button>
+        </div>
+        <button class="topbar-btn round" onclick="loadPeers()" title="Reload"><i data-ic="refresh"></i></button>
+      </div>
+      <p class="muted peer-note">Số lần các bạn cùng lớp đã <b>làm xong</b> mỗi bài (đủ Quiz, Gap-fill và Dictation). Chỉ hiện số lần làm — không hiện điểm của bạn nào.</p>
+      <div id="peer-kpis" class="peer-kpis"></div>
+    </div>
+    <div id="peer-body"></div>
+  </div>
+</div>
+
 <!-- ═══════════ HISTORY ═══════════ -->
 <div id="screen-history" class="screen">
   <div class="topbar">
     <span class="ld-logo"><span class="ld-mark"><i data-ic="progress"></i></span><span class="ld-logo-name">My History<small>LisDictation</small></span></span>
-    <div class="topbar-right"><button class="topbar-btn" onclick="showScreen('screen-setup')"><i data-ic="arrowLeft"></i>New Session</button></div>
+    <div class="topbar-right"><button class="topbar-btn" onclick="goPeers()"><i data-ic="users"></i><span class="tb-hide-sm">Peers</span></button><button class="topbar-btn" onclick="showScreen('screen-setup')"><i data-ic="arrowLeft"></i>New Session</button></div>
   </div>
   <div class="wrap">
     <div class="card" id="inprogress-card" style="display:none">
@@ -639,7 +713,7 @@
   </div>
 </div>
 
-<script src="ld-common.js?v=4"></script>
+<script src="ld-common.js?v=5"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -2221,6 +2295,110 @@ async function loadInProgressTop5() {
 async function loadInProgress() { return loadInProgressTop5(); }
 
 // ── HISTORY: load summary (tên + điểm), bài chưa đủ điểm cho click-to-expand ──
+// ═══════════════════════════════════════════════════════════
+// PEER COMPARISON — bạn cùng lớp đã làm xong mỗi bài bao nhiêu lần (không có điểm của bạn khác)
+// ═══════════════════════════════════════════════════════════
+var Peers = { res: null, days: 28, open: {} };
+function goPeers() { showScreen('screen-peers'); loadPeers(); }
+async function loadPeers() {
+  var body = document.getElementById('peer-body');
+  document.getElementById('peer-kpis').innerHTML = '';
+  body.innerHTML = '<div class="card muted"><span class="spinner"></span> Loading your class…</div>';
+  var r;
+  try { r = await LD.api('student.getPeerComparison', {}); } catch (e) { r = { success: false, error: e.message }; }
+  if (!r.success) {
+    var msg = /không có trong bản Firebase|Unknown action|không hợp lệ/i.test(r.error || '') ? 'Peer Comparison chỉ có trong bản Firebase của app.'
+      : /không có quyền/i.test(r.error || '') ? 'Chưa đọc được dữ liệu lớp — giáo viên cần cập nhật Firestore Rules (firestore.rules) trên Firebase.'
+      : (r.error || 'Không tải được dữ liệu.');
+    body.innerHTML = '<div class="card peer-empty">' + LD.esc(msg) + '</div>';
+    return;
+  }
+  Peers.res = r;
+  document.getElementById('peer-class').textContent = r.className || r.classId || 'My class';
+  renderPeers();
+}
+function setPeerDays(d) {
+  Peers.days = d;
+  [14, 28, 0].forEach(function (x) { document.getElementById('pr-' + x).classList.toggle('active', x === d); });
+  if (Peers.res) renderPeers();
+}
+function togglePeerList(k) { Peers.open[k] = !Peers.open[k]; renderPeers(); }
+// Xếp hạng kiểu thi đấu: bằng số lần thì cùng hạng (1, 1, 3)
+function rankRows(rows, key) {
+  rows.sort(function (a, b) { return (b[key] - a[key]) || String(b.last).localeCompare(String(a.last)) || a.name.localeCompare(b.name); });
+  rows.forEach(function (x, i) { x.rank = i && rows[i - 1][key] === x[key] ? rows[i - 1].rank : i + 1; });
+  return rows;
+}
+function peerShortDate(iso) {
+  var d = new Date(iso); if (isNaN(d)) return '';
+  return d.getDate() + '/' + (d.getMonth() + 1);
+}
+// Danh sách top n (+ dòng của mình nếu nằm ngoài top), mở hết khi bấm "Show all"
+function peerListHtml(rows, key, n, openKey) {
+  var open = Peers.open[openKey], shown = open ? rows : rows.slice(0, n), meRow = rows.filter(function (x) { return x.isMe; })[0];
+  var row = function (x) {
+    return '<li class="peer-row' + (x.isMe ? ' me' : '') + '"><span class="peer-rank' + (x.rank <= 3 ? ' r' + x.rank : '') + '">' + x.rank + '</span>' +
+      '<span class="peer-name">' + LD.esc(x.name || '—') + (x.isMe ? '<span class="peer-you">You</span>' : '') + '</span>' +
+      '<span class="peer-n">' + x[key] + '×</span><span class="peer-last">' + peerShortDate(x.last) + '</span></li>';
+  };
+  var html = '<ol class="peer-list">' + shown.map(row).join('');
+  if (!open && meRow && shown.indexOf(meRow) < 0) html += '<li class="peer-gap">⋮</li>' + row(meRow);
+  html += '</ol>';
+  if (rows.length > n) html += '<button class="btn btn-secondary btn-sm peer-more" onclick="togglePeerList(\'' + openKey + '\')">' + (open ? 'Show less' : 'Show all ' + rows.length) + '</button>';
+  return html;
+}
+function renderPeers() {
+  var res = Peers.res, cut = Peers.days ? Date.now() - Peers.days * 864e5 : 0;
+  var inRange = function (d) { var t = new Date(d).getTime(); return !cut || (t && t >= cut); };
+  var span = Peers.days ? 'in the last ' + (Peers.days === 14 ? '2 weeks' : '4 weeks') : 'all time';
+  var students = [], topics = {};
+  res.data.forEach(function (s) {
+    var st = { uid: s.uid, name: s.name, isMe: s.isMe, total: 0, last: '' };
+    Object.keys(s.topics || {}).forEach(function (k) {
+      var ds = (s.topics[k].dates || []).filter(inRange);
+      if (!ds.length) return;
+      var last = ds[ds.length - 1];
+      st.total += ds.length; if (last > st.last) st.last = last;
+      var t = topics[k] || (topics[k] = { key: k, title: s.topics[k].title, total: 0, last: '', rows: [], mine: 0 });
+      t.total += ds.length; if (last > t.last) t.last = last;
+      t.rows.push({ name: s.name, isMe: s.isMe, n: ds.length, last: last });
+      if (s.isMe) t.mine = ds.length;
+    });
+    students.push(st);
+  });
+  var active = rankRows(students.filter(function (x) { return x.total > 0; }), 'total');
+  var me = students.filter(function (x) { return x.isMe; })[0] || { total: 0 };
+  var classTotal = active.reduce(function (a, x) { return a + x.total; }, 0);
+  var kpi = function (l, v, sub) { return '<div class="peer-kpi"><div class="k-l">' + l + '</div><div class="k-v">' + v + '</div><div class="k-s">' + sub + '</div></div>'; };
+  document.getElementById('peer-kpis').innerHTML =
+    kpi('You completed', me.total, me.total === 1 ? 'exercise ' + span : 'exercises ' + span) +
+    kpi('Your rank', me.total ? '#' + me.rank : '—', me.total ? 'of ' + active.length + ' active classmates' : 'finish 1 exercise to join') +
+    kpi('Active classmates', active.length + ' / ' + students.length, 'finished at least 1 exercise') +
+    kpi('Class total', classTotal, 'exercises finished ' + span);
+
+  var list = Object.keys(topics).map(function (k) { return topics[k]; }).sort(function (a, b) { return String(b.last).localeCompare(String(a.last)); });
+  var body = document.getElementById('peer-body');
+  if (!active.length) {
+    body.innerHTML = '<div class="card peer-empty">' + (Peers.days ? 'Chưa bạn nào làm xong bài nào ' + (Peers.days === 14 ? 'trong 2 tuần qua' : 'trong 4 tuần qua') + '. Thử chọn <b>All time</b>.' : 'Lớp chưa có bạn nào làm xong bài nào. Hãy là người đầu tiên!') + '</div>';
+    return;
+  }
+  var best = res.myBest || {};
+  body.innerHTML = '<div class="peer-grid">' +
+    '<div class="card"><h3 class="peer-h"><i data-ic="results"></i>Class Leaderboard<span class="muted">exercises finished</span></h3>' +
+      peerListHtml(active, 'total', 10, '__all') + '</div>' +
+    '<div><div class="peer-exs">' + list.map(function (t) {
+      rankRows(t.rows, 'n');
+      return '<div class="card"><div class="peer-ex-h"><div class="peer-ex-t">' + LD.esc(t.title) + '</div>' +
+        (t.mine ? '<span class="badge" style="background:var(--ld-ok-lt);color:var(--ld-ok);flex-shrink:0">' + LD.icon('check') + 'You: ' + t.mine + '×</span>'
+                : '<span class="badge" style="background:var(--ld-surface-2);color:var(--ld-ink-2);flex-shrink:0">Not tried</span>') + '</div>' +
+        '<div class="peer-ex-stats"><div><b>' + t.rows.length + '</b><span>classmate' + (t.rows.length === 1 ? '' : 's') + '</span></div>' +
+        '<div><b>' + t.total + '</b><span>total tries</span></div>' +
+        '<div><b>' + (best[t.key] != null ? best[t.key] + '%' : '—') + '</b><span>your best</span></div></div>' +
+        peerListHtml(t.rows, 'n', 3, t.key) + '</div>';
+    }).join('') + '</div></div></div>';
+  if (LD.hydrateIcons) LD.hydrateIcons(body);
+}
+
 async function loadHistory(days) {
   if (days === undefined) days = App._histDays || 28;
   App._histDays = days;
