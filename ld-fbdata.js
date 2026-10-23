@@ -23,6 +23,9 @@
                          only when that session is opened. Kept for good once
                          finished (compact); only draft data is dropped.
     reviews/{id}         New Practice "Done" marks of a teacher.
+    peerStats/{classId}_{uid}  Peer Comparison: how many times a student
+                         finished each exercise in that class — counts and
+                         dates only, NO scores (classmates can read it).
 ───────────────────────────────────────────────────────────────*/
 (function () {
 'use strict';
@@ -299,6 +302,7 @@ async function finishDictation(p) {
     dictInProgress: false
   }));
   await batch.commit();
+  syncMyPeerStats(u).catch(e => console.warn('[ld-fbdata] peerStats', e));
   return ok({ totalScore: total });
 }
 // Bản tổng kết xem ngay trong app (review.html) — không còn Google Doc
@@ -392,14 +396,114 @@ async function deleteSession(p) {
 }
 
 // ════════════════════════════════════════════
+// PEERS: peerStats/{classId}_{uid}
+// Tính lại từ progress (không cộng dồn) nên ghi lại bao nhiêu lần cũng đúng:
+// SV ghi dòng của mình khi nộp bài / mở Peers; GV đồng bộ cả lớp khi mở trang GV
+// (bù cho bài làm trước khi có tính năng này và cho SV lâu không vào app).
+// ════════════════════════════════════════════
+const PEER_MAX_DATES = 60;           // giữ tối đa 60 lần gần nhất mỗi bài
+const peerKey = title => btpKey(title).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled';
+const isDone = r => has(r.quizScore) && has(r.gapFillScore) && has(r.dictationAccuracy);
+// Bài xong đủ 3 phần, làm khi đang ở lớp classId → { key: { title, dates[] } }
+function peerTopics(items, classId, headClassId) {
+  const topics = {};
+  Object.keys(items || {}).forEach(id => {
+    const r = items[id];
+    if ((r.classId || headClassId) !== classId || !isDone(r)) return;
+    const title = str(r.bookTestPart) || 'Untitled', k = peerKey(title);
+    (topics[k] || (topics[k] = { title, dates: [] })).dates.push(r.endTime || r.startTime || '');
+  });
+  Object.keys(topics).forEach(k => { topics[k].dates = topics[k].dates.sort().slice(-PEER_MAX_DATES); });
+  return topics;
+}
+function peerDoc(user, uid, classId, prog, flags) {
+  const topics = peerTopics(prog && prog.items, classId, (prog && prog.classId) || user.classId);
+  let total = 0;
+  Object.keys(topics).forEach(k => { total += topics[k].dates.length; });
+  return Object.assign({ classId, uid, teacherUid: user.teacherUid || '', name: user.fullName || '',
+                         archived: false, moved: false, total, topics }, flags || {});
+}
+// So sánh bỏ qua thứ tự khoá và updatedAt → chỉ ghi khi thật sự đổi
+function canon(v) {
+  if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
+  if (v && typeof v === 'object') return '{' + Object.keys(v).filter(k => k !== 'updatedAt' && k !== '_id').sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}';
+  return JSON.stringify(v === undefined ? null : v);
+}
+const peerRef = (classId, uid) => fs.doc('peerStats/' + classId + '_' + uid);
+// Không bao giờ làm hỏng việc nộp bài: lỗi (vd. chưa publish rules mới) chỉ ghi ra console
+async function syncMyPeerStats(u) {
+  if (!u.classId) return null;
+  const d = peerDoc(u, u.uid, u.classId, await myProgress());
+  await peerRef(u.classId, u.uid).set(Object.assign({ updatedAt: nowIso() }, d));
+  return d;
+}
+async function peerComparison() {
+  const u = await me();
+  if (!u.classId) return fail('Bạn chưa thuộc lớp nào.');
+  const [prog, list, cname] = await Promise.all([
+    myProgress(), fs.collection('peerStats').where('classId', '==', u.classId).get().then(docs), className(u.classId)
+  ]);
+  // dòng của mình luôn tính lại từ progress (bù bài cũ), ghi khi khác bản đã lưu
+  const mine = peerDoc(u, u.uid, u.classId, prog), old = list.find(x => x.uid === u.uid);
+  if (!old || canon(old) !== canon(mine)) {
+    try { await peerRef(u.classId, u.uid).set(Object.assign({ updatedAt: nowIso() }, mine)); }
+    catch (e) { console.warn('[ld-fbdata] peerStats', e); }
+  }
+  const rows = list.filter(x => x.uid !== u.uid).concat([mine]).filter(x => !x.archived && !x.moved);
+  // điểm cao nhất CỦA MÌNH mỗi bài (điểm chỉ lấy từ progress của chính mình)
+  const myBest = {}, items = (prog && prog.items) || {};
+  Object.keys(items).forEach(id => {
+    const r = items[id];
+    if ((r.classId || (prog && prog.classId)) !== u.classId || !isDone(r) || !has(r.totalScore)) return;
+    const k = peerKey(str(r.bookTestPart) || 'Untitled');
+    myBest[k] = Math.max(myBest[k] == null ? -1 : myBest[k], Number(r.totalScore) || 0);
+  });
+  return ok({
+    classId: u.classId, className: cname,
+    data: rows.map(x => ({ uid: x.uid, name: x.name || '', isMe: x.uid === u.uid, topics: x.topics || {} })),
+    myBest
+  });
+}
+
+// ════════════════════════════════════════════
 // TEACHER
 // ════════════════════════════════════════════
 const myClasses  = t => memo('classes', 60000, async () => docs(await fs.collection('classes').where('teacherUid', '==', t.uid).get()));
 const myStudents = t => memo('students', 60000, async () => docs(await fs.collection('users').where('teacherUid', '==', t.uid).get()));
 const myProgressDocs = t => memo('progress', 20000, async () => docs(await fs.collection('progress').where('teacherUid', '==', t.uid).get()));
 
+// Đồng bộ peerStats cho mọi SV của GV (tối đa 1 lần / 10 phút, chạy nền, chỉ ghi dòng đổi).
+// SV chuyển lớp → dòng ở lớp cũ đánh dấu moved; SV bị lưu trữ → archived (ẩn khỏi Peers).
+function syncClassPeers(t) {
+  return memo('peersync', 600000, async () => {
+    const [progs, students, existing] = await Promise.all([
+      myProgressDocs(t), myStudents(t), fs.collection('peerStats').where('teacherUid', '==', t.uid).get().then(docs)
+    ]);
+    const prog = {}, have = {};
+    progs.forEach(pd => { prog[pd._id] = pd; });
+    existing.forEach(d => { have[d._id] = d; });
+    const writes = [];
+    students.filter(s => s.role === 'student').forEach(s => {
+      const pd = prog[s._id], items = (pd && pd.items) || {}, classes = {};
+      if (s.classId) classes[s.classId] = 1;
+      Object.keys(items).forEach(id => { const c = items[id].classId || (pd && pd.classId); if (c && isDone(items[id])) classes[c] = 1; });
+      Object.keys(classes).forEach(c => {
+        const d = peerDoc(Object.assign({}, s, { teacherUid: t.uid }), s._id, c, pd, { archived: !!s.archived, moved: c !== s.classId });
+        if (!have[c + '_' + s._id] || canon(have[c + '_' + s._id]) !== canon(d)) writes.push(d);
+      });
+    });
+    for (let i = 0; i < writes.length; i += 400) {
+      const batch = fs.batch();
+      writes.slice(i, i + 400).forEach(d => batch.set(peerRef(d.classId, d.uid), Object.assign({ updatedAt: nowIso() }, d)));
+      await batch.commit();
+    }
+    return writes.length;
+  });
+}
+
 async function getClasses() {
   const t = await teacher();
+  syncClassPeers(t).catch(e => { forget('peersync'); console.warn('[ld-fbdata] peer sync', e); });
   const [classes, students] = await Promise.all([myClasses(t), myStudents(t)]);
   const data = classes.map(c => ({
     ClassID: c.classId || c._id, ClassName: c.className || c._id, AcademicYear: c.academicYear || '', Semester: c.semester || '',
@@ -590,7 +694,7 @@ const ACTIONS = {
   'session.saveGapFill': saveGapFill, 'session.saveDictationProgress': saveDictationProgress,
   'session.finishDictation': finishDictation, 'session.exportReport': exportReport,
   'student.getHistorySummary': historySummary, 'student.getInProgressTop5': inProgressTop5,
-  'student.getInProgress': inProgressTop5, 'student.resumeSession': resumeSession, 'student.deleteSession': deleteSession,
+  'student.getInProgress': inProgressTop5, 'student.getPeerComparison': peerComparison, 'student.resumeSession': resumeSession, 'student.deleteSession': deleteSession,
   'teacher.getClasses': getClasses, 'teacher.createClass': createClass, 'teacher.setClassStatus': setClassStatus,
   'teacher.archiveClass': p => asTeacher('fb.archiveClass', p), 'teacher.restoreClass': p => asTeacher('fb.restoreClass', p),
   'teacher.getRoster': getRoster, 'teacher.archiveStudent': archiveStudent,
