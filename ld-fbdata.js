@@ -141,25 +141,30 @@ async function studentLogin(p) {
   if (id.indexOf('@') >= 0) {
     const idx = await fs.doc('loginIndex/' + await sha256Hex(low(id))).get();
     if (!idx.exists) {
-      // Not a student email → maybe a teacher signing in on the student form
+      // Không phải email SV. Nếu đúng là tài khoản GV thì vẫn từ chối (finishLogin('student')),
+      // chỉ để báo GV dùng đúng mục Teacher Login thay vì "sai mật khẩu".
       const err = await signIn(low(id), p.password);
       if (err && err !== 'WRONG') return fail(err);
       if (err) return fail('Sai tài khoản hoặc mật khẩu.');
-      return finishLogin();
+      return finishLogin('student');
     }
     if (idx.data().multi) return fail('Email này gắn với nhiều tài khoản. Hãy đăng nhập bằng mã SV.');
     sid = idx.data().sid;
   }
   const err = await signIn(loginEmailFor(sid), p.password);
   if (err) return fail(err === 'WRONG' ? 'Sai tài khoản hoặc mật khẩu.' : err);
-  return finishLogin();
+  return finishLogin('student');
 }
-async function finishLogin(requireTeacher) {
+// Khung SV chỉ cho SV vào, Teacher Login chỉ cho GV vào: sai vai trò → đăng xuất ngay
+async function finishLogin(role) {
   _me = null; forget();
   const u = await me().catch(() => null);
-  if (!u || u.archived || (requireTeacher && u.role !== 'teacher')) {
+  const isTeacher = !!u && u.role === 'teacher';
+  if (!u || u.archived || (role === 'teacher' && !isTeacher) || (role === 'student' && isTeacher)) {
     await signOut();
-    return fail(u && u.archived ? 'Tài khoản đã được lưu trữ (không còn trong lớp đang học). Liên hệ giảng viên.' : 'Sai tài khoản hoặc mật khẩu.');
+    return fail(u && u.archived ? 'Tài khoản đã được lưu trữ (không còn trong lớp đang học). Liên hệ giảng viên.'
+      : role === 'student' && isTeacher ? 'Đây là tài khoản giáo viên — hãy đăng nhập ở mục Teacher Login.'
+      : 'Sai tài khoản hoặc mật khẩu.');
   }
   return ok({ sessionToken: 'firebase', user: sessionUser(u, await className(u.classId)) });
 }
@@ -168,7 +173,7 @@ async function teacherLogin(p) {
   if (!email || !p.password) return fail('Nhập email và mật khẩu.');
   const err = await signIn(email, p.password);
   if (err) return fail(err === 'WRONG' ? 'Sai email hoặc mật khẩu.' : err);
-  return finishLogin(true);
+  return finishLogin('teacher');
 }
 async function changePassword(p) {
   await authReady();
