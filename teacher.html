@@ -370,7 +370,7 @@ th[data-sort="desc"]::after{content:" ↓";color:var(--ld-accent)}
   </div>
 </div>
 
-<script src="ld-common.js?v=9"></script>
+<script src="ld-common.js?v=10"></script>
 <script>
 var App = { classes: [], students: [], roster: null, editing: null, sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false,
   practice: [] };
@@ -389,7 +389,11 @@ async function syncPeers(force, btn) {
   if (btn) { btn.disabled = true; btn.dataset.html = btn.innerHTML; btn.innerHTML = '<span class="spinner"></span> Syncing…'; }
   var r = await LD.api('teacher.syncPeers', { force: !!force });
   if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.html; }
-  if (r.success) { if (force) LD.toast('Peers updated' + (r.written ? ' — ' + r.written + ' item(s) written.' : ' — already up to date.'), 'ok'); return; }
+  if (r.success) {
+    if (force) LD.toast('Peers updated' + (r.written ? ' (' + r.written + ' written)' : ' (already up to date)') + ' — ' +
+      (r.perClass || []).map(function (c) { return c.className + ': ' + c.exercises + ' exercise' + (c.exercises === 1 ? '' : 's'); }).join(' · '), 'ok', 9000);
+    return;
+  }
   if (/Unknown action|không có trong bản Firebase/i.test(r.error || '')) return; // bản Google Sheet cũ: không có Peers
   LD.toast('Peer Comparison chưa cập nhật được: ' + (/quyền/i.test(r.error || '') ? 'hãy Publish file firestore.rules mới trên Firebase rồi bấm Sync Peers.' : r.error), 'err', 8000);
 }

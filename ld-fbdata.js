@@ -582,7 +582,12 @@ function syncClassPeers(t) {
       } catch (e) { console.error('[ld-fbdata] peer sync ' + c, e); failed.push(c + ' (' + ((e && e.code) || (e && e.message) || e) + ')'); }
     }
     if (failed.length) throw Object.assign(new Error('Không ghi được Peers cho lớp: ' + failed.join(', ')), { code: /permission/.test(failed.join()) ? 'permission-denied' : '' });
-    return writes.length;
+    // tóm tắt cho GV: mỗi lớp đang học có bao nhiêu bài trong Peers
+    const perClass = classes.filter(c => (c.status || 'Active') === 'Active').map(c => {
+      const id = c.classId || c._id, ix = idx[id];
+      return { classId: id, className: c.className || id, exercises: ix ? Object.keys(ix.topics).length : 0 };
+    });
+    return { written: writes.length, perClass };
   });
 }
 
@@ -590,7 +595,7 @@ function syncClassPeers(t) {
 async function syncPeers(p) {
   const t = await teacher();
   if (p && p.force) forget('peersync');
-  try { return ok({ written: await syncClassPeers(t) }); }
+  try { return ok(await syncClassPeers(t)); }
   catch (e) { forget('peersync'); throw e; }
 }
 
