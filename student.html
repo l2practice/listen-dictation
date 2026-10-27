@@ -1668,18 +1668,70 @@ function prefetchQuiz() {
 async function _generateQuiz() {
   var hardWords = [];
   ['B2', 'C1', 'C2'].forEach(function (lv) { (App.cefr && App.cefr.byLevel[lv] || []).forEach(function (w) { hardWords.push(w); }); });
+  var script = Array.isArray(App.correctedSentences) ? App.correctedSentences.filter(function (s) { return typeof s === 'string' && s.trim(); }) : [];
+  if (!script.length) script = Array.isArray(App.sentences) ? App.sentences.filter(function (s) { return typeof s === 'string' && s.trim(); }) : [];
+  if (!script.length) throw new Error('Không tìm thấy script đã tách câu. Hãy quay lại bước Study và chạy Analyze Script.');
   var prompt = 'Based on the following IELTS Listening script (already spell-checked) and the list of difficult words / collocations, ' +
     'write EXACTLY 15 multiple-choice questions (4 options each) IN ENGLISH for a Vietnamese IELTS student: 5 CONTENT questions ' +
     '(main idea/detail/inference from the script), 10 VOCABULARY questions (meaning/usage of the difficult words or collocations below). ' +
     'Write every question, option and explanation in English — do not use Vietnamese anywhere in the output.\n\n' +
-    'SCRIPT:\n"""' + App.correctedSentences.join(' ') + '"""\n\n' +
+    'SCRIPT:\n"""' + script.join(' ') + '"""\n\n' +
     'DIFFICULT WORDS (B2+): ' + hardWords.slice(0, 40).join(', ') + '\n' +
-    'COLLOCATIONS: ' + App.collocations.map(function (c) { return c.en; }).join(', ') + '\n\n' +
+    'COLLOCATIONS: ' + (Array.isArray(App.collocations) ? App.collocations : []).map(function (c) { return c && c.en || ''; }).filter(Boolean).join(', ') + '\n\n' +
     'Return ONLY this JSON: {"questions":[{"type":"content|vocab","q":"question text","o":["A","B","C","D"],"a":0,"e":"short explanation"}]} — the "questions" array must have exactly 15 items, exactly 5 with type=content and exactly 10 with type=vocab. Everything in English.';
-  var res = await callAI(prompt, 6144);
-  var questions = (res.questions || []).slice(0, 15);
-  if (!questions.length) throw new Error('Quiz response had no questions');
-  return questions;
+  try {
+    var res = await callAI(prompt, 6144);
+    var questions = res && Array.isArray(res.questions) ? res.questions.slice(0, 15) : [];
+    if (isValidQuiz(questions)) return questions;
+    console.warn('[LisDictation] AI returned an incomplete quiz; using the built-in quiz generator.');
+  } catch (err) {
+    console.warn('[LisDictation] AI quiz generation failed; using the built-in quiz generator:', err.message);
+  }
+  return buildFallbackQuiz(script, hardWords);
+}
+
+function isValidQuiz(questions) {
+  return Array.isArray(questions) && questions.length === 15 && questions.every(function (q) {
+    return q && typeof q.q === 'string' && q.q.trim() && Array.isArray(q.o) && q.o.length === 4 &&
+      q.o.every(function (o) { return typeof o === 'string' && o.trim(); }) &&
+      Number.isInteger(q.a) && q.a >= 0 && q.a < 4;
+  });
+}
+
+// Local fallback keeps the quiz available during AI outages, quota limits, malformed
+// responses, or when no provider key is configured.
+function buildFallbackQuiz(script, hardWords) {
+  var sentences = script.map(function (s) { return s.trim(); }).filter(Boolean);
+  var words = [];
+  hardWords.concat((sentences.join(' ').match(/\b[A-Za-z][A-Za-z'-]{5,}\b/g) || [])).forEach(function (w) {
+    w = String(w).trim();
+    if (w && words.indexOf(w) < 0) words.push(w);
+  });
+  var qs = [];
+  for (var i = 0; i < 5; i++) {
+    var sentence = sentences[i % sentences.length];
+    var opts = [sentence];
+    for (var j = 0; j < sentences.length && opts.length < 4; j++) {
+      var candidate = sentences[(i + j + 1) % sentences.length];
+      if (opts.indexOf(candidate) < 0) opts.push(candidate);
+    }
+    while (opts.length < 4) opts.push('This detail is not stated in the script.');
+    qs.push({ type: 'content', q: 'Which sentence is stated in the script (item ' + (i + 1) + ')?', o: opts, a: 0, e: 'This sentence appears in the provided listening script.' });
+  }
+  for (var k = 0; k < 10; k++) {
+    var target = words[k % words.length] || 'listening';
+    var escaped = target.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    var sourceSentence = sentences.find(function (s) { return new RegExp('\\b' + escaped + '\\b', 'i').test(s); }) || sentences[k % sentences.length];
+    var blanked = sourceSentence.replace(new RegExp('\\b' + escaped + '\\b', 'i'), '_____');
+    var options = [target];
+    for (var d = 1; d < words.length && options.length < 4; d++) {
+      var distractor = words[(k + d) % words.length];
+      if (options.indexOf(distractor) < 0) options.push(distractor);
+    }
+    while (options.length < 4) options.push(['passage', 'speaker', 'question', 'answer'][options.length]);
+    qs.push({ type: 'vocab', q: 'Choose the word from the script that completes this sentence: ' + blanked, o: options, a: 0, e: 'The answer is taken directly from the script.' });
+  }
+  return qs;
 }
 
 async function goQuiz() {
@@ -2216,7 +2268,7 @@ async function requestReport(sessionId) {
   try {
     var r = await LD.api('session.exportReport', { sessionId: sessionId });
     if (!r.success) throw new Error(r.error || 'failed');
-    el.innerHTML = '<a href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="color:var(--ld-accent);font-weight:700">' + reportLabel(r.docUrl) + '</a>' +
+    el.innerHTML = '<a href="' + LD.esc(r.docUrl) + '" style="color:var(--ld-accent);font-weight:700">' + reportLabel(r.docUrl) + '</a>' +
       '<br>You can open it again anytime from History → Details.';
   } catch (e) {
     el.textContent = 'Your Google Doc is being prepared — open it later from History → Details.';
@@ -2506,7 +2558,9 @@ function renderHistoryTable() {
       '<td>' + statusBadge + '</td>' +
       '<td>' + (r.isComplete
         ? (r.docUrl
-            ? '<a class="btn btn-secondary btn-sm" href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">' + reportLabel(r.docUrl) + '</a>'
+            ? (/^https?:/.test(r.docUrl)
+                ? '<a class="btn btn-secondary btn-sm" href="' + LD.esc(r.docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">' + reportLabel(r.docUrl) + '</a>'
+                : '<a class="btn btn-secondary btn-sm" href="' + LD.esc(r.docUrl) + '" style="text-decoration:none">' + reportLabel(r.docUrl) + '</a>')
             : '<button class="btn btn-secondary btn-sm" onclick="openReport(\'' + r.sessionId + '\',this)">' + reportLabel('') + '</button>')
         : '<button class="btn btn-sm btn-icon-del" onclick="deleteSession(\'' + r.sessionId + '\',this)" title="Xoá bài này">' + LD.icon('trash') + '</button>') + '</td>' +
       '</tr>';
