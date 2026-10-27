@@ -744,6 +744,8 @@ async function openDetail(sessionId) {
   var docLink = document.getElementById('dt-doc-link');
   if (d.DocURL) {
     docLink.href = d.DocURL;
+    docLink.target = /^https?:/.test(d.DocURL) ? '_blank' : '_self';
+    if (/^https?:/.test(d.DocURL)) docLink.rel = 'noopener'; else docLink.removeAttribute('rel');
     docLink.innerHTML = /^https?:/.test(d.DocURL) ? LD.label('external', 'Google Doc') : LD.label('report', 'Report');
     docLink.classList.remove('hidden');
   }
@@ -881,7 +883,9 @@ async function exportCsv() {
 
 // Details (trang HTML) khi chi tiết còn trong sheet; quá 10 ngày đã dọn → Open Docs mở thẳng Google Doc
 function detailsButton(sessionId, purged, docUrl) {
-  if (purged && docUrl) return '<a class="btn btn-secondary btn-sm" href="' + LD.esc(docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">' + (/^https?:/.test(docUrl) ? LD.label('external', 'Open Docs') : LD.label('report', 'Report')) + '</a>';
+  if (purged && docUrl) return /^https?:/.test(docUrl)
+    ? '<a class="btn btn-secondary btn-sm" href="' + LD.esc(docUrl) + '" target="_blank" rel="noopener" style="text-decoration:none">' + LD.label('external', 'Open Docs') + '</a>'
+    : '<a class="btn btn-secondary btn-sm" href="' + LD.esc(docUrl) + '" style="text-decoration:none">' + LD.label('report', 'Report') + '</a>';
   return '<button class="btn btn-secondary btn-sm" onclick="openDetail(\'' + LD.esc(sessionId) + '\')">' + LD.label('eye', 'Details') + '</button>';
 }
 
