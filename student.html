@@ -278,6 +278,16 @@
 .sc-fab{position:fixed;bottom:20px;right:16px;z-index:200;background:var(--ld-ink);color:#fff;border:none;border-radius:50%;width:48px;height:48px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-md);transition:transform .15s}
 .sc-fab:hover{transform:scale(1.08)}
 .sc-fab.hidden{display:none}
+.wave{position:relative;margin-top:8px;user-select:none}
+.wave-cv{display:block;width:100%;height:56px;cursor:pointer;border-radius:8px;outline:none}
+.wave-cv:focus-visible{box-shadow:0 0 0 2px var(--ld-accent)}
+.wave-labels{position:relative;height:22px;overflow:hidden}
+.wave-n{position:absolute;top:2px;transform:translateX(-50%);min-width:20px;height:18px;padding:0 5px;border:none;border-radius:100px;background:var(--ld-surface-2);color:var(--ld-ink-2);font-family:var(--font-body);font-size:11px;font-weight:700;line-height:18px;cursor:pointer;font-variant-numeric:tabular-nums}
+.wave-n:hover{background:var(--ld-slate-lt);color:var(--ld-ink)}
+.wave-n.cur{background:var(--ld-accent);color:#fff}
+.wave-note{font-size:11.5px;color:var(--ld-ink-3);margin-top:2px}
+@media(max-width:640px){.wave-cv{height:40px}.wave-note{display:none}
+  #screen-dictation .progress-outer{display:none}}   /* thanh đầu Dictation: nút Save & Exit không bị đẩy ra ngoài */
 .ios-toggle{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:12.5px;font-weight:600;color:var(--ld-ink-2)}
 .ios-toggle input{position:absolute;opacity:0;width:0;height:0}
 .ios-track{position:relative;width:40px;height:22px;background:var(--ld-slate);border-radius:100px;transition:background .2s;flex-shrink:0}
@@ -2074,6 +2084,7 @@ function renderDictation() {
     finishBtn.innerHTML = LD.label('flag', 'Submit');
   }
   updateWordTotal();
+  redrawWaves();
 }
 function onDictInput(i, v) {
   App.dictationAnswers[i].typed = v;
@@ -2803,7 +2814,7 @@ function analyseAudioSilence(url) {
     } catch (e) {
       console.warn('[LisDictation] Audio analysis unavailable (' + e.message + ') — sentence ends estimated from word counts.');
       return null;
-    } finally { if (AP.url === url) AP.pending = null; updateAutoPauseNotes(); }
+    } finally { if (AP.url === url) AP.pending = null; updateAutoPauseNotes(); redrawWaves(true); }
   })();
   return AP.pending;
 }
@@ -2913,11 +2924,15 @@ function sentencePausePoints(audio) {
       pts.push({ pause: a.e + Math.min(0.2, len * 0.4), resume: Math.max(a.e + Math.min(0.2, len * 0.4), b.s - 0.1) });
     }
     pts.speechStart = Math.max(0, chunks[al.first].s - 0.15);
+    // vùng nói của từng câu (vẽ trên sóng âm)
+    pts.segs = sents.map(function (x, k) { return { s: Math.max(0, chunks[al.starts[k]].s - 0.1), e: chunks[al.ends[k]].e }; });
   } else {
     // không phân tích được audio → chia thời lượng theo số từ
     var total = words.reduce(function (x, y) { return x + y; }, 0), cumw = 0;
     for (k = 0; k < sents.length - 1 && dur > 0; k++) { cumw += words[k]; pts.push({ pause: dur * cumw / total, resume: dur * cumw / total }); }
     pts.speechStart = 0;
+    cumw = 0;
+    pts.segs = dur > 0 ? words.map(function (w) { var s0 = dur * cumw / total; cumw += w; return { s: s0, e: dur * cumw / total }; }) : [];
   }
   pts.fromAudio = !!al;
   AP.pts = pts; AP.ptsKey = key;
@@ -2980,6 +2995,145 @@ function updateAutoPauseNotes() {
           : 'sentence ends estimated (audio could not be analysed)';
   ['dict-ap-note', 'gap-ap-note'].forEach(function (id) { var el = document.getElementById(id); if (el) el.textContent = msg; });
 }
+
+// ═══════════════════════════════════════════════════════════
+// WAVEFORM — sóng âm dưới mỗi thanh audio (Quiz, Gap-fill, Dictation)
+// Dùng lại phép đo 20 ms của Auto-pause (AP.frames) → không tải/giải mã thêm lần nào.
+// • Cột sóng: phần đã nghe tô màu, phần sắp tới màu xám → thấy trước chỗ nào sắp có tiếng nói.
+// • Mỗi câu của script = 1 đoạn (gạch chân + số). Phần không có trong script (lời hướng dẫn) nhạt hơn.
+// • Bấm vào sóng: nhảy tới chỗ đó. Bấm số: nghe lại câu đó từ đầu.
+// Không đo được (audio Google Drive chặn CORS) → chỉ vẽ vị trí câu ước lượng theo số từ.
+// ═══════════════════════════════════════════════════════════
+var WAVES = [];
+var WAVE_C = { played: '#D4664F', playedOff: '#EDB9AC', ahead: '#8A8F99', aheadOff: '#D5D9E0', band: 'rgba(212,102,79,.10)',
+               line: '#C9CEDA', lineCur: '#D4664F', head: '#15171C' };
+function attachWave(audio, which) {
+  if (!audio || audio._wave) return;
+  var box = document.createElement('div');
+  box.className = 'wave hidden';
+  box.innerHTML = '<canvas class="wave-cv" tabindex="0" role="slider" aria-label="Audio waveform — click to jump, ← → to move 2 s"></canvas>' +
+    '<div class="wave-labels"></div><div class="wave-note"></div>';
+  audio.insertAdjacentElement('afterend', box);
+  var w = audio._wave = { audio: audio, which: which, box: box, cv: box.querySelector('canvas'), labels: box.querySelector('.wave-labels'),
+                          note: box.querySelector('.wave-note'), raf: 0, lv: null, lvKey: '', lbKey: '' };
+  WAVES.push(w);
+  ['loadedmetadata', 'durationchange', 'emptied'].forEach(function (ev) { audio.addEventListener(ev, function () { drawWave(w, true); }); });
+  ['timeupdate', 'seeked', 'pause', 'ended'].forEach(function (ev) { audio.addEventListener(ev, function () { drawWave(w); }); });
+  audio.addEventListener('play', function () {
+    cancelAnimationFrame(w.raf);
+    (function loop() { drawWave(w); if (!audio.paused && !audio.ended) w.raf = requestAnimationFrame(loop); })();
+  });
+  w.cv.addEventListener('click', function (e) {
+    var r = w.cv.getBoundingClientRect(), d = audio.duration;
+    if (!(d > 0) || !r.width) return;
+    audio.currentTime = Math.max(0, Math.min(d, (e.clientX - r.left) / r.width * d));
+    drawWave(w);
+  });
+  w.cv.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    var d = audio.duration; if (!(d > 0)) return;
+    audio.currentTime = Math.max(0, Math.min(d, audio.currentTime + (e.key === 'ArrowLeft' ? -2 : 2)));
+  });
+  w.labels.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-k]'); if (!b) return;
+    playSentenceFromWave(w, +b.dataset.k);
+  });
+  if (window.ResizeObserver) new ResizeObserver(function () { drawWave(w, true); }).observe(box);
+}
+function redrawWaves(full) { WAVES.forEach(function (w) { drawWave(w, full); }); }
+// Câu đang làm: Dictation = câu đang gõ; Quiz / Gap-fill = câu đang phát (hoặc câu sắp tới)
+function waveCurrent(w, segs, t) {
+  if (w.which === 'dict') return App.dictationIdx || 0;
+  for (var k = 0; k < segs.length; k++) if (t < segs[k].e) return k;
+  return segs.length - 1;
+}
+function playSentenceFromWave(w, k) {
+  var a = w.audio, pts = sentencePausePoints(a), seg = pts.segs && pts.segs[k];
+  if (!seg) return;
+  if (w.which === 'dict' && typeof jumpTo === 'function') jumpTo(k);
+  a.currentTime = k > 0 && pts[k - 1] ? pts[k - 1].resume : seg.s;
+  var p = a.play(); if (p && p.catch) p.catch(function () {});
+}
+// Độ lớn mỗi cột (0..1) = khung to nhất trong khoảng thời gian của cột, theo thang của chính file
+function waveLevels(frames, n, dur) {
+  var sorted = Array.prototype.slice.call(frames).sort(function (a, b) { return a - b; });
+  var lo = sorted[Math.floor(sorted.length * 0.08)], hi = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.995))];
+  var span = Math.max(6, hi - lo), out = new Float32Array(n), per = frames.length / n;
+  for (var i = 0; i < n; i++) {
+    var m = -Infinity, f1 = Math.max(Math.floor(i * per) + 1, Math.floor((i + 1) * per));
+    for (var f = Math.floor(i * per); f < f1 && f < frames.length; f++) if (frames[f] > m) m = frames[f];
+    var x = Math.max(0, Math.min(1, (m - lo) / span));
+    out[i] = x * x * 0.85 + x * 0.15;        // làm nổi phần to, dìm tiếng nền
+  }
+  return out;
+}
+function drawWave(w, full) {
+  var a = w.audio, dur = a.duration, url = App.audioBlobUrl;
+  var ok = !!url && a.getAttribute('src') && dur > 0 && isFinite(dur);
+  w.box.classList.toggle('hidden', !ok);
+  if (!ok) return;
+  if (AP.url !== url && !AP.pending) analyseAudioSilence(url);     // vd. mở lại bài cũ: đo lần đầu ở đây
+  var frames = AP.frames && AP.url === url ? AP.frames : null;
+  var cssW = Math.max(1, w.box.clientWidth), H = window.matchMedia('(max-width:640px)').matches ? 40 : 56, dpr = window.devicePixelRatio || 1;
+  var cv = w.cv;
+  if (full || cv.width !== Math.round(cssW * dpr) || cv.height !== Math.round(H * dpr)) {
+    cv.width = Math.round(cssW * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + 'px';
+  }
+  var BW = 2, GAP = 1, n = Math.max(20, Math.floor(cssW / (BW + GAP)));
+  var key = (frames ? url : 'none') + '|' + n + '|' + dur;
+  if (w.lvKey !== key) { w.lv = frames ? waveLevels(frames, n, dur) : null; w.lvKey = key; }
+  var pts = sentencePausePoints(a), segs = pts.segs || [], t = a.currentTime || 0, cur = waveCurrent(w, segs, t);
+  var ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, H);
+  var X = function (sec) { return sec / dur * cssW; }, base = H - 6, maxH = base - 2;
+  // nền câu đang làm
+  if (segs[cur]) { ctx.fillStyle = WAVE_C.band; ctx.fillRect(X(segs[cur].s), 0, Math.max(2, X(segs[cur].e) - X(segs[cur].s)), base); }
+  // cột sóng
+  var inSeg = new Uint8Array(n), si = 0;
+  for (var i = 0; i < n; i++) {
+    var mid = (i + 0.5) / n * dur;
+    while (si < segs.length && segs[si].e < mid) si++;
+    inSeg[i] = si < segs.length && segs[si].s <= mid ? 1 : 0;
+  }
+  var playX = X(t);
+  for (i = 0; i < n; i++) {
+    var x = i * (BW + GAP), lv = w.lv ? w.lv[i] : (inSeg[i] ? 0.18 : 0.06), h = Math.max(2, lv * maxH);
+    var played = x + BW <= playX;
+    ctx.fillStyle = played ? (inSeg[i] ? WAVE_C.played : WAVE_C.playedOff) : (inSeg[i] ? WAVE_C.ahead : WAVE_C.aheadOff);
+    ctx.fillRect(x, (base - h) / 2 + 1, BW, h);
+  }
+  // gạch chân từng câu
+  segs.forEach(function (sg, k) {
+    var x0 = X(sg.s) + 1, x1 = X(sg.e) - 1;
+    if (x1 - x0 < 1) x1 = x0 + 1;
+    ctx.fillStyle = k === cur ? WAVE_C.lineCur : WAVE_C.line;
+    ctx.fillRect(x0, base + 2, x1 - x0, k === cur ? 3 : 2);
+  });
+  // vạch đang phát
+  ctx.fillStyle = WAVE_C.head;
+  ctx.fillRect(Math.min(cssW - 2, Math.max(0, playX - 1)), 0, 2, base);
+  ctx.beginPath(); ctx.arc(Math.min(cssW - 3, Math.max(3, playX)), 3, 3, 0, Math.PI * 2); ctx.fill();
+  // số câu (bỏ bớt số khi các câu quá sát nhau; số của câu đang làm luôn hiện)
+  var lbKey = key + '|' + segs.length + '|' + (segs[0] ? segs[0].s.toFixed(2) + segs[segs.length - 1].e.toFixed(2) : '') + '|' + cur;
+  if (w.lbKey !== lbKey) {
+    w.lbKey = lbKey;
+    var html = '', lastR = -99;
+    segs.forEach(function (sg, k) {
+      var cx = (X(sg.s) + X(sg.e)) / 2, half = String(k + 1).length * 4 + 7;
+      var curK = k === cur, nextCur = segs[cur] && k + 1 === cur && (X(segs[cur].s) + X(segs[cur].e)) / 2 - cx < half * 2 + 2;
+      if (!curK && (cx - half < lastR + 2 || nextCur)) return;
+      var lx = Math.max(half, Math.min(cssW - half, cx));   // số sát mép không tràn ra ngoài
+      html += '<button type="button" class="wave-n' + (curK ? ' cur' : '') + '" data-k="' + k + '" style="left:' + lx.toFixed(1) + 'px" title="Play sentence ' + (k + 1) + '">' + (k + 1) + '</button>';
+      lastR = cx + half;
+    });
+    w.labels.innerHTML = html;
+    w.note.textContent = !frames ? (AP.pending && AP.url === url ? 'Analysing the audio…' : 'Waveform unavailable for this audio — sentence positions are estimated.')
+      : 'Click the waveform to jump · tap a number to replay that sentence · light bars = not in the script';
+  }
+}
+['quiz', 'gapfill', 'dict'].forEach(function (id) { attachWave(document.getElementById(id + '-audio'), id === 'gapfill' ? 'gap' : id); });
 
 // ═══════════════════════════════════════════════════════════
 // UNIFIED KEYBOARD HANDLER
