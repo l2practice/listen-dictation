@@ -279,12 +279,23 @@
 .sc-fab:hover{transform:scale(1.08)}
 .sc-fab.hidden{display:none}
 .wave{position:relative;margin-top:8px;user-select:none}
-.wave-cv{display:block;width:100%;height:62px;cursor:pointer;border-radius:8px;outline:none}
+.wave-cv{display:block;width:100%;height:62px;cursor:pointer;border-radius:8px;outline:none;touch-action:pan-y}
 .wave-cv:focus-visible{box-shadow:0 0 0 2px var(--ld-accent)}
 .wave-tip{position:absolute;top:-24px;transform:translateX(-50%);background:var(--ld-ink);color:#fff;font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;pointer-events:none;font-variant-numeric:tabular-nums;white-space:nowrap}
+.wave-bar{display:flex;align-items:center;gap:12px;margin-top:4px}
+.wave-scroll{position:relative;flex:1;height:14px;cursor:pointer;touch-action:none}
+.wave-scroll::before{content:'';position:absolute;left:0;right:0;top:5px;height:4px;border-radius:4px;background:#E4E6EA}
+.wave-scroll::after{content:'';position:absolute;left:0;top:5px;height:4px;width:var(--p,0%);border-radius:4px;background:#EDB9AC}
+.wave-thumb{position:absolute;top:2px;height:10px;border-radius:6px;background:rgba(21,23,28,.28);z-index:1;min-width:8px}
+.wave-scroll:hover .wave-thumb{background:rgba(21,23,28,.42)}
+.wave-scroll.off{visibility:hidden}
+.wave-zoom{display:inline-flex;align-items:center;gap:2px;background:var(--ld-surface-2);border-radius:100px;padding:2px}
+.wave-zoom button{width:26px;height:24px;border:none;border-radius:100px;background:none;font-size:15px;font-weight:700;color:var(--ld-ink);cursor:pointer;line-height:1}
+.wave-zoom button:hover{background:var(--ld-slate-lt)}
+.wave-zl{min-width:44px;text-align:center;font-size:11.5px;font-weight:600;color:var(--ld-ink-2);font-variant-numeric:tabular-nums}
 .wave-note{font-size:11.5px;color:var(--ld-ink-3);margin-top:2px}
 .wave-note:empty{display:none}
-@media(max-width:640px){.wave-cv{height:50px}
+@media(max-width:640px){.wave-cv{height:50px}.wave-note{display:none}
   #screen-dictation .progress-outer{display:none}}   /* thanh đầu Dictation: nút Save & Exit không bị đẩy ra ngoài */
 .ios-toggle{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:12.5px;font-weight:600;color:var(--ld-ink-2)}
 .ios-toggle input{position:absolute;opacity:0;width:0;height:0}
@@ -3003,60 +3014,146 @@ function updateAutoPauseNotes() {
 // Dùng lại phép đo 20 ms của Auto-pause (AP.frames) → không tải / giải mã thêm lần nào.
 // ═══════════════════════════════════════════════════════════
 var WAVES = [];
-var WAVE_C = { played: '#D4664F', ahead: '#BCC1CB', head: '#B5523D', ruler: '#8A8F99', tick: '#C9CEDA' };
-var WAVE_TICKS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+var WAVE_C = { played: '#D4664F', ahead: '#BCC1CB', head: '#B5523D', ruler: '#8A8F99', tick: '#C9CEDA', track: '#E4E6EA', thumb: '#9AA0AA' };
+var WAVE_TICKS = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+var WAVE_ZOOMS = [0, 120, 60, 30, 15, 8];        // khung xem (giây); 0 = cả bài
+var WAVE_FOLLOW_AT = 0.3;                         // khi phát: vạch phát nằm ở 30 % → thấy 70 % phía trước
+function waveZoomPref() { try { var v = localStorage.getItem('ld_wave_zoom'); return v == null ? null : +v; } catch (e) { return null; } }
 function attachWave(audio, which) {
   if (!audio || audio._wave) return;
   var box = document.createElement('div');
   box.className = 'wave hidden';
-  box.innerHTML = '<canvas class="wave-cv" tabindex="0" role="slider" aria-label="Audio waveform — click to jump, ← → to move 2 s"></canvas>' +
-    '<div class="wave-tip" hidden></div><div class="wave-note"></div>';
+  box.innerHTML = '<canvas class="wave-cv" tabindex="0" role="slider" aria-label="Audio waveform — click to jump, ← → move 2 s, + − zoom"></canvas>' +
+    '<div class="wave-tip" hidden></div>' +
+    '<div class="wave-bar"><div class="wave-scroll" title="Drag to scroll"><div class="wave-thumb"></div></div>' +
+    '<div class="wave-zoom" role="group" aria-label="Zoom"><button type="button" data-z="-1" title="Zoom out (−)">−</button>' +
+    '<span class="wave-zl"></span><button type="button" data-z="1" title="Zoom in (+)">+</button></div></div><div class="wave-note"></div>';
   audio.insertAdjacentElement('afterend', box);
   var w = audio._wave = { audio: audio, which: which, box: box, cv: box.querySelector('canvas'), tip: box.querySelector('.wave-tip'),
-                          note: box.querySelector('.wave-note'), raf: 0, lv: null, lvKey: '' };
+    note: box.querySelector('.wave-note'), scroll: box.querySelector('.wave-scroll'), thumb: box.querySelector('.wave-thumb'),
+    zl: box.querySelector('.wave-zl'), raf: 0, cache: null, cacheKey: '', zoom: null, v0: 0, manualUntil: 0, drag: null };
   WAVES.push(w);
   ['loadedmetadata', 'durationchange', 'emptied'].forEach(function (ev) { audio.addEventListener(ev, function () { drawWave(w, true); }); });
-  ['timeupdate', 'seeked', 'pause', 'ended'].forEach(function (ev) { audio.addEventListener(ev, function () { drawWave(w); }); });
+  ['timeupdate', 'pause', 'ended'].forEach(function (ev) { audio.addEventListener(ev, function () { drawWave(w); }); });
+  audio.addEventListener('seeked', function () { if (!w.drag) w.manualUntil = 0; drawWave(w); });
   audio.addEventListener('play', function () {
-    cancelAnimationFrame(w.raf);
+    w.manualUntil = 0; w.tip.hidden = true; cancelAnimationFrame(w.raf);
     (function loop() { drawWave(w); if (!audio.paused && !audio.ended) w.raf = requestAnimationFrame(loop); })();
   });
-  var ratioAt = function (e) { var r = w.cv.getBoundingClientRect(); return r.width ? Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) : 0; };
-  w.cv.addEventListener('click', function (e) {
-    var d = audio.duration; if (!(d > 0)) return;
-    audio.currentTime = ratioAt(e) * d;
-    drawWave(w);
+  var timeAt = function (clientX) { var r = w.cv.getBoundingClientRect(), V = waveView(w); return V.v0 + Math.max(0, Math.min(1, (clientX - r.left) / (r.width || 1))) * V.win; };
+  // kéo ngang để trượt (chuột hoặc ngón tay); chạm/bấm không kéo = nhảy tới chỗ đó
+  w.cv.addEventListener('pointerdown', function (e) {
+    if (!(audio.duration > 0)) return;
+    w.drag = { x: e.clientX, v0: waveView(w).v0, moved: false, id: e.pointerId };
+    try { w.cv.setPointerCapture(e.pointerId); } catch (er) {}
   });
-  w.cv.addEventListener('mousemove', function (e) {
+  w.cv.addEventListener('pointermove', function (e) {
     var d = audio.duration; if (!(d > 0)) return;
-    var x = ratioAt(e), cw = w.cv.clientWidth;
-    w.tip.textContent = waveTime(x * d);
-    w.tip.style.left = Math.min(cw - 24, Math.max(24, x * cw)) + 'px';
+    if (w.drag) {
+      var V = waveView(w), dx = e.clientX - w.drag.x;
+      if (Math.abs(dx) > 4) w.drag.moved = true;
+      if (w.drag.moved && V.win < d) { w.v0 = Math.max(0, Math.min(d - V.win, w.drag.v0 - dx / w.cv.clientWidth * V.win)); w.manualUntil = Infinity; drawWave(w); }
+    }
+    var r = w.cv.getBoundingClientRect(), x = e.clientX - r.left;
+    w.tip.textContent = waveTime(timeAt(e.clientX));
+    w.tip.style.left = Math.min(r.width - 24, Math.max(24, x)) + 'px';
     w.tip.hidden = false;
   });
-  w.cv.addEventListener('mouseleave', function () { w.tip.hidden = true; });
+  var endDrag = function (e) {
+    if (!w.drag) return;
+    var moved = w.drag.moved; w.drag = null;
+    if (moved) { w.manualUntil = audio.paused ? Infinity : Date.now() + 3000; return; }   // đang phát: 3 giây sau lại chạy theo
+    if (e.type === 'pointerup') { var at = timeAt(e.clientX); w.manualUntil = 0; audio.currentTime = at; drawWave(w); }   // tính chỗ bấm TRƯỚC khi khung quay lại theo vạch phát
+  };
+  w.cv.addEventListener('pointerup', endDrag);
+  w.cv.addEventListener('pointercancel', endDrag);
+  w.cv.addEventListener('pointerleave', function () { w.tip.hidden = true; });
+  // con lăn / trackpad: cuộn ngang (hoặc Shift + cuộn) = trượt; Ctrl + cuộn / chụm 2 ngón = zoom
+  w.cv.addEventListener('wheel', function (e) {
+    var d = audio.duration; if (!(d > 0)) return;
+    if (e.ctrlKey) { e.preventDefault(); setWaveZoom(w, e.deltaY < 0 ? 1 : -1); return; }
+    var V = waveView(w), dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
+    if (!dx || V.win >= d) return;
+    e.preventDefault();
+    w.v0 = Math.max(0, Math.min(d - V.win, V.v0 + dx / w.cv.clientWidth * V.win));
+    w.manualUntil = audio.paused ? Infinity : Date.now() + 3000;
+    drawWave(w);
+  }, { passive: false });
   w.cv.addEventListener('keydown', function (e) {
+    var d = audio.duration; if (!(d > 0)) return;
+    if (e.key === '+' || e.key === '=') { e.preventDefault(); setWaveZoom(w, 1); return; }
+    if (e.key === '-' || e.key === '_') { e.preventDefault(); setWaveZoom(w, -1); return; }
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
-    var d = audio.duration; if (!(d > 0)) return;
     audio.currentTime = Math.max(0, Math.min(d, audio.currentTime + (e.key === 'ArrowLeft' ? -2 : 2)));
+  });
+  box.querySelector('.wave-zoom').addEventListener('click', function (e) { var b = e.target.closest('[data-z]'); if (b) setWaveZoom(w, +b.dataset.z); });
+  // thanh cuộn nhỏ: kéo hoặc bấm để trượt khung xem
+  var scrollTo = function (clientX) {
+    var d = audio.duration, V = waveView(w), r = w.scroll.getBoundingClientRect(); if (!(d > 0) || V.win >= d) return;
+    w.v0 = Math.max(0, Math.min(d - V.win, (clientX - r.left) / r.width * d - V.win / 2));
+    w.manualUntil = audio.paused ? Infinity : Date.now() + 3000; drawWave(w);
+  };
+  w.scroll.addEventListener('pointerdown', function (e) {
+    scrollTo(e.clientX); try { w.scroll.setPointerCapture(e.pointerId); } catch (er) {}
+    var mv = function (ev) { scrollTo(ev.clientX); }, up = function () { w.scroll.removeEventListener('pointermove', mv); w.scroll.removeEventListener('pointerup', up); };
+    w.scroll.addEventListener('pointermove', mv); w.scroll.addEventListener('pointerup', up);
   });
   if (window.ResizeObserver) new ResizeObserver(function () { drawWave(w, true); }).observe(box);
 }
 function redrawWaves(full) { WAVES.forEach(function (w) { drawWave(w, full); }); }
 function waveTime(t) { t = Math.max(0, t); var m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); }
-// n cột: độ cao 0..1 (0 = im lặng → vẽ phẳng)
-function waveLevels(frames, n) {
-  var thr = speechThreshold(frames), per = frames.length / n, rms = new Float64Array(n), speech = new Float64Array(n);
-  for (var i = 0; i < n; i++) {
-    var f0 = Math.floor(i * per), f1 = Math.max(f0 + 1, Math.floor((i + 1) * per)), sum = 0, sp = 0, cnt = 0;
-    for (var f = f0; f < f1 && f < frames.length; f++) { sum += Math.pow(10, frames[f] / 10); if (frames[f] >= thr) sp++; cnt++; }
-    rms[i] = cnt ? Math.sqrt(sum / cnt) : 0; speech[i] = cnt ? sp / cnt : 0;
+// Khung xem mặc định: rộng nhất mà mỗi cột ≤ ~0,17 s (đủ thấy chỗ ngắt 0,3 s) → máy tính 30 s, điện thoại 15 s;
+// bài ngắn vừa khung thì xem cả bài. SV đổi được, app nhớ lựa chọn.
+function waveZoomOf(w, d) {
+  var z = w.zoom != null ? w.zoom : waveZoomPref();
+  if (z == null) {
+    var bars = Math.max(30, (w.cv.clientWidth || w.box.clientWidth || 300) / (window.matchMedia('(max-width:640px)').matches ? 3.5 : 4));
+    z = bars * 0.17 >= d ? 0 : WAVE_ZOOMS.filter(function (o) { return o && o <= Math.max(8, bars * 0.17); })[0] || 8;
   }
-  var sorted = Array.prototype.slice.call(rms).sort(function (a, b) { return a - b; });
-  var ref = sorted[Math.floor(sorted.length * 0.95)] || sorted[sorted.length - 1] || 1, out = new Float32Array(n);
-  for (i = 0; i < n; i++) out[i] = speech[i] < 0.25 ? 0 : Math.min(1, Math.sqrt(rms[i] / ref));
-  return out;
+  return z && z < d ? z : 0;
+}
+function setWaveZoom(w, dir) {
+  var d = w.audio.duration; if (!(d > 0)) return;
+  var opts = WAVE_ZOOMS.filter(function (z) { return z === 0 || z < d; }), cur = waveZoomOf(w, d), i = opts.indexOf(cur);
+  if (i < 0) i = 0;
+  i = Math.max(0, Math.min(opts.length - 1, i + dir));
+  var V = waveView(w), centre = V.v0 + V.win / 2;
+  w.zoom = opts[i];
+  try { localStorage.setItem('ld_wave_zoom', String(w.zoom)); } catch (e) {}
+  WAVES.forEach(function (o) { if (o !== w) o.zoom = w.zoom; });
+  if (w.zoom) w.v0 = Math.max(0, Math.min(d - w.zoom, centre - w.zoom / 2));
+  w.manualUntil = w.audio.paused ? Infinity : Date.now() + 1500;
+  redrawWaves(true);
+}
+// Đoạn đang xem: { v0, win }. Không zoom = cả bài. Đang phát và không có ai đang kéo → chạy theo vạch phát.
+function waveView(w) {
+  var d = w.audio.duration || 0, z = waveZoomOf(w, d);
+  if (!z) return { v0: 0, win: d || 1 };
+  var t = w.audio.currentTime || 0;
+  // đang phát: cuộn liên tục theo vạch phát; đang dừng: chỉ dời khung khi vạch phát ra ngoài khung
+  if (!w.drag && Date.now() > w.manualUntil && (!w.audio.paused || t < w.v0 + z * 0.02 || t > w.v0 + z * 0.95)) w.v0 = t - z * WAVE_FOLLOW_AT;
+  w.v0 = Math.max(0, Math.min(d - z, w.v0));
+  return { v0: w.v0, win: z };
+}
+// Mỗi file: biến dB → năng lượng (1 lần), mốc 95 % độ lớn theo lát 0,5 s; cột của mỗi độ phân giải tính dần & nhớ lại
+function waveCacheFor(w, frames, url) {
+  if (w.cacheKey === url && w.cache) return w.cache;
+  var en = new Float64Array(frames.length), thr = speechThreshold(frames), isSp = new Uint8Array(frames.length);
+  for (var f = 0; f < frames.length; f++) { en[f] = Math.pow(10, frames[f] / 10); isSp[f] = frames[f] >= thr ? 1 : 0; }
+  var per = Math.max(1, Math.round(0.5 / AP.hop)), sl = [];
+  for (f = 0; f < frames.length; f += per) { var s = 0, c = 0; for (var k = f; k < f + per && k < frames.length; k++) { s += en[k]; c++; } sl.push(Math.sqrt(s / c)); }
+  sl.sort(function (a, b) { return a - b; });
+  w.cacheKey = url;
+  return (w.cache = { en: en, sp: isSp, ref: sl[Math.floor(sl.length * 0.95)] || sl[sl.length - 1] || 1, grids: {} });
+}
+// Độ cao cột k của lưới bt giây/cột (0 = im lặng → vẽ phẳng)
+function waveBar(c, bt, k) {
+  var g = c.grids[bt] || (c.grids[bt] = {});
+  if (g[k] != null) return g[k];
+  var f0 = Math.floor(k * bt / AP.hop), f1 = Math.max(f0 + 1, Math.floor((k + 1) * bt / AP.hop)), sum = 0, sp = 0, cnt = 0;
+  for (var f = f0; f < f1 && f < c.en.length; f++) { sum += c.en[f]; sp += c.sp[f]; cnt++; }
+  return (g[k] = !cnt || sp / cnt < 0.25 ? 0 : Math.min(1, Math.sqrt(Math.sqrt(sum / cnt) / c.ref)));
 }
 function drawWave(w, full) {
   var a = w.audio, dur = a.duration, url = App.audioBlobUrl;
@@ -3071,33 +3168,42 @@ function drawWave(w, full) {
   if (full || cv.width !== Math.round(cssW * dpr) || cv.height !== Math.round(H * dpr)) {
     cv.style.height = H + 'px'; cv.width = Math.round(cssW * dpr); cv.height = Math.round(H * dpr);
   }
-  var SLOT = mobile ? 3.5 : 4, n = Math.max(30, Math.floor(cssW / SLOT)), slot = cssW / n, barW = Math.max(1.5, slot * 0.62);
-  var key = (frames ? url : 'none') + '|' + n;
-  if (w.lvKey !== key) { w.lv = frames ? waveLevels(frames, n) : null; w.lvKey = key; }
-  var g = cv.getContext('2d'), prog = Math.min(1, (a.currentTime || 0) / dur);
+  var V = waveView(w), v0 = V.v0, win = V.win, X = function (t) { return (t - v0) / win * cssW; };
+  // lưới cột cố định theo thời gian → khi trượt, cột không nhấp nháy
+  var SLOT = mobile ? 3.5 : 4, bt = win / Math.max(30, Math.floor(cssW / SLOT)), slot = cssW * bt / win, barW = Math.max(1.5, slot * 0.62);
+  var cache = frames ? waveCacheFor(w, frames, url) : null, t = a.currentTime || 0;
+  var g = cv.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, cssW, H);
-  for (var i = 0; i < n; i++) {
-    var v = w.lv ? w.lv[i] : 0, bh = Math.max(3, v * (WH - 4)), x = i * slot + (slot - barW) / 2;
-    g.fillStyle = (i + 0.5) / n <= prog ? WAVE_C.played : WAVE_C.ahead;
+  for (var k = Math.max(0, Math.floor(v0 / bt)), kEnd = Math.ceil((v0 + win) / bt); k < kEnd && k * bt < dur; k++) {
+    var v = cache ? waveBar(cache, bt, k) : 0, bh = Math.max(3, v * (WH - 4)), x = X(k * bt) + (slot - barW) / 2;
+    g.fillStyle = (k + 0.5) * bt <= t ? WAVE_C.played : WAVE_C.ahead;
     g.beginPath();
     if (g.roundRect) g.roundRect(x, (WH - bh) / 2, barW, bh, barW / 2); else g.rect(x, (WH - bh) / 2, barW, bh);
     g.fill();
   }
   // vạch đang phát
-  var px = Math.max(1, Math.min(cssW - 1, prog * cssW));
-  g.fillStyle = WAVE_C.head; g.fillRect(px - 1, 1, 2, WH - 2);
-  // thước thời gian: tự chọn bước để nhãn cách nhau ≥ 46 px
-  var step = WAVE_TICKS.filter(function (st) { return st / dur * cssW >= 46; })[0] || 600, lastR = -1e9;
+  var px = X(t);
+  if (px >= -1 && px <= cssW + 1) { g.fillStyle = WAVE_C.head; g.fillRect(Math.max(0, Math.min(cssW - 2, px - 1)), 1, 2, WH - 2); }
+  // thước thời gian của đoạn đang xem: bước tự chọn để nhãn cách nhau ≥ 46 px
+  var step = WAVE_TICKS.filter(function (st) { return st / win * cssW >= 46; })[0] || 600, lastR = -1e9;
   g.font = '10px ' + (getComputedStyle(document.body).fontFamily || 'sans-serif');
   g.textBaseline = 'alphabetic'; g.lineWidth = 1;
-  for (var t = 0; t <= dur; t += step) {
-    var tx = Math.round(t / dur * cssW) + 0.5, lab = t < 60 ? t + 's' : Math.floor(t / 60) + ':' + ('0' + Math.round(t % 60)).slice(-2);
+  for (var tt = Math.ceil(v0 / step - 1e-9) * step; tt <= Math.min(dur, v0 + win) + 1e-9; tt += step) {
+    var tx = Math.round(X(tt)) + 0.5, sec = Math.round(tt * 10) / 10;
+    var lab = win <= 90 && sec < 60 ? (sec % 1 ? sec.toFixed(1) : sec) + 's' : Math.floor(sec / 60) + ':' + ('0' + Math.floor(sec % 60)).slice(-2) + (sec % 1 ? '.5' : '');
     var tw = g.measureText(lab).width + 1, lx = Math.max(2, Math.min(cssW - tw - 2, tx - tw / 2));
     g.strokeStyle = WAVE_C.tick; g.beginPath(); g.moveTo(tx, WH + 1); g.lineTo(tx, WH + 5); g.stroke();
     if (lx > lastR + 6) { g.fillStyle = WAVE_C.ruler; g.fillText(lab, lx, H - 1); lastR = lx + tw; }
   }
-  var note = !frames ? (AP.pending && AP.url === url ? 'Analysing the audio…' : 'Waveform unavailable for this audio (e.g. Google Drive) — upload the file to see it.') : '';
+  // thanh cuộn + mức zoom
+  var zoomed = win < dur - 1e-6;
+  w.scroll.classList.toggle('off', !zoomed);
+  if (zoomed) { w.thumb.style.left = (v0 / dur * 100) + '%'; w.thumb.style.width = Math.max(4, win / dur * 100) + '%'; w.scroll.style.setProperty('--p', (t / dur * 100) + '%'); }
+  var zl = zoomed ? (win >= 60 ? win / 60 + ' min' : win + ' s') : 'Full';
+  if (w.zl.textContent !== zl) w.zl.textContent = zl;
+  var note = !frames ? (AP.pending && AP.url === url ? 'Analysing the audio…' : 'Waveform unavailable for this audio (e.g. Google Drive) — upload the file to see it.')
+    : zoomed ? 'Drag or scroll sideways to look ahead · click to jump · + − zoom' : '';
   if (w.note.textContent !== note) w.note.textContent = note;
 }
 ['quiz', 'gapfill', 'dict'].forEach(function (id) { attachWave(document.getElementById(id + '-audio'), id === 'gapfill' ? 'gap' : id); });
