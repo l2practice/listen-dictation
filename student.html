@@ -2846,9 +2846,14 @@ function analyseAudioSilence(url) {
 
 // Ngưỡng lặng của riêng file (tiếng nền ↔ giọng nói) → các đoạn có tiếng (chunk) ngăn bởi khoảng lặng ≥ 0,1 s
 // (hội thoại: đổi người nói có khi chỉ nghỉ 0,1 s)
+// Ngưỡng tiếng nói của riêng file. Bỏ qua các khung IM LẶNG TUYỆT ĐỐI (< −85 dB): audio IELTS có thể
+// có tới 25–30 % thời lượng là im lặng số (đoạn chờ đọc câu hỏi). Tính cả vào thì "mức nền" thành −100 dB,
+// ngưỡng tụt xuống ~ −78 dB và mọi chỗ ngắt giữa câu (−45…−65 dB) đều bị coi là có tiếng
+// (đo trên Cambridge 20 Test 1 Part 2: 84 chỗ ngắt ≥ 0,2 s thay vì ~131).
 function speechThreshold(frames) {
   if (frames._thr != null) return frames._thr;
-  var sorted = Array.prototype.slice.call(frames).sort(function (a, b) { return a - b; });
+  var sorted = Array.prototype.filter.call(frames, function (d) { return d > -85; }).sort(function (a, b) { return a - b; });
+  if (sorted.length < 50) sorted = Array.prototype.slice.call(frames).sort(function (a, b) { return a - b; });
   var q = function (p) { return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]; };
   var floor = q(0.08), speech = q(0.75);
   return (frames._thr = Math.min(floor + Math.max(6, (speech - floor) * 0.3), speech - 4));
@@ -3288,11 +3293,14 @@ function waveCacheFor(w, frames, url) {
   if (w.cacheKey === url && w.cache) return w.cache;
   var en = new Float64Array(frames.length), thr = speechThreshold(frames), isSp = new Uint8Array(frames.length);
   for (var f = 0; f < frames.length; f++) { en[f] = Math.pow(10, frames[f] / 10); isSp[f] = frames[f] >= thr ? 1 : 0; }
-  var per = Math.max(1, Math.round(0.5 / AP.hop)), sl = [];
-  for (f = 0; f < frames.length; f += per) { var s = 0, c = 0; for (var k = f; k < f + per && k < frames.length; k++) { s += en[k]; c++; } sl.push(Math.sqrt(s / c)); }
-  sl.sort(function (a, b) { return a - b; });
+  // Mốc 100 % = phân vị 99,5 % của các khung 20 ms có tiếng (≈ chỗ to nhất của giọng). Mốc cũ (95 % của lát 0,5 s)
+  // quá thấp → đa số cột chạm trần, cao đều nhau, không thấy chỗ hạ giọng.
+  var sp = [];
+  for (f = 0; f < frames.length; f++) if (isSp[f]) sp.push(en[f]);
+  sp.sort(function (a, b) { return a - b; });
+  var ref = sp.length ? Math.sqrt(sp[Math.min(sp.length - 1, Math.floor(sp.length * 0.995))]) : 1;
   w.cacheKey = url;
-  return (w.cache = { en: en, sp: isSp, ref: sl[Math.floor(sl.length * 0.95)] || sl[sl.length - 1] || 1, grids: {} });
+  return (w.cache = { en: en, sp: isSp, ref: ref || 1, grids: {} });
 }
 // Độ cao cột k của lưới bt giây/cột (0 = im lặng → vẽ phẳng)
 function waveBar(c, bt, k) {
@@ -3300,7 +3308,9 @@ function waveBar(c, bt, k) {
   if (g[k] != null) return g[k];
   var f0 = Math.floor(k * bt / AP.hop), f1 = Math.max(f0 + 1, Math.floor((k + 1) * bt / AP.hop)), sum = 0, sp = 0, cnt = 0;
   for (var f = f0; f < f1 && f < c.en.length; f++) { sum += c.en[f]; sp += c.sp[f]; cnt++; }
-  return (g[k] = !cnt || sp / cnt < 0.25 ? 0 : Math.min(1, Math.sqrt(Math.sqrt(sum / cnt) / c.ref)));
+  // cột có chỗ ngắt bên trong thấp xuống theo phần im lặng → xem cả bài vẫn thấy chỗ trũng ở các chỗ ngắt
+  var frac = cnt ? sp / cnt : 0;
+  return (g[k] = !cnt || frac < 0.25 ? 0 : Math.min(1, Math.sqrt(Math.sqrt(sum / cnt) / c.ref)) * (0.3 + 0.7 * frac));
 }
 function drawWave(w, full) {
   var a = w.audio, dur = a.duration, url = App.audioBlobUrl;
