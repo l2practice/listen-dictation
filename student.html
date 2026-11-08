@@ -282,13 +282,29 @@
 .wave-cv{display:block;width:100%;height:62px;cursor:pointer;border-radius:8px;outline:none;touch-action:pan-y}
 .wave-cv:focus-visible{box-shadow:0 0 0 2px var(--ld-accent)}
 .wave-tip{position:absolute;top:-24px;transform:translateX(-50%);background:var(--ld-ink);color:#fff;font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;pointer-events:none;font-variant-numeric:tabular-nums;white-space:nowrap}
-.wave-bar{display:flex;align-items:center;gap:12px;margin-top:4px}
+.wave-bar{display:flex;align-items:center;gap:8px;margin-top:4px}
+@media(max-width:640px){.wave-bar{gap:5px}.fx-btn{padding:0 8px}.wave-zl{min-width:34px}}
 .wave-scroll{position:relative;flex:1;height:14px;cursor:pointer;touch-action:none}
 .wave-scroll::before{content:'';position:absolute;left:0;right:0;top:5px;height:4px;border-radius:4px;background:#E4E6EA}
 .wave-scroll::after{content:'';position:absolute;left:0;top:5px;height:4px;width:var(--p,0%);border-radius:4px;background:#EDB9AC}
 .wave-thumb{position:absolute;top:2px;height:10px;border-radius:6px;background:rgba(21,23,28,.28);z-index:1;min-width:8px}
 .wave-scroll:hover .wave-thumb{background:rgba(21,23,28,.42)}
 .wave-scroll.off{visibility:hidden}
+.fx-wrap{position:relative}
+.fx-btn{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:none;border-radius:100px;background:var(--ld-surface-2);font-family:var(--font-body);font-size:11.5px;font-weight:700;color:var(--ld-ink);cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums}
+.fx-btn .ic{width:14px;height:14px}
+.fx-btn:hover{background:var(--ld-slate-lt)}
+.fx-btn.on{background:var(--ld-accent-lt);color:var(--ld-accent-dk)}
+.fx-menu{position:absolute;top:34px;right:0;z-index:30;min-width:170px;padding:6px;background:var(--ld-surface);border:1px solid var(--ld-line);border-radius:14px;box-shadow:var(--shadow-md)}
+.fx-title{padding:4px 8px 6px;font-size:11.5px;font-weight:600;color:var(--ld-ink-3)}
+.fx-opt{display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border:none;border-radius:9px;background:none;font-family:var(--font-body);font-size:13px;color:var(--ld-ink);text-align:left;cursor:pointer}
+.fx-opt:hover{background:var(--ld-surface-2)}
+.fx-opt small{margin-left:auto;font-size:10.5px;color:var(--ld-ink-3)}
+.fx-check{width:14px;visibility:hidden;color:var(--ld-accent)}
+.fx-opt.active{font-weight:700}
+.fx-opt.active .fx-check{visibility:visible}
+.fx-foot{font-size:11px;color:var(--ld-ink-3);padding:4px 8px 2px;max-width:190px;line-height:1.4}
+.fx-foot:empty{display:none}
 .wave-zoom{display:inline-flex;align-items:center;gap:2px;background:var(--ld-surface-2);border-radius:100px;padding:2px}
 .wave-zoom button{width:26px;height:24px;border:none;border-radius:100px;background:none;font-size:15px;font-weight:700;color:var(--ld-ink);cursor:pointer;line-height:1}
 .wave-zoom button:hover{background:var(--ld-slate-lt)}
@@ -2767,6 +2783,7 @@ function histSort(key) {
       <div class="sc-row"><span class="sc-label"><i data-ic="arrowRight"></i>Next sentence</span><span class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key">Enter</span></span></div>
       <div class="sc-row"><span class="sc-label"><i data-ic="arrowLeft"></i>Seek −3s</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">,</span></span></div>
       <div class="sc-row"><span class="sc-label"><i data-ic="arrowRight"></i>Seek +3s</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">.</span></span></div>
+      <div class="sc-row"><span class="sc-label"><i data-ic="clock"></i>Slower / faster</span><span class="sc-keys"><span class="sc-key">Shift</span><span class="sc-key">&lt;</span><span class="sc-key">&gt;</span></span></div>
       <div class="sc-row"><span class="sc-label"><i data-ic="pen"></i>Edit last sentence</span><span class="sc-keys"><span class="sc-key">↑</span> <span class="sc-dim">(when not typing)</span></span></div>
       <div class="sc-row"><span class="sc-label"><i data-ic="refresh"></i>Reset sentence</span><span class="sc-keys"><span class="sc-key">Ctrl</span><span class="sc-key">Alt</span><span class="sc-key">R</span></span></div>
       <div class="sc-row"><span class="sc-label"><i data-ic="clock"></i>Auto-pause <span style="font-size:11px;color:var(--ld-ink-3)">(dừng cuối mỗi câu)</span></span><span class="sc-dim">toggle ở thanh audio</span></div>
@@ -2822,7 +2839,7 @@ function analyseAudioSilence(url) {
     } catch (e) {
       console.warn('[LisDictation] Audio analysis unavailable (' + e.message + ') — sentence ends estimated from word counts.');
       return null;
-    } finally { if (AP.url === url) AP.pending = null; updateAutoPauseNotes(); redrawWaves(true); }
+    } finally { if (AP.url === url) AP.pending = null; updateAutoPauseNotes(); redrawWaves(true); if (FX.nodes.length) fxApplyGain(); fxRender(); }
   })();
   return AP.pending;
 }
@@ -3013,6 +3030,107 @@ function updateAutoPauseNotes() {
 // • Phần đã nghe tô màu; thước thời gian bên dưới; rê chuột xem giây; bấm để nhảy; ← → lùi/tiến 2 giây.
 // Dùng lại phép đo 20 ms của Auto-pause (AP.frames) → không tải / giải mã thêm lần nào.
 // ═══════════════════════════════════════════════════════════
+// ── Boost âm lượng + tốc độ (như Drive MP3 Player) ─────────────────────────────
+// <audio>.volume tối đa 100 %, muốn to hơn phải qua Web Audio: nguồn → GainNode → bộ nén giới hạn
+// (để boost lớn không bị rè) → loa. Chỉ nối khi AudioContext đang chạy (nối vào context đang treo
+// thì audio câm) và chỉ với file tải lên / cùng nguồn: audio Google Drive không có CORS, nối vào
+// Web Audio sẽ ra im lặng → không boost được. Auto: đo độ to phần có giọng (AP.frames, cùng ngưỡng
+// với Auto-pause) rồi đưa về ~ −17 dBFS, tối đa ×8.
+var FX_BOOSTS = [{ v: 'auto', l: 'Auto', n: 'recommended' }, { v: '1', l: 'Off (100%)' }, { v: '1.5', l: '150%' }, { v: '2', l: '200%' }, { v: '3', l: '300%' }, { v: '4', l: '400%' }];
+var FX_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+var FX_TARGET_RMS = 0.14, FX_MAX_AUTO = 8;
+function fxLoad(k, ok, def) { try { var v = localStorage.getItem(k); return v != null && ok(v) ? v : def; } catch (e) { return def; } }
+function fxSave(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+var FX = {
+  boost: fxLoad('ld_boost', function (v) { return FX_BOOSTS.some(function (o) { return o.v === v; }); }, 'auto'),
+  speed: +fxLoad('ld_speed', function (v) { return FX_SPEEDS.indexOf(+v) >= 0; }, '1'),
+  ctx: null, nodes: [], autoKey: '', autoGain: 1
+};
+function fxCanBoost(audio) {
+  var src = audio.currentSrc || audio.getAttribute('src') || '';
+  return /^blob:/.test(src) || src.indexOf(location.origin + '/') === 0;
+}
+async function fxEnsure(audio) {
+  if (audio._fx) { if (FX.ctx.state !== 'running') FX.ctx.resume().catch(function () {}); return true; }
+  if (!fxCanBoost(audio)) return false;
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!FX.ctx) { FX.ctx = new AC(); FX.ctx.onstatechange = function () { if (FX.ctx.state === 'suspended') FX.ctx.resume().catch(function () {}); }; }
+    if (FX.ctx.state !== 'running') await Promise.race([FX.ctx.resume(), new Promise(function (r) { setTimeout(r, 800); })]);
+    if (FX.ctx.state !== 'running') return false;      // trình duyệt chặn → giữ đường phát thường (không boost)
+    var src = FX.ctx.createMediaElementSource(audio), gain = FX.ctx.createGain(), lim = FX.ctx.createDynamicsCompressor();
+    lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.003; lim.release.value = 0.1;
+    src.connect(gain); gain.connect(lim); lim.connect(FX.ctx.destination);
+    audio._fx = { gain: gain };
+    FX.nodes.push(audio);
+    return true;
+  } catch (e) { console.warn('[LisDictation] volume boost unavailable', e); return false; }
+}
+function fxAuto() {
+  var fr = AP.frames && AP.url === App.audioBlobUrl ? AP.frames : null;
+  if (!fr) return 1;
+  if (FX.autoKey === AP.url) return FX.autoGain;
+  var thr = speechThreshold(fr), sum = 0, n = 0, mx = 0;
+  for (var f = 0; f < fr.length; f++) { var e = Math.pow(10, fr[f] / 10); if (e > mx) mx = e; if (fr[f] >= thr) { sum += e; n++; } }
+  var g = 1;
+  if (n) { var rms = Math.sqrt(sum / n); if (rms > 0.0005) g = Math.min(FX_TARGET_RMS / rms, 1.4 / Math.max(Math.sqrt(mx), 0.01), FX_MAX_AUTO); }
+  FX.autoKey = AP.url; FX.autoGain = Math.max(1, Math.round(g * 100) / 100);
+  return FX.autoGain;
+}
+function fxTarget() { return FX.boost === 'auto' ? fxAuto() : (+FX.boost || 1); }
+function fxApplyGain() {
+  var g = fxTarget();
+  FX.nodes.forEach(function (a) { a._fx.gain.gain.setTargetAtTime(g, FX.ctx.currentTime, 0.05); });
+}
+function fxSetBoost(v) {
+  FX.boost = v; fxSave('ld_boost', v);
+  // nối ngay cho audio đang hiện (bấm chọn = cử chỉ người dùng → AudioContext được phép chạy)
+  var a = fxVisibleAudio();
+  Promise.resolve(a && v !== '1' ? fxEnsure(a) : true).then(function (ok) {
+    fxApplyGain(); fxRender();
+    if (a && v !== '1' && !ok) LD.toast(fxCanBoost(a) ? 'Volume boost is not available: the browser blocked audio processing.' : 'Volume boost needs an uploaded audio file (Google Drive audio cannot be boosted).', 'err', 4500);
+  });
+}
+function fxApplySpeed(audio) {
+  (audio ? [audio] : WAVES.map(function (w) { return w.audio; })).forEach(function (a) {
+    a.defaultPlaybackRate = FX.speed; if (Math.abs(a.playbackRate - FX.speed) > 1e-3) a.playbackRate = FX.speed;
+    a.preservesPitch = a.mozPreservesPitch = a.webkitPreservesPitch = true;   // đổi tốc độ nhưng giữ cao độ giọng
+  });
+}
+function fxSetSpeed(v) { FX.speed = v; fxSave('ld_speed', v); fxApplySpeed(); fxRender(); }
+function fxStepSpeed(dir) {
+  var i = FX_SPEEDS.indexOf(FX.speed); if (i < 0) i = FX_SPEEDS.indexOf(1);
+  var j = Math.max(0, Math.min(FX_SPEEDS.length - 1, i + dir));
+  if (j !== i) { fxSetSpeed(FX_SPEEDS[j]); LD.toast('Speed ' + (FX.speed === 1 ? 'normal (1x)' : FX.speed + 'x'), 'ok', 1200); }
+}
+function fxVisibleAudio() {
+  var w = WAVES.filter(function (x) { return x.audio.closest('.screen.active'); })[0];
+  return w ? w.audio : null;
+}
+function fxCloseMenus() {
+  document.querySelectorAll('.fx-menu').forEach(function (m) { m.hidden = true; });
+  document.querySelectorAll('.fx-btn').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+}
+document.addEventListener('click', function (e) { if (!e.target.closest('.fx-wrap')) fxCloseMenus(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fxCloseMenus(); });
+function fxRender() {
+  var g = fxTarget();
+  WAVES.forEach(function (w) {
+    var can = fxCanBoost(w.audio), bl = w.box.querySelector('.fx-bl'), bb = w.box.querySelector('.fx-boost');
+    var txt = !can ? 'Off' : FX.boost === 'auto' ? (g > 1.04 ? '×' + g.toFixed(1) : 'Auto') : FX.boost === '1' ? 'Off' : Math.round(+FX.boost * 100) + '%';
+    if (bl.textContent !== txt) bl.textContent = txt;
+    bb.classList.toggle('on', can && g > 1.04);
+    bb.title = !can ? 'Volume boost needs an uploaded audio file (Google Drive audio cannot be boosted)'
+      : FX.boost === 'auto' ? 'Volume boost: Auto' + (g > 1.04 ? ' (×' + g.toFixed(1) + ' for this file)' : ' (this file is already loud enough)') : 'Volume boost: make quiet files louder than 100%';
+    w.box.querySelectorAll('[data-boost]').forEach(function (o) { var on = o.dataset.boost === FX.boost; o.classList.toggle('active', on); o.setAttribute('aria-checked', String(on)); });
+    w.box.querySelector('.fx-foot').textContent = can ? '' : 'Google Drive audio cannot be boosted — upload the file instead.';
+    var sb = w.box.querySelector('.fx-speed'), st = (FX.speed === 1 ? '1' : FX.speed) + 'x';
+    if (sb.textContent !== st) sb.textContent = st;
+    sb.classList.toggle('on', FX.speed !== 1);
+    w.box.querySelectorAll('[data-speed]').forEach(function (o) { var on = +o.dataset.speed === FX.speed; o.classList.toggle('active', on); o.setAttribute('aria-checked', String(on)); });
+  });
+}
+
 var WAVES = [];
 var WAVE_C = { played: '#D4664F', ahead: '#BCC1CB', head: '#B5523D', ruler: '#8A8F99', tick: '#C9CEDA', track: '#E4E6EA', thumb: '#9AA0AA' };
 var WAVE_TICKS = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
@@ -3026,6 +3144,14 @@ function attachWave(audio, which) {
   box.innerHTML = '<canvas class="wave-cv" tabindex="0" role="slider" aria-label="Audio waveform — click to jump, ← → move 2 s, + − zoom"></canvas>' +
     '<div class="wave-tip" hidden></div>' +
     '<div class="wave-bar"><div class="wave-scroll" title="Drag to scroll"><div class="wave-thumb"></div></div>' +
+    '<div class="fx-wrap"><button type="button" class="fx-btn fx-boost" aria-haspopup="true" aria-expanded="false">' + LD.icon('volume') + '<span class="fx-bl">Auto</span></button>' +
+    '<div class="fx-menu" role="menu" hidden><div class="fx-title">Volume boost</div>' +
+    FX_BOOSTS.map(function (o) { return '<button type="button" class="fx-opt" role="menuitemradio" data-boost="' + o.v + '"><span class="fx-check">✓</span><span>' + o.l + '</span>' + (o.n ? '<small>' + o.n + '</small>' : '') + '</button>'; }).join('') +
+    '<div class="fx-foot"></div></div></div>' +
+    '<div class="fx-wrap"><button type="button" class="fx-btn fx-speed" aria-haspopup="true" aria-expanded="false" title="Playback speed (Shift + &lt; / &gt;)">1x</button>' +
+    '<div class="fx-menu" role="menu" hidden><div class="fx-title">Playback speed</div>' +
+    FX_SPEEDS.map(function (v) { return '<button type="button" class="fx-opt" role="menuitemradio" data-speed="' + v + '"><span class="fx-check">✓</span><span>' + (v === 1 ? 'Normal' : v + 'x') + '</span></button>'; }).join('') +
+    '</div></div>' +
     '<div class="wave-zoom" role="group" aria-label="Zoom"><button type="button" data-z="-1" title="Zoom out (−)">−</button>' +
     '<span class="wave-zl"></span><button type="button" data-z="1" title="Zoom in (+)">+</button></div></div><div class="wave-note"></div>';
   audio.insertAdjacentElement('afterend', box);
@@ -3088,6 +3214,27 @@ function attachWave(audio, which) {
     audio.currentTime = Math.max(0, Math.min(d, audio.currentTime + (e.key === 'ArrowLeft' ? -2 : 2)));
   });
   box.querySelector('.wave-zoom').addEventListener('click', function (e) { var b = e.target.closest('[data-z]'); if (b) setWaveZoom(w, +b.dataset.z); });
+  // boost / tốc độ: mở menu, chọn mức
+  box.querySelectorAll('.fx-wrap').forEach(function (wrap) {
+    var btn = wrap.querySelector('.fx-btn'), menu = wrap.querySelector('.fx-menu');
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = menu.hidden;
+      fxCloseMenus();
+      menu.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+    });
+    menu.addEventListener('click', function (e) {
+      var o = e.target.closest('.fx-opt'); if (!o) return;
+      if (o.dataset.speed) fxSetSpeed(+o.dataset.speed); else fxSetBoost(o.dataset.boost);
+      fxCloseMenus();
+    });
+  });
+  audio.addEventListener('loadedmetadata', function () { fxApplySpeed(audio); fxRender(); });
+  audio.addEventListener('ratechange', function () {             // đổi tốc độ bằng menu ⋮ của trình duyệt → đồng bộ nút
+    if (Math.abs(audio.playbackRate - FX.speed) > 1e-3 && audio.playbackRate > 0) { FX.speed = audio.playbackRate; fxSave('ld_speed', FX.speed); fxApplySpeed(); fxRender(); }
+  });
+  audio.addEventListener('play', function () { if (FX.boost !== '1') fxEnsure(audio).then(function () { fxApplyGain(); fxRender(); }); else if (FX.ctx) FX.ctx.resume(); });
+  fxApplySpeed(audio);
   // thanh cuộn nhỏ: kéo hoặc bấm để trượt khung xem
   var scrollTo = function (clientX) {
     var d = audio.duration, V = waveView(w), r = w.scroll.getBoundingClientRect(); if (!(d > 0) || V.win >= d) return;
@@ -3207,6 +3354,7 @@ function drawWave(w, full) {
   if (w.note.textContent !== note) w.note.textContent = note;
 }
 ['quiz', 'gapfill', 'dict'].forEach(function (id) { attachWave(document.getElementById(id + '-audio'), id === 'gapfill' ? 'gap' : id); });
+fxRender();
 
 // ═══════════════════════════════════════════════════════════
 // UNIFIED KEYBOARD HANDLER
@@ -3214,6 +3362,10 @@ function drawWave(w, full) {
 document.addEventListener('keydown', function (e) {
   var tag = (document.activeElement && document.activeElement.tagName) || '';
   var inInput = tag === 'INPUT' || tag === 'TEXTAREA';
+  // Shift + < / > : chậm / nhanh hơn (Quiz, Gap-fill, Dictation; cả khi đang gõ — bài chép không có < >)
+  if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '<' || e.key === '>') && fxVisibleAudio()) {
+    e.preventDefault(); fxStepSpeed(e.key === '>' ? 1 : -1); return;
+  }
 
   // ── Dictation screen ─────────────────────────────────────
   var dictScr = document.getElementById('screen-dictation');
