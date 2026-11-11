@@ -247,6 +247,15 @@ async function saveAnalysis(p) {
 }
 // Quiz & Gap-fill: không cho lưu dở dang (đã chốt) — chỉ ghi khi làm đủ.
 async function saveQuiz(p) {
+  // Skip (only offered when the quiz could not be generated): quizScore "skipped" counts as done; Total ignores it
+  if (p.skipped) {
+    const { u } = await ownSession(p.sessionId);
+    const batch = fs.batch();
+    batch.update(fs.doc('details/' + p.sessionId), { quizJSON: JSON.stringify({ skipped: true, savedAt: nowIso() }) });
+    batch.update(fs.doc('progress/' + u.uid), itemPatch(u, p.sessionId, { quizScore: 'skipped' }));
+    await batch.commit();
+    return ok();
+  }
   const answers = p.answers || [];
   if (answers.length !== 15) return fail('Quiz phải làm đủ 15/15 câu mới được lưu (hiện ' + answers.length + ').');
   const { u } = await ownSession(p.sessionId);
@@ -295,7 +304,8 @@ async function finishDictation(p) {
   const { u, row } = await ownSession(p.sessionId);
   const det = await fs.doc('details/' + p.sessionId).get();
   const accuracy = p.accuracy != null ? p.accuracy : 0;
-  const total = Math.round(((Number(row.quizScore) || 0) + (Number(row.gapFillScore) || 0) + accuracy) / 3);
+  const parts = [row.quizScore, row.gapFillScore, accuracy].filter(v => v !== 'skipped').map(v => Number(v) || 0);
+  const total = Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
   const end = nowIso(), start = ms(row.startTime);
   const batch = fs.batch();
   batch.update(fs.doc('details/' + p.sessionId), {

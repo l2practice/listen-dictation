@@ -370,7 +370,7 @@ th[data-sort="desc"]::after{content:" ↓";color:var(--ld-accent)}
   </div>
 </div>
 
-<script src="ld-common.js?v=10"></script>
+<script src="ld-common.js?v=11"></script>
 <script>
 var App = { classes: [], students: [], roster: null, editing: null, sessions: [], sessSortKey: 'startTime', sessSortDir: -1, filterOptionsLoaded: false,
   practice: [] };
@@ -715,7 +715,7 @@ function renderSessionsTable() {
   document.getElementById('sessions-tbody').innerHTML = rows.length ? rows.map(function (r) {
     return '<tr><td>' + LD.esc(r.bookTestPart || '—') + '</td><td>' + LD.esc(r.studentId || '—') + '</td><td>' + LD.esc(r.studentName) + '</td><td>' + LD.esc(r.className) + '</td>' +
       '<td>' + LD.fmtDate(r.startTime) + '</td><td>' + LD.fmtDuration(r.durationMin) + '</td>' +
-      '<td>' + (r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
+      '<td>' + (r.quizScore === 'skipped' ? 'Skipped' : r.quizScore != null ? r.quizScore + '%' : '—') + '</td><td>' + (r.gapFillScore != null ? r.gapFillScore + '%' : '—') + '</td>' +
       '<td>' + (r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '—') + '</td><td><b>' + (r.totalScore != null ? r.totalScore + '%' : '—') + '</b></td>' +
       '<td>' + detailsButton(r.sessionId, r.detailPurged, r.docUrl) + '</td></tr>';
   }).join('') : '<tr><td colspan="11" style="text-align:center;color:var(--ld-ink-3)">Không có kết quả.</td></tr>';
@@ -791,7 +791,7 @@ function renderDetailHeader() {
   ].map(function (kv) { return '<div class="dt-meta-item"><div class="k">' + kv[0] + '</div><div class="v">' + LD.esc(String(kv[1])) + '</div></div>'; }).join('');
 
   document.getElementById('dt-stats').innerHTML = [
-    ['Quiz', d.QuizScore != null && d.QuizScore !== '' ? d.QuizScore + '%' : '—'],
+    ['Quiz', d.QuizScore === 'skipped' ? 'Skipped' : d.QuizScore != null && d.QuizScore !== '' ? d.QuizScore + '%' : '—'],
     ['Gap-fill', d.GapFillScore != null && d.GapFillScore !== '' ? d.GapFillScore + '%' : '—'],
     ['Dictation', d.DictationAccuracy != null && d.DictationAccuracy !== '' ? d.DictationAccuracy + '%' : '—'],
     ['Total', d.TotalScore != null && d.TotalScore !== '' ? d.TotalScore + '%' : '—']
@@ -858,6 +858,7 @@ function renderGapFillDetail() {
 function renderQuizDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-quiz');
   var qj = d.QuizJSON;
+  if (qj && qj.skipped) { pane.innerHTML = '<div class="dt-empty">The student skipped the Quiz (it could not be generated).</div>'; return; }
   if (!qj || !qj.questions || !qj.questions.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Quiz yet.</div>'; return; }
   var answers = qj.answers || [];
   pane.innerHTML = qj.questions.map(function (q, i) {

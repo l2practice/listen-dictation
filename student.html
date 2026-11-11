@@ -754,7 +754,7 @@
   </div>
 </div>
 
-<script src="ld-common.js?v=10"></script>
+<script src="ld-common.js?v=11"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -1690,13 +1690,16 @@ function closeWordPanel() {
 var _quizPromise = null; // singleton promise — prevents double-fetch
 function prefetchQuiz() {
   if (App.quiz.length || _quizPromise) return; // already done or in-flight
-  _quizPromise = _generateQuiz().then(function (questions) {
+  // goQuiz() awaits this same promise, so it must resolve to the questions (a .then() here resolved to undefined)
+  var p = _quizPromise = _generateQuiz();
+  p.then(function (questions) {
+    if (_quizPromise !== p) return;
     App.quiz = questions;
     App.quizAnswers = new Array(App.quiz.length).fill(-1);
     _quizPromise = null;
-  }).catch(function (err) {
+  }, function (err) {
     console.warn('[LisDictation] Background quiz prefetch failed:', err.message);
-    _quizPromise = null; // allow retry when user opens Quiz tab
+    if (_quizPromise === p) _quizPromise = null; // allow retry when user opens Quiz tab
   });
 }
 
@@ -1797,7 +1800,7 @@ async function goQuiz() {
     renderQuiz();
   } catch (err) {
     _quizPromise = null;
-    document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--ld-danger)">Quiz generation error: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button>';
+    document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--ld-danger)">Quiz generation error: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button> <button class="btn btn-secondary btn-sm" onclick="skipQuiz(this)">Skip quiz</button>';
   }
 }
 function renderQuiz() {
@@ -1844,7 +1847,7 @@ async function submitQuiz() {
         renderQuiz();
         LD.toast('Quiz mới đã được tạo. Hãy cố gắng hơn!', 'ok', 3000);
       } catch (err) {
-        document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--ld-danger)">Lỗi tạo quiz: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button>';
+        document.getElementById('quiz-loading').innerHTML = '<span style="color:var(--ld-danger)">Lỗi tạo quiz: ' + LD.esc(err.message) + '</span> <button class="btn btn-secondary btn-sm" onclick="App.quiz=[];goQuiz()">Retry</button> <button class="btn btn-secondary btn-sm" onclick="skipQuiz(this)">Skip quiz</button>';
       }
     }
     return;
@@ -1859,6 +1862,15 @@ async function submitQuiz() {
     LD.toast('Network error: ' + e.message, 'err');
     btn.disabled = false; btn.innerHTML = LD.label('check', 'Submit Quiz');
   }
+}
+
+// Only offered when the quiz could not be generated: Quiz is saved as "skipped", Total averages the other parts.
+async function skipQuiz(btn) {
+  if (!confirm('Bỏ qua Quiz và sang Gap-fill?\n\nQuiz sẽ ghi là "Skipped" và không tính vào điểm tổng.')) return;
+  btn.disabled = true;
+  var r = await LD.api('session.saveQuiz', { sessionId: App.sessionId, skipped: true }).catch(function (e) { return { success: false, error: e.message }; });
+  if (!r.success) { btn.disabled = false; LD.toast(r.error || 'Could not skip the quiz', 'err'); return; }
+  goGapFill();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2579,7 +2591,7 @@ function renderHistoryTable() {
     }
 
     // Điểm — bài chưa làm hiện "—" thay vì 0
-    var qScore = r.quizScore != null ? r.quizScore + '%' : (r.quizDone ? '0%' : '<span style="color:var(--grey-400)">—</span>');
+    var qScore = r.quizScore === 'skipped' ? 'Skipped' : r.quizScore != null ? r.quizScore + '%' : (r.quizDone ? '0%' : '<span style="color:var(--grey-400)">—</span>');
     var gScore = r.gapFillScore != null ? r.gapFillScore + '%' : (r.gapDone ? '0%' : '<span style="color:var(--grey-400)">—</span>');
     var dScore = r.dictationAccuracy != null ? r.dictationAccuracy + '%' : '<span style="color:var(--grey-400)">—</span>';
     var total = r.totalScore != null ? '<b>' + r.totalScore + '%</b>' : '<span style="color:var(--grey-400)">—</span>';
