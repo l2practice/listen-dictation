@@ -247,7 +247,7 @@ async function saveAnalysis(p) {
 }
 // Quiz & Gap-fill: không cho lưu dở dang (đã chốt) — chỉ ghi khi làm đủ.
 async function saveQuiz(p) {
-  // Skip (only offered when the quiz could not be generated): quizScore "skipped" counts as done; Total ignores it
+  // Skip: quizScore "skipped" counts as done; Total ignores it
   if (p.skipped) {
     const { u } = await ownSession(p.sessionId);
     const batch = fs.batch();

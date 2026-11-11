@@ -858,7 +858,7 @@ function renderGapFillDetail() {
 function renderQuizDetail() {
   var d = DetailApp.data, pane = document.getElementById('dt-pane-quiz');
   var qj = d.QuizJSON;
-  if (qj && qj.skipped) { pane.innerHTML = '<div class="dt-empty">The student skipped the Quiz (it could not be generated).</div>'; return; }
+  if (qj && qj.skipped) { pane.innerHTML = '<div class="dt-empty">The student skipped the Quiz.</div>'; return; }
   if (!qj || !qj.questions || !qj.questions.length) { pane.innerHTML = '<div class="dt-empty">The student has not done the Quiz yet.</div>'; return; }
   var answers = qj.answers || [];
   pane.innerHTML = qj.questions.map(function (q, i) {
