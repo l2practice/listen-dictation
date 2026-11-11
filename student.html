@@ -537,6 +537,7 @@
     <div class="foot-bar sticky">
       <div class="note" style="margin-bottom:10px"><i data-ic="alert"></i>Leaving mid-quiz loses all progress — answer all 15/15 questions before it can be saved.</div>
       <button class="btn btn-primary btn-lg" id="btn-submit-quiz" onclick="submitQuiz()" disabled style="padding-left:34px;padding-right:34px"><i data-ic="check"></i>Submit Quiz</button>
+      <button class="btn btn-secondary btn-lg" onclick="skipQuiz(this)">Skip quiz</button>
     </div>
   </div>
 </div>
@@ -1864,7 +1865,7 @@ async function submitQuiz() {
   }
 }
 
-// Only offered when the quiz could not be generated: Quiz is saved as "skipped", Total averages the other parts.
+// Quiz is saved as "skipped" (counts as done), Total averages the other parts.
 async function skipQuiz(btn) {
   if (!confirm('Bỏ qua Quiz và sang Gap-fill?\n\nQuiz sẽ ghi là "Skipped" và không tính vào điểm tổng.')) return;
   btn.disabled = true;
