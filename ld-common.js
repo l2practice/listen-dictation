@@ -48,8 +48,10 @@
     payload = payload || {};
     // Mỗi lần gọi API = có hoạt động → reset idle timer
     _idleReset();
-    if (!LD.firebaseOn) return LD._legacyApi(action, payload);
-    return LD.firebaseReady().then(function (FB) { return FB.call(action, payload); })
+    // network failures (SDK/Apps Script unreachable) resolve as { success:false } like every other error: callers only check r.success
+    var netFail = function (e) { return { success: false, error: 'Không kết nối được máy chủ — kiểm tra mạng và thử lại. (' + ((e && e.message) || e) + ')' }; };
+    if (!LD.firebaseOn) return LD._legacyApi(action, payload).catch(netFail);
+    return LD.firebaseReady().then(function (FB) { return FB.call(action, payload); }, netFail)
       .then(function (res) {
         if (res && res.success === false && res.error === 'SESSION_EXPIRED') {
           LD.session.clear();
